@@ -3,6 +3,8 @@ project(mygame)
 
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Create your game executable target as usual
 add_executable(mygame WIN32 mygame.cpp)
 
