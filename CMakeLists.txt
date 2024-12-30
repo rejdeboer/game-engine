@@ -6,7 +6,7 @@ add_subdirectory(SDL EXCLUDE_FROM_ALL)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Create your game executable target as usual
-add_executable(mygame WIN32 mygame.cpp)
+add_executable(mygame WIN32 src/main.cpp)
 
 # SDL2::SDL2main may or may not be available. It is e.g. required by Windows GUI applications
 if(TARGET SDL2::SDL2main)
