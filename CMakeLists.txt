@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 project(mygame)
 
-add_subdirectory(SDL EXCLUDE_FROM_ALL)
+find_package(SDL2 REQUIRED)
+find_package(SDL2_mixer REQUIRED)
+
+# include(FindPkgConfig)
+# pkg_check_modules(SDL2_Mixer REQUIRED IMPORTED_TARGET SDL2_mixer)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -15,4 +19,4 @@ if(TARGET SDL2::SDL2main)
 endif()
 
 # Link to the actual SDL2 library. SDL2::SDL2 is the shared SDL library, SDL2::SDL2-static is the static SDL libarary.
-target_link_libraries(mygame PRIVATE SDL2::SDL2)
+target_link_libraries(mygame PRIVATE SDL2::SDL2 SDL2_mixer::SDL2_mixer)
