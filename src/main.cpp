@@ -102,17 +102,16 @@ int main(int argc, char *args[]) {
         }
       }
 
-      double dx = PLAYER_SPEED;
       if (player1Up && !player1Down) {
-        player1Pos = player1Pos - dx;
+        player1Pos = player1Pos - PLAYER_SPEED;
       } else if (!player1Up && player1Down) {
-        player1Pos = player1Pos + dx;
+        player1Pos = player1Pos + PLAYER_SPEED;
       }
 
       if (player2Up && !player2Down) {
-        player2Pos = player2Pos - dx;
+        player2Pos = player2Pos - PLAYER_SPEED;
       } else if (!player2Up && player2Down) {
-        player2Pos = player2Pos + dx;
+        player2Pos = player2Pos + PLAYER_SPEED;
       }
 
       next_game_step += TIMESTEP_MS;
