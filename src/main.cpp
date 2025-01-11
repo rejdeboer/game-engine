@@ -1,11 +1,15 @@
 #include "SDL_events.h"
+#include "SDL_stdinc.h"
+#include "SDL_timer.h"
 #include <SDL2/SDL.h>
 #include <cstdio>
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define PLAYER_HEIGHT (SCREEN_HEIGHT / 8)
-#define PLAYER_SPEED (SCREEN_HEIGHT / 100)
+#define PLAYER_SPEED ((double)SCREEN_HEIGHT / 200.)
+
+Uint64 TIMESTEP_MS = 1000 / 60;
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
@@ -30,68 +34,99 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  int player1Pos = 0;
-  int player2Pos = 0;
+  double player1Pos = 0.0;
+  double player2Pos = 0.0;
   bool player1Down = false;
   bool player1Up = false;
   bool player2Down = false;
   bool player2Up = false;
 
+  Uint64 next_game_step = SDL_GetTicks64();
+
   // Hack to get window to stay up
   SDL_Event e;
   bool quit = false;
   while (quit == false) {
-    while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_QUIT) {
-        quit = true;
-      } else if (e.type == SDL_KEYDOWN) {
-        // Select surfaces based on key press
-        switch (e.key.keysym.sym) {
-        case SDLK_w:
-          player1Up = true;
-          break;
+    Uint64 now = SDL_GetTicks64();
+    if (next_game_step >= now) {
+      SDL_Delay(next_game_step - now);
+      continue;
+    }
 
-        case SDLK_s:
-          player1Down = true;
-          break;
+    while (next_game_step <= now) {
+      while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+          quit = true;
+        } else if (e.type == SDL_KEYDOWN) {
+          switch (e.key.keysym.sym) {
+          case SDLK_w:
+            player1Up = true;
+            break;
 
-        case SDLK_UP:
-          player2Up = true;
-          break;
+          case SDLK_s:
+            player1Down = true;
+            break;
 
-        case SDLK_DOWN:
-          player2Down = true;
-          break;
+          case SDLK_UP:
+            player2Up = true;
+            break;
 
-        default:
-          break;
+          case SDLK_DOWN:
+            player2Down = true;
+            break;
+
+          default:
+            break;
+          }
+        } else if (e.type == SDL_KEYUP) {
+          switch (e.key.keysym.sym) {
+          case SDLK_w:
+            player1Up = false;
+            break;
+
+          case SDLK_s:
+            player1Down = false;
+            break;
+
+          case SDLK_UP:
+            player2Up = false;
+            break;
+
+          case SDLK_DOWN:
+            player2Down = false;
+            break;
+
+          default:
+            break;
+          }
         }
-      } else if (e.type == SDL_KEYUP) {
       }
+
+      double dx = PLAYER_SPEED;
+      if (player1Up && !player1Down) {
+        player1Pos = player1Pos - dx;
+      } else if (!player1Up && player1Down) {
+        player1Pos = player1Pos + dx;
+      }
+
+      if (player2Up && !player2Down) {
+        player2Pos = player2Pos - dx;
+      } else if (!player2Up && player2Down) {
+        player2Pos = player2Pos + dx;
+      }
+
+      next_game_step += TIMESTEP_MS;
     }
 
     SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(gRenderer);
-
-    if (player1Up && !player1Down) {
-      player1Pos = player1Pos - PLAYER_SPEED;
-    } else if (!player1Up && player1Down) {
-      player1Pos = player1Pos + PLAYER_SPEED;
-    }
-
-    if (player2Up && !player2Down) {
-      player2Pos = player2Pos - PLAYER_SPEED;
-    } else if (!player2Up && player2Down) {
-      player2Pos = player2Pos + PLAYER_SPEED;
-    }
-
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
     SDL_Rect player1Rect = {
-        0, (SCREEN_HEIGHT / 2 + player1Pos) - (PLAYER_HEIGHT / 2),
+        0, (SCREEN_HEIGHT / 2 + (int)player1Pos) - (PLAYER_HEIGHT / 2),
         SCREEN_WIDTH / 32, PLAYER_HEIGHT};
     SDL_RenderFillRect(gRenderer, &player1Rect);
     SDL_Rect player2Rect = {SCREEN_WIDTH - SCREEN_WIDTH / 32,
-                            (SCREEN_HEIGHT / 2 + player2Pos) -
+                            (SCREEN_HEIGHT / 2 + (int)player2Pos) -
                                 (PLAYER_HEIGHT / 2),
                             SCREEN_WIDTH / 32, PLAYER_HEIGHT};
     SDL_RenderFillRect(gRenderer, &player2Rect);
