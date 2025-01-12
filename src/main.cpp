@@ -1,4 +1,5 @@
 #include "SDL_events.h"
+#include "SDL_mixer.h"
 #include "SDL_stdinc.h"
 #include "SDL_timer.h"
 #include <SDL2/SDL.h>
@@ -31,6 +32,13 @@ int main(int argc, char *args[]) {
   gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
   if (gRenderer == NULL) {
     fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  // Initialize SDL_mixer
+  if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+    printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n",
+           Mix_GetError());
     return 1;
   }
 
