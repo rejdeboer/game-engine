@@ -4,9 +4,6 @@ project(mygame)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_mixer REQUIRED)
 
-# include(FindPkgConfig)
-# pkg_check_modules(SDL2_Mixer REQUIRED IMPORTED_TARGET SDL2_mixer)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Create your game executable target as usual
