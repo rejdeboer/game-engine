@@ -1,3 +1,4 @@
 .cache
 Build
 assets
+vcpkg_installed

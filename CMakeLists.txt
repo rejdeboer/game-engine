@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.5)
 project(mygame)
 
+# if (APPLE)
+#     set(SDL2_INCLUDE_DIRS "/Library/Frameworks/SDL2.framework /Library/Frameworks/SDL2_mixer.framework")
+# endif()
+
 find_package(SDL2 REQUIRED)
+find_package(SDL2 REQUIRED CONFIG COMPONENTS SDL2main)
 find_package(SDL2_mixer REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Create your game executable target as usual
-add_executable(mygame WIN32 src/main.cpp)
+add_executable(mygame src/main.cpp)
 
 # SDL2::SDL2main may or may not be available. It is e.g. required by Windows GUI applications
 if(TARGET SDL2::SDL2main)

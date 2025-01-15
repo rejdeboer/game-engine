@@ -25,15 +25,15 @@ SDL_Renderer *gRenderer = NULL;
 
 internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
                         f32 width_real, f32 height_real, f32 r, f32 g, f32 b) {
-  i32 x = round(x_real);
-  i32 y = round(y_real);
-  i32 width = round(width_real);
-  i32 height = round(height_real);
+  i32 x = (int)round(x_real);
+  i32 y = (int)round(y_real);
+  i32 width = (int)round(width_real);
+  i32 height = (int)round(height_real);
 
-  SDL_SetRenderDrawColor(renderer, round(255.0f * r), round(255.0f * g),
-                         round(255.0f * b), 0xFF);
+  SDL_SetRenderDrawColor(renderer, (int)round(255.0f * r),
+                         (int)round(255.0f * g), (int)round(255.0f * b), 0xFF);
 
-  SDL_Rect rect = SDL_Rect{x, y, width, height};
+  SDL_Rect rect = {x, y, width, height};
   SDL_RenderFillRect(renderer, &rect);
 }
 
@@ -150,22 +150,13 @@ int main(int argc, char *args[]) {
     SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(gRenderer);
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-    // SDL_Rect player1Rect = {
-    //     0, (SCREEN_HEIGHT / 2 + (int)player1Pos) - (PLAYER_HEIGHT / 2),
-    //     SCREEN_WIDTH / 32, PLAYER_HEIGHT};
-    // SDL_RenderFillRect(gRenderer, &player1Rect);
-    // SDL_Rect player2Rect = {SCREEN_WIDTH - SCREEN_WIDTH / 32,
-    //                         (SCREEN_HEIGHT / 2 + (int)player2Pos) -
-    //                             (PLAYER_HEIGHT / 2),
-    //                         SCREEN_WIDTH / 32, PLAYER_HEIGHT};
-    // SDL_RenderFillRect(gRenderer, &player2Rect);
 
     draw_rect(gRenderer, 0.0f,
               (SCREEN_HEIGHT / 2.0f + player1Pos) - (PLAYER_HEIGHT / 2.0f),
-              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 1.0f, 1.0f, 1.0f);
+              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 0.0f, 0.0f, 0.0f);
     draw_rect(gRenderer, SCREEN_WIDTH - SCREEN_WIDTH / 32.0f,
               (SCREEN_HEIGHT / 2.0f + player2Pos) - (PLAYER_HEIGHT / 2.0f),
-              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 1.0f, 1.0f, 1.0f);
+              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 0.0f, 0.0f, 0.0f);
 
     SDL_RenderPresent(gRenderer);
   }
