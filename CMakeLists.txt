@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(mygame)
 
-# if (APPLE)
-#     set(SDL2_INCLUDE_DIRS "/Library/Frameworks/SDL2.framework /Library/Frameworks/SDL2_mixer.framework")
-# endif()
-
 find_package(SDL2 REQUIRED)
 find_package(SDL2 REQUIRED CONFIG COMPONENTS SDL2main)
 find_package(SDL2_mixer REQUIRED)
