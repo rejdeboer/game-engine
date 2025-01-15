@@ -3,17 +3,39 @@
 #include "SDL_stdinc.h"
 #include "SDL_timer.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_render.h>
+#include <cmath>
 #include <cstdio>
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
-#define PLAYER_HEIGHT (SCREEN_HEIGHT / 8)
+#define internal static
+#define f32 float
+#define f64 double
+#define i32 int
+#define u32 unsigned int
+
+#define SCREEN_WIDTH 640.
+#define SCREEN_HEIGHT 480.
+#define PLAYER_HEIGHT (SCREEN_HEIGHT / 8.)
 #define PLAYER_SPEED ((double)SCREEN_HEIGHT / 200.)
 
 Uint64 TIMESTEP_MS = 1000 / 60;
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
+
+internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
+                        f32 width_real, f32 height_real, f32 r, f32 g, f32 b) {
+  i32 x = round(x_real);
+  i32 y = round(y_real);
+  i32 width = round(width_real);
+  i32 height = round(height_real);
+
+  SDL_SetRenderDrawColor(renderer, round(255.0f * r), round(255.0f * g),
+                         round(255.0f * b), 0xFF);
+
+  SDL_Rect rect = SDL_Rect{x, y, width, height};
+  SDL_RenderFillRect(renderer, &rect);
+}
 
 int main(int argc, char *args[]) {
   SDL_Surface *screenSurface = NULL;
@@ -128,15 +150,22 @@ int main(int argc, char *args[]) {
     SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(gRenderer);
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-    SDL_Rect player1Rect = {
-        0, (SCREEN_HEIGHT / 2 + (int)player1Pos) - (PLAYER_HEIGHT / 2),
-        SCREEN_WIDTH / 32, PLAYER_HEIGHT};
-    SDL_RenderFillRect(gRenderer, &player1Rect);
-    SDL_Rect player2Rect = {SCREEN_WIDTH - SCREEN_WIDTH / 32,
-                            (SCREEN_HEIGHT / 2 + (int)player2Pos) -
-                                (PLAYER_HEIGHT / 2),
-                            SCREEN_WIDTH / 32, PLAYER_HEIGHT};
-    SDL_RenderFillRect(gRenderer, &player2Rect);
+    // SDL_Rect player1Rect = {
+    //     0, (SCREEN_HEIGHT / 2 + (int)player1Pos) - (PLAYER_HEIGHT / 2),
+    //     SCREEN_WIDTH / 32, PLAYER_HEIGHT};
+    // SDL_RenderFillRect(gRenderer, &player1Rect);
+    // SDL_Rect player2Rect = {SCREEN_WIDTH - SCREEN_WIDTH / 32,
+    //                         (SCREEN_HEIGHT / 2 + (int)player2Pos) -
+    //                             (PLAYER_HEIGHT / 2),
+    //                         SCREEN_WIDTH / 32, PLAYER_HEIGHT};
+    // SDL_RenderFillRect(gRenderer, &player2Rect);
+
+    draw_rect(gRenderer, 0.0f,
+              (SCREEN_HEIGHT / 2.0f + player1Pos) - (PLAYER_HEIGHT / 2.0f),
+              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 1.0f, 1.0f, 1.0f);
+    draw_rect(gRenderer, SCREEN_WIDTH - SCREEN_WIDTH / 32.0f,
+              (SCREEN_HEIGHT / 2.0f + player2Pos) - (PLAYER_HEIGHT / 2.0f),
+              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 1.0f, 1.0f, 1.0f);
 
     SDL_RenderPresent(gRenderer);
   }
