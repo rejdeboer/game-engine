@@ -65,7 +65,7 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  GameState game_state = {50.0f, 50.0f};
+  GameState game_state = {80.0f, 80.0f};
   bool playerDown = false;
   bool playerUp = false;
   bool playerLeft = false;
@@ -76,26 +76,42 @@ int main(int argc, char *args[]) {
   const u32 n_tile_rows = 9;
   const u32 n_tile_columns = 17;
 
-  u32 tiles[n_tile_rows][n_tile_columns] = {
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  TileMap tile_maps[2];
+
+  u32 tiles_0[n_tile_rows][n_tile_columns] = {
+      {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
-  TileMap tile_map = {
-      .n_rows = n_tile_rows,
-      .n_columns = n_tile_columns,
-      .start_x = 0.0f,
-      .start_y = 0.0f,
-      .tile_width = 50.0f,
-      .tile_height = 50.0f,
-      .tiles = &tiles[0][0],
+  u32 tiles_1[n_tile_rows][n_tile_columns] = {
+      {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
+  tile_maps[0].n_rows = n_tile_rows;
+  tile_maps[0].n_columns = n_tile_columns;
+  tile_maps[0].start_x = 0.0f;
+  tile_maps[0].start_y = 0.0f;
+  tile_maps[0].tile_width = 50.0f;
+  tile_maps[0].tile_height = 50.0f;
+  tile_maps[0].tiles = &tiles_0[0][0];
+
+  tile_maps[1] = tile_maps[0];
+  tile_maps[1].tiles = (u32 *)&tiles_1;
+
+  TileMap *current_tile_map = &tile_maps[0];
 
   SDL_Event e;
   bool quit = false;
@@ -171,22 +187,26 @@ int main(int argc, char *args[]) {
       }
 
       if (new_y &&
-          is_tile_point_traversible(
-              &tile_map, game_state.player_x - PLAYER_WIDTH / 2.0f, new_y) &&
-          is_tile_point_traversible(
-              &tile_map, game_state.player_x + PLAYER_WIDTH / 2.0f, new_y)) {
+          is_tile_point_traversible(current_tile_map,
+                                    game_state.player_x - PLAYER_WIDTH / 2.0f,
+                                    new_y) &&
+          is_tile_point_traversible(current_tile_map,
+                                    game_state.player_x + PLAYER_WIDTH / 2.0f,
+                                    new_y)) {
         game_state.player_y = new_y;
       }
 
       if (playerLeft && !playerRight) {
         f32 new_x = game_state.player_x - PLAYER_SPEED;
-        if (is_tile_point_traversible(&tile_map, new_x - PLAYER_WIDTH / 2.0f,
+        if (is_tile_point_traversible(current_tile_map,
+                                      new_x - PLAYER_WIDTH / 2.0f,
                                       game_state.player_y)) {
           game_state.player_x = new_x;
         }
       } else if (!playerLeft && playerRight) {
         f32 new_x = game_state.player_x + PLAYER_SPEED;
-        if (is_tile_point_traversible(&tile_map, new_x + PLAYER_WIDTH / 2.0f,
+        if (is_tile_point_traversible(current_tile_map,
+                                      new_x + PLAYER_WIDTH / 2.0f,
                                       game_state.player_y)) {
           game_state.player_x = new_x;
         }
@@ -202,17 +222,19 @@ int main(int argc, char *args[]) {
     f32 player_left_x = game_state.player_x - PLAYER_WIDTH / 2.0f;
     f32 player_bottom_y = game_state.player_y;
 
-    for (int row = 0; row < tile_map.n_rows; row++) {
-      for (int col = 0; col < tile_map.n_columns; col++) {
-        f32 tile_x = tile_map.start_x + col * tile_map.tile_width;
-        f32 tile_y = tile_map.start_y + row * tile_map.tile_height;
+    for (int row = 0; row < current_tile_map->n_rows; row++) {
+      for (int col = 0; col < current_tile_map->n_columns; col++) {
+        f32 tile_x =
+            current_tile_map->start_x + col * current_tile_map->tile_width;
+        f32 tile_y =
+            current_tile_map->start_y + row * current_tile_map->tile_height;
 
-        if (tile_map.tiles[row * tile_map.n_columns + col]) {
-          draw_rect(gRenderer, tile_x, tile_y, tile_map.tile_width,
-                    tile_map.tile_height, 0.0f, 0.0f, 0.0f);
+        if (current_tile_map->tiles[row * current_tile_map->n_columns + col]) {
+          draw_rect(gRenderer, tile_x, tile_y, current_tile_map->tile_width,
+                    current_tile_map->tile_height, 0.0f, 0.0f, 0.0f);
         } else {
-          draw_rect(gRenderer, tile_x, tile_y, tile_map.tile_width,
-                    tile_map.tile_height, 1.0f, 1.0f, 1.0f);
+          draw_rect(gRenderer, tile_x, tile_y, current_tile_map->tile_width,
+                    current_tile_map->tile_height, 1.0f, 1.0f, 1.0f);
         }
       }
     }
