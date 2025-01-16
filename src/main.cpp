@@ -99,14 +99,10 @@ int main(int argc, char *args[]) {
 
   Uint64 next_game_step = SDL_GetTicks64();
 
-  const f32 tile_width = 50.0f;
-  const f32 tile_height = 50.0f;
   const u32 n_tile_rows = 9;
   const u32 n_tile_columns = 17;
-  const f32 starting_tile_x = 0.0f;
-  const f32 starting_tile_y = 0.0f;
 
-  u32 tile_map[n_tile_rows][n_tile_columns] = {
+  u32 tiles[n_tile_rows][n_tile_columns] = {
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -116,6 +112,15 @@ int main(int argc, char *args[]) {
       {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  };
+  TileMap tile_map = {
+      .n_rows = n_tile_rows,
+      .n_columns = n_tile_columns,
+      .start_x = 0.0f,
+      .start_y = 0.0f,
+      .tile_width = 50.0f,
+      .tile_height = 50.0f,
+      .tiles = &tiles[0][0],
   };
 
   SDL_Event e;
@@ -184,16 +189,33 @@ int main(int argc, char *args[]) {
         }
       }
 
+      f32 new_y;
       if (playerUp && !playerDown) {
-        game_state.player_y = game_state.player_y - PLAYER_SPEED;
+        new_y = game_state.player_y - PLAYER_SPEED;
       } else if (!playerUp && playerDown) {
-        game_state.player_y = game_state.player_y + PLAYER_SPEED;
+        new_y = game_state.player_y + PLAYER_SPEED;
+      }
+
+      if (new_y &&
+          is_tile_point_traversible(
+              &tile_map, game_state.player_x - PLAYER_WIDTH / 2.0f, new_y) &&
+          is_tile_point_traversible(
+              &tile_map, game_state.player_x + PLAYER_WIDTH / 2.0f, new_y)) {
+        game_state.player_y = new_y;
       }
 
       if (playerLeft && !playerRight) {
-        game_state.player_x = game_state.player_x - PLAYER_SPEED;
+        f32 new_x = game_state.player_x - PLAYER_SPEED;
+        if (is_tile_point_traversible(&tile_map, new_x - PLAYER_WIDTH / 2.0f,
+                                      game_state.player_y)) {
+          game_state.player_x = new_x;
+        }
       } else if (!playerLeft && playerRight) {
-        game_state.player_x = game_state.player_x + PLAYER_SPEED;
+        f32 new_x = game_state.player_x + PLAYER_SPEED;
+        if (is_tile_point_traversible(&tile_map, new_x + PLAYER_WIDTH / 2.0f,
+                                      game_state.player_y)) {
+          game_state.player_x = new_x;
+        }
       }
 
       next_game_step += TIMESTEP_MS;
@@ -206,17 +228,17 @@ int main(int argc, char *args[]) {
     f32 player_left_x = game_state.player_x - PLAYER_WIDTH / 2.0f;
     f32 player_bottom_y = game_state.player_y;
 
-    for (int row = 0; row < n_tile_rows; row++) {
-      for (int col = 0; col < n_tile_columns; col++) {
-        f32 tile_x = starting_tile_x + col * tile_width;
-        f32 tile_y = starting_tile_y + row * tile_height;
+    for (int row = 0; row < tile_map.n_rows; row++) {
+      for (int col = 0; col < tile_map.n_columns; col++) {
+        f32 tile_x = tile_map.start_x + col * tile_map.tile_width;
+        f32 tile_y = tile_map.start_y + row * tile_map.tile_height;
 
-        if (tile_map[row][col]) {
-          draw_rect(gRenderer, tile_x, tile_y, tile_width, tile_height, 0.0f,
-                    0.0f, 0.0f);
+        if (tile_map.tiles[row * tile_map.n_columns + col]) {
+          draw_rect(gRenderer, tile_x, tile_y, tile_map.tile_width,
+                    tile_map.tile_height, 0.0f, 0.0f, 0.0f);
         } else {
-          draw_rect(gRenderer, tile_x, tile_y, tile_width, tile_height, 1.0f,
-                    1.0f, 1.0f);
+          draw_rect(gRenderer, tile_x, tile_y, tile_map.tile_width,
+                    tile_map.tile_height, 1.0f, 1.0f, 1.0f);
         }
       }
     }
