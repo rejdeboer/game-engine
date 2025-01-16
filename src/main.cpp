@@ -3,6 +3,7 @@
 #include "SDL_stdinc.h"
 #include "SDL_timer.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_render.h>
 #include <cmath>
 #include <cstdio>
@@ -13,9 +14,10 @@
 #define i32 int
 #define u32 unsigned int
 
-#define SCREEN_WIDTH 640.
-#define SCREEN_HEIGHT 480.
-#define PLAYER_HEIGHT (SCREEN_HEIGHT / 8.)
+#define SCREEN_WIDTH 960.
+#define SCREEN_HEIGHT 540.
+#define PLAYER_HEIGHT 50.
+#define PLAYER_WIDTH 30.
 #define PLAYER_SPEED ((double)SCREEN_HEIGHT / 200.)
 
 Uint64 TIMESTEP_MS = 1000 / 60;
@@ -31,6 +33,11 @@ struct TileMap {
   f32 tile_width;
   f32 tile_height;
   u32 *tiles;
+};
+
+struct GameState {
+  f32 player_x;
+  f32 player_y;
 };
 
 internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
@@ -84,12 +91,11 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  double player1Pos = 0.0;
-  double player2Pos = 0.0;
-  bool player1Down = false;
-  bool player1Up = false;
-  bool player2Down = false;
-  bool player2Up = false;
+  GameState game_state = {50.0f, 50.0f};
+  bool playerDown = false;
+  bool playerUp = false;
+  bool playerLeft = false;
+  bool playerRight = false;
 
   Uint64 next_game_step = SDL_GetTicks64();
 
@@ -128,19 +134,23 @@ int main(int argc, char *args[]) {
         } else if (e.type == SDL_KEYDOWN) {
           switch (e.key.keysym.sym) {
           case SDLK_w:
-            player1Up = true;
+          case SDLK_UP:
+            playerUp = true;
             break;
 
           case SDLK_s:
-            player1Down = true;
-            break;
-
-          case SDLK_UP:
-            player2Up = true;
-            break;
-
           case SDLK_DOWN:
-            player2Down = true;
+            playerDown = true;
+            break;
+
+          case SDLK_a:
+          case SDLK_LEFT:
+            playerLeft = true;
+            break;
+
+          case SDLK_d:
+          case SDLK_RIGHT:
+            playerRight = true;
             break;
 
           default:
@@ -149,19 +159,23 @@ int main(int argc, char *args[]) {
         } else if (e.type == SDL_KEYUP) {
           switch (e.key.keysym.sym) {
           case SDLK_w:
-            player1Up = false;
+          case SDLK_UP:
+            playerUp = false;
             break;
 
           case SDLK_s:
-            player1Down = false;
-            break;
-
-          case SDLK_UP:
-            player2Up = false;
-            break;
-
           case SDLK_DOWN:
-            player2Down = false;
+            playerDown = false;
+            break;
+
+          case SDLK_a:
+          case SDLK_LEFT:
+            playerLeft = false;
+            break;
+
+          case SDLK_d:
+          case SDLK_RIGHT:
+            playerRight = false;
             break;
 
           default:
@@ -170,16 +184,16 @@ int main(int argc, char *args[]) {
         }
       }
 
-      if (player1Up && !player1Down) {
-        player1Pos = player1Pos - PLAYER_SPEED;
-      } else if (!player1Up && player1Down) {
-        player1Pos = player1Pos + PLAYER_SPEED;
+      if (playerUp && !playerDown) {
+        game_state.player_y = game_state.player_y - PLAYER_SPEED;
+      } else if (!playerUp && playerDown) {
+        game_state.player_y = game_state.player_y + PLAYER_SPEED;
       }
 
-      if (player2Up && !player2Down) {
-        player2Pos = player2Pos - PLAYER_SPEED;
-      } else if (!player2Up && player2Down) {
-        player2Pos = player2Pos + PLAYER_SPEED;
+      if (playerLeft && !playerRight) {
+        game_state.player_x = game_state.player_x - PLAYER_SPEED;
+      } else if (!playerLeft && playerRight) {
+        game_state.player_x = game_state.player_x + PLAYER_SPEED;
       }
 
       next_game_step += TIMESTEP_MS;
@@ -189,12 +203,8 @@ int main(int argc, char *args[]) {
     SDL_RenderClear(gRenderer);
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
-    draw_rect(gRenderer, 0.0f,
-              (SCREEN_HEIGHT / 2.0f + player1Pos) - (PLAYER_HEIGHT / 2.0f),
-              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 0.0f, 0.0f, 0.0f);
-    draw_rect(gRenderer, SCREEN_WIDTH - SCREEN_WIDTH / 32.0f,
-              (SCREEN_HEIGHT / 2.0f + player2Pos) - (PLAYER_HEIGHT / 2.0f),
-              SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 0.0f, 0.0f, 0.0f);
+    f32 player_left_x = game_state.player_x - PLAYER_WIDTH / 2.0f;
+    f32 player_bottom_y = game_state.player_y;
 
     for (int row = 0; row < n_tile_rows; row++) {
       for (int col = 0; col < n_tile_columns; col++) {
@@ -210,6 +220,9 @@ int main(int argc, char *args[]) {
         }
       }
     }
+
+    draw_rect(gRenderer, player_left_x, player_bottom_y, PLAYER_WIDTH,
+              -PLAYER_HEIGHT, 1.0f, 0.0f, 0.0f);
 
     SDL_RenderPresent(gRenderer);
   }
