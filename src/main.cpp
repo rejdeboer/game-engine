@@ -73,6 +73,25 @@ int main(int argc, char *args[]) {
 
   Uint64 next_game_step = SDL_GetTicks64();
 
+  const f32 tile_width = 50.0f;
+  const f32 tile_height = 50.0f;
+  const u32 n_tile_rows = 9;
+  const u32 n_tile_columns = 17;
+  const f32 starting_tile_x = 0.0f;
+  const f32 starting_tile_y = 0.0f;
+
+  u32 tile_map[n_tile_rows][n_tile_columns] = {
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  };
+
   // Hack to get window to stay up
   SDL_Event e;
   bool quit = false;
@@ -157,6 +176,21 @@ int main(int argc, char *args[]) {
     draw_rect(gRenderer, SCREEN_WIDTH - SCREEN_WIDTH / 32.0f,
               (SCREEN_HEIGHT / 2.0f + player2Pos) - (PLAYER_HEIGHT / 2.0f),
               SCREEN_WIDTH / 32.0f, PLAYER_HEIGHT, 0.0f, 0.0f, 0.0f);
+
+    for (int row = 0; row < n_tile_rows; row++) {
+      for (int col = 0; col < n_tile_columns; col++) {
+        f32 tile_x = starting_tile_x + col * tile_width;
+        f32 tile_y = starting_tile_y + row * tile_height;
+
+        if (tile_map[row][col]) {
+          draw_rect(gRenderer, tile_x, tile_y, tile_width, tile_height, 0.0f,
+                    0.0f, 0.0f);
+        } else {
+          draw_rect(gRenderer, tile_x, tile_y, tile_width, tile_height, 1.0f,
+                    1.0f, 1.0f);
+        }
+      }
+    }
 
     SDL_RenderPresent(gRenderer);
   }
