@@ -1,3 +1,4 @@
+#include "main.h"
 #include "SDL_events.h"
 #include "SDL_mixer.h"
 #include "SDL_stdinc.h"
@@ -8,37 +9,10 @@
 #include <cmath>
 #include <cstdio>
 
-#define internal static
-#define f32 float
-#define f64 double
-#define i32 int
-#define u32 unsigned int
-
-#define SCREEN_WIDTH 960.
-#define SCREEN_HEIGHT 540.
-#define PLAYER_HEIGHT 50.
-#define PLAYER_WIDTH 30.
-#define PLAYER_SPEED ((double)SCREEN_HEIGHT / 200.)
-
 Uint64 TIMESTEP_MS = 1000 / 60;
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
-
-struct TileMap {
-  u32 n_rows;
-  u32 n_columns;
-  f32 start_x;
-  f32 start_y;
-  f32 tile_width;
-  f32 tile_height;
-  u32 *tiles;
-};
-
-struct GameState {
-  f32 player_x;
-  f32 player_y;
-};
 
 internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
                         f32 width_real, f32 height_real, f32 r, f32 g, f32 b) {
