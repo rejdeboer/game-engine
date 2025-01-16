@@ -23,6 +23,16 @@ Uint64 TIMESTEP_MS = 1000 / 60;
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 
+struct TileMap {
+  u32 n_rows;
+  u32 n_columns;
+  f32 start_x;
+  f32 start_y;
+  f32 tile_width;
+  f32 tile_height;
+  u32 *tiles;
+};
+
 internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
                         f32 width_real, f32 height_real, f32 r, f32 g, f32 b) {
   i32 x = (int)round(x_real);
@@ -35,6 +45,16 @@ internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
 
   SDL_Rect rect = {x, y, width, height};
   SDL_RenderFillRect(renderer, &rect);
+}
+
+internal bool is_tile_point_traversible(TileMap *tm, f32 x, f32 y) {
+  f32 tile_x = x - tm->start_x;
+  f32 tile_y = y - tm->start_y;
+
+  u32 row = (u32)(tile_y / tm->tile_height);
+  u32 col = (u32)(tile_x / tm->tile_width);
+
+  return tm->tiles[row * tm->n_columns + col] == 0;
 }
 
 int main(int argc, char *args[]) {
@@ -92,7 +112,6 @@ int main(int argc, char *args[]) {
       {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
   };
 
-  // Hack to get window to stay up
   SDL_Event e;
   bool quit = false;
   while (quit == false) {
