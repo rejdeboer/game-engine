@@ -22,6 +22,12 @@ struct TileMap {
   u32 *tiles;
 };
 
+struct World {
+  u32 n_tile_map_x;
+  u32 n_tile_map_y;
+  TileMap *tile_maps;
+};
+
 struct GameState {
   f32 player_x;
   f32 player_y;

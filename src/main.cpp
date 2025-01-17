@@ -38,6 +38,17 @@ internal bool is_tile_point_traversible(TileMap *tm, f32 x, f32 y) {
   return tm->tiles[row * tm->n_columns + col] == 0;
 }
 
+inline TileMap *get_tile_map(World *world, u32 tile_map_x, u32 tile_map_y) {
+  TileMap *tile_map = 0;
+
+  if (tile_map_x >= 0 && tile_map_y >= 0 && tile_map_x < world->n_tile_map_x &&
+      tile_map_y < world->n_tile_map_y) {
+    tile_map = &world->tile_maps[world->n_tile_map_x * tile_map_y + tile_map_x];
+  }
+
+  return tile_map;
+}
+
 int main(int argc, char *args[]) {
   SDL_Surface *screenSurface = NULL;
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -76,9 +87,10 @@ int main(int argc, char *args[]) {
   const u32 n_tile_rows = 9;
   const u32 n_tile_columns = 17;
 
-  TileMap tile_maps[2];
+  TileMap tile_maps[2][2];
+  World world = {2, 2, (TileMap *)tile_maps};
 
-  u32 tiles_0[n_tile_rows][n_tile_columns] = {
+  u32 tiles_00[n_tile_rows][n_tile_columns] = {
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -89,7 +101,7 @@ int main(int argc, char *args[]) {
       {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
-  u32 tiles_1[n_tile_rows][n_tile_columns] = {
+  u32 tiles_10[n_tile_rows][n_tile_columns] = {
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -100,18 +112,24 @@ int main(int argc, char *args[]) {
       {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
-  tile_maps[0].n_rows = n_tile_rows;
-  tile_maps[0].n_columns = n_tile_columns;
-  tile_maps[0].start_x = 0.0f;
-  tile_maps[0].start_y = 0.0f;
-  tile_maps[0].tile_width = 50.0f;
-  tile_maps[0].tile_height = 50.0f;
-  tile_maps[0].tiles = &tiles_0[0][0];
+  tile_maps[0][0].n_rows = n_tile_rows;
+  tile_maps[0][0].n_columns = n_tile_columns;
+  tile_maps[0][0].start_x = 0.0f;
+  tile_maps[0][0].start_y = 0.0f;
+  tile_maps[0][0].tile_width = 50.0f;
+  tile_maps[0][0].tile_height = 50.0f;
+  tile_maps[0][0].tiles = (u32 *)tiles_00;
 
-  tile_maps[1] = tile_maps[0];
-  tile_maps[1].tiles = (u32 *)&tiles_1;
+  tile_maps[0][1] = tile_maps[0][0];
+  tile_maps[0][1].tiles = (u32 *)&tiles_10;
 
-  TileMap *current_tile_map = &tile_maps[0];
+  tile_maps[1][0] = tile_maps[0][0];
+  tile_maps[1][0].tiles = (u32 *)&tiles_10;
+
+  tile_maps[1][1] = tile_maps[0][0];
+  tile_maps[1][1].tiles = (u32 *)&tiles_10;
+
+  TileMap *current_tile_map = get_tile_map(&world, 0, 0);
 
   SDL_Event e;
   bool quit = false;
