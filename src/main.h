@@ -29,6 +29,8 @@ struct World {
 };
 
 struct GameState {
+  u32 tile_map_x;
+  u32 tile_map_y;
   f32 player_x;
   f32 player_y;
 };

@@ -76,7 +76,7 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  GameState game_state = {80.0f, 80.0f};
+  GameState game_state = {0, 0, 80.0f, 80.0f};
   bool playerDown = false;
   bool playerUp = false;
   bool playerLeft = false;
