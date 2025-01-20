@@ -58,8 +58,8 @@ internal inline u32 get_tile_value(World *world, WorldPosition pos) {
   f32 tile_x = pos.x - world->start_x;
   f32 tile_y = pos.y - world->start_y;
 
-  u32 row = (u32)(round(tile_y) / world->tile_height);
-  u32 col = (u32)(round(tile_x) / world->tile_width);
+  u32 row = (u32)(floor(tile_y) / world->tile_height);
+  u32 col = (u32)(floor(tile_x) / world->tile_width);
 
   return world->tile_maps[pos.tile_map_y * world->n_tile_map_x + pos.tile_map_x]
       .tiles[row * world->n_columns + col];
