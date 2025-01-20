@@ -13,24 +13,30 @@
 #define PLAYER_SPEED ((double)SCREEN_HEIGHT / 200.)
 
 struct TileMap {
+  u32 *tiles;
+};
+
+struct WorldPosition {
+  u32 tile_map_x;
+  u32 tile_map_y;
+  f32 x;
+  f32 y;
+};
+
+struct World {
+  u32 n_tile_map_x;
+  u32 n_tile_map_y;
+
   u32 n_rows;
   u32 n_columns;
   f32 start_x;
   f32 start_y;
   f32 tile_width;
   f32 tile_height;
-  u32 *tiles;
-};
 
-struct World {
-  u32 n_tile_map_x;
-  u32 n_tile_map_y;
   TileMap *tile_maps;
 };
 
 struct GameState {
-  u32 tile_map_x;
-  u32 tile_map_y;
-  f32 player_x;
-  f32 player_y;
+  WorldPosition player_position;
 };

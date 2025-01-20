@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_render.h>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 
@@ -28,22 +29,56 @@ internal void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
   SDL_RenderFillRect(renderer, &rect);
 }
 
-internal bool is_tile_point_traversible(TileMap *tm, f32 x, f32 y) {
-  f32 tile_x = x - tm->start_x;
-  f32 tile_y = y - tm->start_y;
-
-  u32 row = (u32)(tile_y / tm->tile_height);
-  u32 col = (u32)(tile_x / tm->tile_width);
-
-  return tm->tiles[row * tm->n_columns + col] == 0;
+inline WorldPosition normalize_world_position(World *world, WorldPosition pos) {
+  WorldPosition res = pos;
+  if (res.x > world->n_columns * world->tile_width) {
+    res.x -= world->n_columns * world->tile_width;
+    res.tile_map_x++;
+  } else if (res.x < 0.0f) {
+    res.x += world->n_columns * world->tile_width;
+    res.tile_map_x--;
+  }
+  if (res.y > world->n_rows * world->tile_height) {
+    res.y -= world->n_rows * world->tile_height;
+    res.tile_map_y++;
+  } else if (res.y < 0.0f) {
+    res.y += world->n_rows * world->tile_height;
+    res.tile_map_y--;
+  }
+  return res;
 }
 
-inline TileMap *get_tile_map(World *world, u32 tile_map_x, u32 tile_map_y) {
+internal inline u32 get_tile_value(World *world, WorldPosition pos) {
+  pos = normalize_world_position(world, pos);
+  assert(pos.x >= 0.0);
+  assert(pos.y >= 0.0);
+  assert(pos.x < SCREEN_WIDTH);
+  assert(pos.y < SCREEN_HEIGHT);
+
+  f32 tile_x = pos.x - world->start_x;
+  f32 tile_y = pos.y - world->start_y;
+
+  u32 row = (u32)(round(tile_y) / world->tile_height);
+  u32 col = (u32)(round(tile_x) / world->tile_width);
+
+  return world->tile_maps[pos.tile_map_y * world->n_tile_map_x + pos.tile_map_x]
+      .tiles[row * world->n_columns + col];
+}
+
+internal inline bool is_tile_point_traversible(World *world,
+                                               WorldPosition pos) {
+  return get_tile_value(world, pos) == 0;
+}
+
+inline TileMap *get_tile_map(World *world, WorldPosition pos) {
   TileMap *tile_map = 0;
 
-  if (tile_map_x >= 0 && tile_map_y >= 0 && tile_map_x < world->n_tile_map_x &&
-      tile_map_y < world->n_tile_map_y) {
-    tile_map = &world->tile_maps[world->n_tile_map_x * tile_map_y + tile_map_x];
+  if (pos.tile_map_x >= 0 && pos.tile_map_y >= 0 &&
+      pos.tile_map_x < world->n_tile_map_x &&
+      pos.tile_map_y < world->n_tile_map_y) {
+    tile_map =
+        &world
+             ->tile_maps[world->n_tile_map_x * pos.tile_map_y + pos.tile_map_x];
   }
 
   return tile_map;
@@ -77,7 +112,8 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  GameState game_state = {0, 0, 80.0f, 80.0f};
+  WorldPosition player_position = {0, 0, 100.0f, 100.0f};
+  GameState game_state = {player_position};
   bool playerDown = false;
   bool playerUp = false;
   bool playerLeft = false;
@@ -89,13 +125,14 @@ int main(int argc, char *args[]) {
   const u32 n_tile_columns = 17;
 
   TileMap tile_maps[2][2];
-  World world = {2, 2, (TileMap *)tile_maps};
+  World world = {2, 2,  n_tile_rows, n_tile_columns,      0,
+                 0, 50, 50,          (TileMap *)tile_maps};
 
   u32 tiles_00[n_tile_rows][n_tile_columns] = {
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -113,24 +150,10 @@ int main(int argc, char *args[]) {
       {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
-  tile_maps[0][0].n_rows = n_tile_rows;
-  tile_maps[0][0].n_columns = n_tile_columns;
-  tile_maps[0][0].start_x = 0.0f;
-  tile_maps[0][0].start_y = 0.0f;
-  tile_maps[0][0].tile_width = 50.0f;
-  tile_maps[0][0].tile_height = 50.0f;
-  tile_maps[0][0].tiles = (u32 *)tiles_00;
-
-  tile_maps[0][1] = tile_maps[0][0];
-  tile_maps[0][1].tiles = (u32 *)&tiles_10;
-
-  tile_maps[1][0] = tile_maps[0][0];
-  tile_maps[1][0].tiles = (u32 *)&tiles_10;
-
-  tile_maps[1][1] = tile_maps[0][0];
-  tile_maps[1][1].tiles = (u32 *)&tiles_10;
-
-  TileMap *current_tile_map = get_tile_map(&world, 0, 0);
+  world.tile_maps[0].tiles = (u32 *)tiles_00;
+  world.tile_maps[1].tiles = (u32 *)&tiles_10;
+  world.tile_maps[2].tiles = (u32 *)&tiles_10;
+  world.tile_maps[3].tiles = (u32 *)&tiles_10;
 
   SDL_Event e;
   bool quit = false;
@@ -200,34 +223,41 @@ int main(int argc, char *args[]) {
 
       f32 new_y;
       if (playerUp && !playerDown) {
-        new_y = game_state.player_y - PLAYER_SPEED;
+        new_y = game_state.player_position.y - PLAYER_SPEED;
       } else if (!playerUp && playerDown) {
-        new_y = game_state.player_y + PLAYER_SPEED;
+        new_y = game_state.player_position.y + PLAYER_SPEED;
       }
 
-      if (new_y &&
-          is_tile_point_traversible(current_tile_map,
-                                    game_state.player_x - PLAYER_WIDTH / 2.0f,
-                                    new_y) &&
-          is_tile_point_traversible(current_tile_map,
-                                    game_state.player_x + PLAYER_WIDTH / 2.0f,
-                                    new_y)) {
-        game_state.player_y = new_y;
+      if (new_y) {
+        WorldPosition test_left = game_state.player_position;
+        WorldPosition test_right = game_state.player_position;
+        test_left.y = new_y;
+        test_right.y = new_y;
+        test_left.x -= PLAYER_WIDTH / 2.0f;
+        test_right.x += PLAYER_WIDTH / 2.0f;
+        if (is_tile_point_traversible(&world, test_left) &&
+            is_tile_point_traversible(&world, test_right)) {
+          game_state.player_position.y = new_y;
+          game_state.player_position =
+              normalize_world_position(&world, game_state.player_position);
+        }
       }
 
       if (playerLeft && !playerRight) {
-        f32 new_x = game_state.player_x - PLAYER_SPEED;
-        if (is_tile_point_traversible(current_tile_map,
-                                      new_x - PLAYER_WIDTH / 2.0f,
-                                      game_state.player_y)) {
-          game_state.player_x = new_x;
+        WorldPosition test_x = game_state.player_position;
+        test_x.x -= PLAYER_SPEED + PLAYER_WIDTH / 2.0f;
+        if (is_tile_point_traversible(&world, test_x)) {
+          game_state.player_position.x -= PLAYER_SPEED;
+          game_state.player_position =
+              normalize_world_position(&world, game_state.player_position);
         }
       } else if (!playerLeft && playerRight) {
-        f32 new_x = game_state.player_x + PLAYER_SPEED;
-        if (is_tile_point_traversible(current_tile_map,
-                                      new_x + PLAYER_WIDTH / 2.0f,
-                                      game_state.player_y)) {
-          game_state.player_x = new_x;
+        WorldPosition test_x = game_state.player_position;
+        test_x.x += PLAYER_SPEED + PLAYER_WIDTH / 2.0f;
+        if (is_tile_point_traversible(&world, test_x)) {
+          game_state.player_position.x += PLAYER_SPEED;
+          game_state.player_position =
+              normalize_world_position(&world, game_state.player_position);
         }
       }
 
@@ -238,26 +268,24 @@ int main(int argc, char *args[]) {
     SDL_RenderClear(gRenderer);
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
-    f32 player_left_x = game_state.player_x - PLAYER_WIDTH / 2.0f;
-    f32 player_bottom_y = game_state.player_y;
+    TileMap *tm = get_tile_map(&world, game_state.player_position);
+    for (int row = 0; row < world.n_rows; row++) {
+      for (int col = 0; col < world.n_columns; col++) {
+        f32 tile_x = world.start_x + col * world.tile_width;
+        f32 tile_y = world.start_y + row * world.tile_height;
 
-    for (int row = 0; row < current_tile_map->n_rows; row++) {
-      for (int col = 0; col < current_tile_map->n_columns; col++) {
-        f32 tile_x =
-            current_tile_map->start_x + col * current_tile_map->tile_width;
-        f32 tile_y =
-            current_tile_map->start_y + row * current_tile_map->tile_height;
-
-        if (current_tile_map->tiles[row * current_tile_map->n_columns + col]) {
-          draw_rect(gRenderer, tile_x, tile_y, current_tile_map->tile_width,
-                    current_tile_map->tile_height, 0.0f, 0.0f, 0.0f);
+        if (tm->tiles[row * world.n_columns + col]) {
+          draw_rect(gRenderer, tile_x, tile_y, world.tile_width,
+                    world.tile_height, 0.0f, 0.0f, 0.0f);
         } else {
-          draw_rect(gRenderer, tile_x, tile_y, current_tile_map->tile_width,
-                    current_tile_map->tile_height, 1.0f, 1.0f, 1.0f);
+          draw_rect(gRenderer, tile_x, tile_y, world.tile_width,
+                    world.tile_height, 1.0f, 1.0f, 1.0f);
         }
       }
     }
 
+    f32 player_left_x = game_state.player_position.x - PLAYER_WIDTH / 2.0f;
+    f32 player_bottom_y = game_state.player_position.y;
     draw_rect(gRenderer, player_left_x, player_bottom_y, PLAYER_WIDTH,
               -PLAYER_HEIGHT, 1.0f, 0.0f, 0.0f);
 
