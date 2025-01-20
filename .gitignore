@@ -3,3 +3,4 @@ build
 Build
 assets
 vcpkg_installed
+.idea
