@@ -8,7 +8,9 @@ include_directories(${SDL2_INCLUDE_DIRS})
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Create your game executable target as usual
+# Fast SSE2 floating point operations
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
+
 add_executable(mygame src/main.cpp)
 
 # SDL2::SDL2main may or may not be available. It is e.g. required by Windows GUI applications
