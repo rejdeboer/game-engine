@@ -130,7 +130,7 @@ int main(int argc, char *args[]) {
       world.tile_side_in_pixels / (f32)world.tile_side_in_meters;
   world.tile_maps = (TileMap *)tile_maps;
   world.start_x = 0.0f;
-  world.start_y = 0.0f;
+  world.start_y = SCREEN_HEIGHT;
   world.n_rows = n_tile_rows;
   world.n_columns = n_tile_columns;
   world.n_tile_map_x = 2;
@@ -234,9 +234,9 @@ int main(int argc, char *args[]) {
 
       f32 new_y;
       if (playerUp && !playerDown) {
-        new_y = game_state.player_position.tile_rel_y - dy;
-      } else if (!playerUp && playerDown) {
         new_y = game_state.player_position.tile_rel_y + dy;
+      } else if (!playerUp && playerDown) {
+        new_y = game_state.player_position.tile_rel_y - dy;
       }
 
       if (new_y) {
@@ -282,17 +282,15 @@ int main(int argc, char *args[]) {
     TileMap *tm = get_tile_map(&world, game_state.player_position);
     for (int row = 0; row < world.n_rows; row++) {
       for (int col = 0; col < world.n_columns; col++) {
-        f32 tile_x = world.start_x + col * world.tile_side_in_meters;
-        f32 tile_y = world.start_y + row * world.tile_side_in_meters;
-        tile_x *= world.meters_to_pixels;
-        tile_y *= world.meters_to_pixels;
+        f32 tile_x = world.start_x + col * world.tile_side_in_pixels;
+        f32 tile_y = world.start_y - row * world.tile_side_in_pixels;
 
         if (tm->tiles[row * world.n_columns + col]) {
           draw_rect(gRenderer, tile_x, tile_y, world.tile_side_in_pixels,
-                    world.tile_side_in_pixels, 0.0f, 0.0f, 0.0f);
+                    -world.tile_side_in_pixels, 0.0f, 0.0f, 0.0f);
         } else {
           draw_rect(gRenderer, tile_x, tile_y, world.tile_side_in_pixels,
-                    world.tile_side_in_pixels, 1.0f, 1.0f, 1.0f);
+                    -world.tile_side_in_pixels, 1.0f, 1.0f, 1.0f);
         }
       }
     }
@@ -303,9 +301,9 @@ int main(int argc, char *args[]) {
         PLAYER_WIDTH / 2.0f;
     player_left_x *= world.meters_to_pixels;
     f32 player_bottom_y =
-        world.tile_side_in_meters * game_state.player_position.tile_y +
-        world.start_y + game_state.player_position.tile_rel_y;
-    player_bottom_y *= world.meters_to_pixels;
+        world.start_y -
+        (world.tile_side_in_pixels * game_state.player_position.tile_y +
+         game_state.player_position.tile_rel_y * world.meters_to_pixels);
     draw_rect(gRenderer, player_left_x, player_bottom_y,
               PLAYER_WIDTH * world.meters_to_pixels,
               -PLAYER_HEIGHT * world.meters_to_pixels, 1.0f, 0.0f, 0.0f);
