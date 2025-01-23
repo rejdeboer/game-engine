@@ -12,17 +12,22 @@
 #define PLAYER_WIDTH (0.75 * PLAYER_HEIGHT)
 #define PLAYER_SPEED 5.0f
 
-struct TileMap {
+struct TileChunk {
   u32 *tiles;
 };
 
 struct WorldPosition {
-  u32 tile_map_x;
-  u32 tile_map_y;
-  i32 tile_x;
-  i32 tile_y;
+  u32 abs_tile_x;
+  u32 abs_tile_y;
   f32 tile_rel_x;
   f32 tile_rel_y;
+};
+
+struct TileChunkPosition {
+  u32 chunk_x;
+  u32 chunk_y;
+  u32 tile_x;
+  u32 tile_y;
 };
 
 struct World {
@@ -30,15 +35,15 @@ struct World {
   i32 tile_side_in_pixels;
   f32 meters_to_pixels;
 
-  u32 n_tile_map_x;
-  u32 n_tile_map_y;
+  // NOTE: We use 256x256 tile chunks
+  u32 chunk_shift;
+  u32 chunk_mask;
+  u32 chunk_dim;
 
-  u32 n_rows;
-  u32 n_columns;
-  f32 start_x;
-  f32 start_y;
+  u32 n_tile_chunk_x;
+  u32 n_tile_chunk_y;
 
-  TileMap *tile_maps;
+  TileChunk *tile_chunks;
 };
 
 struct GameState {
