@@ -1,10 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(mygame)
 
-find_package(SDL2 REQUIRED)
-find_package(SDL2 REQUIRED CONFIG COMPONENTS SDL2main)
-find_package(SDL2_mixer REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3-shared)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -13,11 +10,4 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(mygame src/main.cpp)
 
-# SDL2::SDL2main may or may not be available. It is e.g. required by Windows GUI applications
-if(TARGET SDL2::SDL2main)
-    # It has an implicit dependency on SDL2 functions, so it MUST be added before SDL2::SDL2 (or SDL2::SDL2-static)
-    target_link_libraries(mygame PRIVATE SDL2::SDL2main)
-endif()
-
-# Link to the actual SDL2 library. SDL2::SDL2 is the shared SDL library, SDL2::SDL2-static is the static SDL libarary.
-target_link_libraries(mygame PRIVATE SDL2::SDL2 SDL2_mixer::SDL2_mixer)
+target_link_libraries(mygame PRIVATE SDL3::SDL3)

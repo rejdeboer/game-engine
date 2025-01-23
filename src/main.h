@@ -1,6 +1,3 @@
-
-
-#define internal static
 #define f32 float
 #define f64 double
 #define i32 int
