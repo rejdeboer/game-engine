@@ -9,17 +9,18 @@
 #include <cstdio>
 
 Uint64 TIMESTEP_MS = 1000 / 60;
-f32 TIMESTEP_S = (f32)TIMESTEP_MS / 1000;
+float TIMESTEP_S = (float)TIMESTEP_MS / 1000;
 
 SDL_Window *gWindow = NULL;
 SDL_Renderer *gRenderer = NULL;
 
-static void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
-                      f32 width_real, f32 height_real, f32 r, f32 g, f32 b) {
-  f32 x = round(x_real);
-  f32 y = round(y_real);
-  f32 width = round(width_real);
-  f32 height = round(height_real);
+static void draw_rect(SDL_Renderer *renderer, float x_real, float y_real,
+                      float width_real, float height_real, float r, float g,
+                      float b) {
+  float x = round(x_real);
+  float y = round(y_real);
+  float width = round(width_real);
+  float height = round(height_real);
 
   SDL_SetRenderDrawColor(renderer, (int)round(255.0f * r),
                          (int)round(255.0f * g), (int)round(255.0f * b), 0xFF);
@@ -28,10 +29,11 @@ static void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
   SDL_RenderFillRect(renderer, &rect);
 }
 
-inline void normalize_world_coord(TileMap *tm, u32 *tile, f32 *tile_rel) {
-  i32 offset = (i32)roundf(*tile_rel / tm->tile_side_in_meters);
+inline void normalize_world_coord(TileMap *tm, uint32_t *tile,
+                                  float *tile_rel) {
+  int offset = (int)roundf(*tile_rel / tm->tile_side_in_meters);
   *tile += offset;
-  *tile_rel -= (f32)offset * tm->tile_side_in_meters;
+  *tile_rel -= (float)offset * tm->tile_side_in_meters;
 
   assert(*tile_rel >= -tm->tile_side_in_meters / 2.0f);
   assert(*tile_rel <= tm->tile_side_in_meters / 2.0f);
@@ -44,16 +46,16 @@ inline WorldPosition normalize_world_position(TileMap *tm, WorldPosition pos) {
   return res;
 }
 
-static inline u32 get_tile_value(TileMap *tm, TileChunk *tc, u32 tile_x,
-                                 u32 tile_y) {
+static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,
+                                      uint32_t tile_x, uint32_t tile_y) {
   assert(tc);
   assert(tile_x < tm->chunk_dim);
   assert(tile_y < tm->chunk_dim);
   return tc->tiles[tile_y * tm->chunk_dim + tile_x];
 }
 
-inline TileChunkPosition get_chunk_position(TileMap *tm, u32 abs_tile_x,
-                                            u32 abs_tile_y) {
+inline TileChunkPosition get_chunk_position(TileMap *tm, uint32_t abs_tile_x,
+                                            uint32_t abs_tile_y) {
   TileChunkPosition res;
   res.tile_x = abs_tile_x & tm->chunk_mask;
   res.tile_y = abs_tile_y & tm->chunk_mask;
@@ -62,8 +64,8 @@ inline TileChunkPosition get_chunk_position(TileMap *tm, u32 abs_tile_x,
   return res;
 }
 
-inline TileChunk *get_tile_chunk(TileMap *tm, u32 tile_chunk_x,
-                                 u32 tile_chunk_y) {
+inline TileChunk *get_tile_chunk(TileMap *tm, uint32_t tile_chunk_x,
+                                 uint32_t tile_chunk_y) {
   TileChunk *tile_chunk = 0;
 
   if (tile_chunk_x < tm->n_tile_chunk_x && tile_chunk_y < tm->n_tile_chunk_y) {
@@ -75,7 +77,7 @@ inline TileChunk *get_tile_chunk(TileMap *tm, u32 tile_chunk_x,
 }
 
 static inline bool is_chunk_tile_traversible(TileMap *tm, TileChunk *tc,
-                                             u32 tile_x, u32 tile_y) {
+                                             uint32_t tile_x, uint32_t tile_y) {
   if (tc) {
     return get_tile_value(tm, tc, tile_x, tile_y) == 0;
   }
@@ -118,8 +120,8 @@ int main(int argc, char *args[]) {
 
   Uint64 next_game_step = SDL_GetTicks();
 
-  const u32 n_tile_rows = 9;
-  const u32 n_tile_columns = 17;
+  const uint32_t n_tile_rows = 9;
+  const uint32_t n_tile_columns = 17;
 
   TileChunk tile_chunks[2][2];
   World world;
@@ -128,7 +130,7 @@ int main(int argc, char *args[]) {
   tile_map.tile_side_in_meters = 1.4f;
   tile_map.tile_side_in_pixels = 60;
   tile_map.meters_to_pixels =
-      tile_map.tile_side_in_pixels / (f32)tile_map.tile_side_in_meters;
+      tile_map.tile_side_in_pixels / (float)tile_map.tile_side_in_meters;
   tile_map.chunk_shift = 8;
   tile_map.chunk_mask = (1 << tile_map.chunk_shift) - 1;
   tile_map.chunk_dim = 256;
@@ -136,7 +138,7 @@ int main(int argc, char *args[]) {
   tile_map.n_tile_chunk_x = 2;
   tile_map.n_tile_chunk_y = 2;
 
-  u32 tiles_00[256][256] = {
+  uint32_t tiles_00[256][256] = {
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -156,10 +158,10 @@ int main(int argc, char *args[]) {
       {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1},
   };
-  tile_map.tile_chunks[0].tiles = (u32 *)tiles_00;
+  tile_map.tile_chunks[0].tiles = (uint32_t *)tiles_00;
 
-  f32 lower_left_x = 0.0f;
-  f32 lower_left_y = SCREEN_HEIGHT;
+  float lower_left_x = 0.0f;
+  float lower_left_y = SCREEN_HEIGHT;
 
   SDL_Event e;
   bool quit = false;
@@ -227,10 +229,10 @@ int main(int argc, char *args[]) {
         }
       }
 
-      f32 dx = PLAYER_SPEED * TIMESTEP_S;
-      f32 dy = PLAYER_SPEED * TIMESTEP_S;
+      float dx = PLAYER_SPEED * TIMESTEP_S;
+      float dy = PLAYER_SPEED * TIMESTEP_S;
 
-      f32 new_y;
+      float new_y;
       if (playerUp && !playerDown) {
         new_y = game_state.player_position.tile_rel_y + dy;
       } else if (!playerUp && playerDown) {
@@ -278,29 +280,30 @@ int main(int argc, char *args[]) {
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
     // TODO: n_tiles should not depend on window size
-    u32 n_tiles_x = (u32)ceilf(SCREEN_WIDTH / tile_map.tile_side_in_pixels) + 1;
-    u32 n_tiles_y =
-        (u32)ceilf(SCREEN_HEIGHT / tile_map.tile_side_in_pixels) + 1;
+    uint32_t n_tiles_x =
+        (uint32_t)ceilf(SCREEN_WIDTH / tile_map.tile_side_in_pixels) + 1;
+    uint32_t n_tiles_y =
+        (uint32_t)ceilf(SCREEN_HEIGHT / tile_map.tile_side_in_pixels) + 1;
 
-    u32 player_abs_tile_x = game_state.player_position.abs_tile_x;
-    u32 player_abs_tile_y = game_state.player_position.abs_tile_y;
-    u32 center_tile_x = n_tiles_x / 2;
-    u32 center_tile_y = n_tiles_y / 2;
-    f32 tile_offset_pixels_x =
+    uint32_t player_abs_tile_x = game_state.player_position.abs_tile_x;
+    uint32_t player_abs_tile_y = game_state.player_position.abs_tile_y;
+    uint32_t center_tile_x = n_tiles_x / 2;
+    uint32_t center_tile_y = n_tiles_y / 2;
+    float tile_offset_pixels_x =
         game_state.player_position.tile_rel_x * tile_map.meters_to_pixels +
         0.5f * tile_map.tile_side_in_pixels;
-    f32 tile_offset_pixels_y =
+    float tile_offset_pixels_y =
         game_state.player_position.tile_rel_y * tile_map.meters_to_pixels +
         0.5f * tile_map.tile_side_in_pixels;
     for (int row = 0; row < n_tiles_y; row++) {
       for (int col = 0; col < n_tiles_x; col++) {
-        f32 tile_x = lower_left_x - tile_offset_pixels_x +
-                     col * tile_map.tile_side_in_pixels;
-        f32 tile_y = lower_left_y + tile_offset_pixels_y -
-                     row * tile_map.tile_side_in_pixels;
+        float tile_x = lower_left_x - tile_offset_pixels_x +
+                       col * tile_map.tile_side_in_pixels;
+        float tile_y = lower_left_y + tile_offset_pixels_y -
+                       row * tile_map.tile_side_in_pixels;
 
-        u32 abs_tile_x = player_abs_tile_x + col - center_tile_x;
-        u32 abs_tile_y = player_abs_tile_y + row - center_tile_y;
+        uint32_t abs_tile_x = player_abs_tile_x + col - center_tile_x;
+        uint32_t abs_tile_y = player_abs_tile_y + row - center_tile_y;
         TileChunkPosition chunk_pos =
             get_chunk_position(world.tile_map, abs_tile_x, abs_tile_y);
         TileChunk *chunk = get_tile_chunk(world.tile_map, chunk_pos.chunk_x,
@@ -318,9 +321,9 @@ int main(int argc, char *args[]) {
     }
 
     // TODO: Calculate player position based on state
-    f32 player_left_x =
+    float player_left_x =
         SCREEN_WIDTH / 2.0f - (PLAYER_WIDTH / 2.0f) * tile_map.meters_to_pixels;
-    f32 player_bottom_y =
+    float player_bottom_y =
         SCREEN_HEIGHT / 2.0f - tile_map.tile_side_in_pixels / 2.0f;
     draw_rect(gRenderer, player_left_x, player_bottom_y,
               PLAYER_WIDTH * tile_map.meters_to_pixels,
