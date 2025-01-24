@@ -6,7 +6,7 @@
 #define SCREEN_WIDTH 960.
 #define SCREEN_HEIGHT 540.
 #define PLAYER_HEIGHT 1.80
-#define PLAYER_WIDTH (0.75 * PLAYER_HEIGHT)
+#define PLAYER_WIDTH (0.70 * PLAYER_HEIGHT)
 #define PLAYER_SPEED 5.0f
 
 struct TileChunk {

@@ -29,12 +29,12 @@ static void draw_rect(SDL_Renderer *renderer, f32 x_real, f32 y_real,
 }
 
 inline void normalize_world_coord(World *world, u32 *tile, f32 *tile_rel) {
-  i32 offset = (i32)floor(*tile_rel / world->tile_side_in_meters);
+  i32 offset = (i32)roundf(*tile_rel / world->tile_side_in_meters);
   *tile += offset;
   *tile_rel -= (f32)offset * world->tile_side_in_meters;
 
-  assert(*tile_rel >= 0.0);
-  assert(*tile_rel <= world->tile_side_in_meters);
+  assert(*tile_rel >= -world->tile_side_in_meters / 2.0f);
+  assert(*tile_rel <= world->tile_side_in_meters / 2.0f);
 }
 
 inline WorldPosition normalize_world_position(World *world, WorldPosition pos) {
@@ -142,7 +142,7 @@ int main(int argc, char *args[]) {
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-      {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+      {1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
       {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -287,9 +287,11 @@ int main(int argc, char *args[]) {
     u32 center_tile_x = n_tiles_x / 2;
     u32 center_tile_y = n_tiles_y / 2;
     f32 tile_offset_pixels_x =
-        game_state.player_position.tile_rel_x * world.meters_to_pixels;
+        game_state.player_position.tile_rel_x * world.meters_to_pixels +
+        0.5f * world.tile_side_in_pixels;
     f32 tile_offset_pixels_y =
-        game_state.player_position.tile_rel_y * world.meters_to_pixels;
+        game_state.player_position.tile_rel_y * world.meters_to_pixels +
+        0.5f * world.tile_side_in_pixels;
     for (int row = 0; row < n_tiles_y; row++) {
       for (int col = 0; col < n_tiles_x; col++) {
         f32 tile_x = lower_left_x - tile_offset_pixels_x +
