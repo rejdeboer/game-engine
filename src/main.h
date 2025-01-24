@@ -27,7 +27,7 @@ struct TileChunkPosition {
   u32 tile_y;
 };
 
-struct World {
+struct TileMap {
   f32 tile_side_in_meters;
   i32 tile_side_in_pixels;
   f32 meters_to_pixels;
@@ -41,6 +41,10 @@ struct World {
   u32 n_tile_chunk_y;
 
   TileChunk *tile_chunks;
+};
+
+struct World {
+  TileMap *tile_map;
 };
 
 struct GameState {
