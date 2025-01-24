@@ -1,6 +1,13 @@
 #if !defined(TILE_H)
 #include <cstdint>
 
+struct WorldPosition {
+  uint32_t abs_tile_x;
+  uint32_t abs_tile_y;
+  float tile_rel_x;
+  float tile_rel_y;
+};
+
 struct TileChunk {
   uint32_t *tiles;
 };
