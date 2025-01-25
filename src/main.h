@@ -2,6 +2,9 @@
 #include "memory.h"
 #include "tile.h"
 
+// TODO: This value is completely arbitrary
+#define GAME_MEMORY 1024 * 1024 * 64
+
 #define SCREEN_WIDTH 960.
 #define SCREEN_HEIGHT 540.
 #define PLAYER_HEIGHT 1.80

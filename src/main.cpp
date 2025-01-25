@@ -4,7 +4,9 @@
 #include <SDL3/SDL.h>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 
 Uint64 TIMESTEP_MS = 1000 / 60;
 float TIMESTEP_S = (float)TIMESTEP_MS / 1000;
@@ -30,10 +32,10 @@ static void draw_rect(SDL_Renderer *renderer, float x_real, float y_real,
 int main(int argc, char *args[]) {
   SDL_Surface *screenSurface = NULL;
   if (!SDL_Init(SDL_INIT_VIDEO)) {
-    fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
+    fprintf(stderr, "could not initialize sdl3: %s\n", SDL_GetError());
     return 1;
   }
-  gWindow = SDL_CreateWindow("hello_sdl2", SCREEN_WIDTH, SCREEN_HEIGHT, 0);
+  gWindow = SDL_CreateWindow("hello_sdl3", SCREEN_WIDTH, SCREEN_HEIGHT, 0);
   if (gWindow == NULL) {
     fprintf(stderr, "could not create window: %s\n", SDL_GetError());
     return 1;
@@ -45,9 +47,11 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  WorldPosition player_position = {3, 3, 0.0f, 0.0f};
+  void *memory = malloc(GAME_MEMORY);
   Arena arena;
-  arena_init(&arena, 0, 0);
+  arena_init(&arena, GAME_MEMORY, (uint8_t *)memory);
+
+  WorldPosition player_position = {3, 3, 0.0f, 0.0f};
   GameState game_state = {arena, player_position};
   bool playerDown = false;
   bool playerUp = false;
@@ -69,7 +73,7 @@ int main(int argc, char *args[]) {
       tile_map.tile_side_in_pixels / (float)tile_map.tile_side_in_meters;
   tile_map.chunk_shift = 8;
   tile_map.chunk_mask = (1 << tile_map.chunk_shift) - 1;
-  tile_map.chunk_dim = 256;
+  tile_map.chunk_dim = (1 << tile_map.chunk_shift);
   tile_map.tile_chunks = (TileChunk *)tile_chunks;
   tile_map.n_tile_chunk_x = 2;
   tile_map.n_tile_chunk_y = 2;
