@@ -1,10 +1,10 @@
 #include "main.h"
+#include "memory.cpp"
 #include "tile.cpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_render.h>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -49,7 +49,9 @@ int main(int argc, char *args[]) {
   }
 
   WorldPosition player_position = {3, 3, 0.0f, 0.0f};
-  GameState game_state = {player_position};
+  Arena arena;
+  arena_init(&arena, 0, 0);
+  GameState game_state = {arena, player_position};
   bool playerDown = false;
   bool playerUp = false;
   bool playerLeft = false;
