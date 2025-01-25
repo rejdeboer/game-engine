@@ -2,9 +2,6 @@
 #include "memory.cpp"
 #include "tile.cpp"
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_audio.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_main.h>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
