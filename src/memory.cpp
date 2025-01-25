@@ -8,15 +8,11 @@ static void arena_init(Arena *arena, size_t size, uint8_t *base) {
 }
 
 #define push_size(arena, type) (type *)push_size_(arena, sizeof(type))
+#define push_array(arena, type, count)                                         \
+  (type *)push_size_(arena, count * sizeof(type))
 void *push_size_(Arena *arena, size_t size) {
   assert(arena->used + size <= arena->size);
   void *res = arena->base + arena->used;
   arena->used += size;
   return res;
-}
-
-#define push_array(arena, type, count)                                         \
-  (type *)push_array_(arena, count, sizeof(type))
-void *push_array_(Arena *arena, uint32_t count, size_t size) {
-  return push_size_(arena, size * count);
 }
