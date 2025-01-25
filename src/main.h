@@ -1,4 +1,5 @@
 #if !defined(MAIN_H)
+#include "memory.h"
 #include "tile.h"
 
 #define SCREEN_WIDTH 960.
@@ -12,6 +13,7 @@ struct World {
 };
 
 struct GameState {
+  Arena arena;
   WorldPosition player_position;
 };
 
