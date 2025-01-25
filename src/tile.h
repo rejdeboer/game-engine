@@ -35,5 +35,9 @@ struct TileMap {
   TileChunk *tile_chunks;
 };
 
+struct World {
+  TileMap *tile_map;
+};
+
 #define TILE_H
 #endif

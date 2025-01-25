@@ -11,10 +11,6 @@
 #define PLAYER_WIDTH (0.70 * PLAYER_HEIGHT)
 #define PLAYER_SPEED 5.0f
 
-struct World {
-  TileMap *tile_map;
-};
-
 struct GameState {
   Arena arena;
   WorldPosition player_position;
