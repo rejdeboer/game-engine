@@ -1,6 +1,4 @@
 #include "main.h"
-#include "memory.cpp"
-#include "tile.cpp"
 #include <SDL3/SDL.h>
 #include <cassert>
 #include <cmath>

@@ -1,4 +1,8 @@
 #if !defined(TILE_H)
+
+#include "memory.h"
+#include <cassert>
+#include <cmath>
 #include <cstdint>
 
 struct WorldPosition {
@@ -38,6 +42,48 @@ struct TileMap {
 struct World {
   TileMap *tile_map;
 };
+
+bool is_world_point_traversible(TileMap *tm, WorldPosition world_pos);
+World *generate_world(Arena *arena);
+
+inline void normalize_world_coord(TileMap *tm, uint32_t *tile,
+                                  float *tile_rel) {
+  int offset = (int)roundf(*tile_rel / tm->tile_side_in_meters);
+  *tile += offset;
+  *tile_rel -= (float)offset * tm->tile_side_in_meters;
+
+  assert(*tile_rel >= -tm->tile_side_in_meters / 2.0f);
+  assert(*tile_rel <= tm->tile_side_in_meters / 2.0f);
+}
+
+inline WorldPosition normalize_world_position(TileMap *tm, WorldPosition pos) {
+  WorldPosition res = pos;
+  normalize_world_coord(tm, &res.abs_tile_x, &res.tile_rel_x);
+  normalize_world_coord(tm, &res.abs_tile_y, &res.tile_rel_y);
+  return res;
+}
+
+inline TileChunkPosition get_chunk_position(TileMap *tm, uint32_t abs_tile_x,
+                                            uint32_t abs_tile_y) {
+  TileChunkPosition res;
+  res.tile_x = abs_tile_x & tm->chunk_mask;
+  res.tile_y = abs_tile_y & tm->chunk_mask;
+  res.chunk_x = abs_tile_x >> tm->chunk_shift;
+  res.chunk_y = abs_tile_y >> tm->chunk_shift;
+  return res;
+}
+
+inline TileChunk *get_tile_chunk(TileMap *tm, uint32_t tile_chunk_x,
+                                 uint32_t tile_chunk_y) {
+  TileChunk *tile_chunk = 0;
+
+  if (tile_chunk_x < tm->n_tile_chunk_x && tile_chunk_y < tm->n_tile_chunk_y) {
+    tile_chunk =
+        &tm->tile_chunks[tm->n_tile_chunk_x * tile_chunk_y + tile_chunk_x];
+  }
+
+  return tile_chunk;
+}
 
 #define TILE_H
 #endif
