@@ -1,0 +1,4 @@
+BasedOnStyle: llvm
+IndentWidth: 4
+TabWidth: 4
+Language: Cpp
