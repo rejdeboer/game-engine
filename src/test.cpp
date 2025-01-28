@@ -1,3 +1,6 @@
+#include "SDL3/SDL_rect.h"
+#include "SDL3/SDL_surface.h"
+#include "SDL3_image/SDL_image.h"
 #include "main.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
@@ -46,6 +49,26 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    SDL_Surface *test_surface = IMG_Load("./assets/images/test-isometric.png");
+    if (test_surface == NULL) {
+        fprintf(stderr,
+                "Texture error: Could not load image! SDL_image Error:%s\n",
+                SDL_GetError());
+        return 1;
+    }
+    SDL_Texture *texture =
+        SDL_CreateTextureFromSurface(gRenderer, test_surface);
+    if (texture == NULL) {
+        fprintf(stderr,
+                "Texture error: Could not load image! SDL_image Error:%s\n",
+                SDL_GetError());
+        return 1;
+    }
+    SDL_DestroySurface(test_surface);
+    SDL_FRect tex_rect = {0.0f, 0.0f, 64.0f, 64.0f};
+    SDL_FRect dest_rect = {50.0f, 50.0f, 50.0f, 50.0f};
+    SDL_FPoint center = {25.0f, 25.0f};
+
     Uint64 next_game_step = SDL_GetTicks();
     SDL_Event e;
     bool quit = false;
@@ -58,6 +81,9 @@ int main(int argc, char *args[]) {
 
         while (next_game_step <= now) {
             while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_EVENT_QUIT) {
+                    quit = true;
+                }
             }
 
             next_game_step += TIMESTEP_MS;
@@ -68,6 +94,8 @@ int main(int argc, char *args[]) {
         SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
         draw_rect(gRenderer, 50.0f, 50.0f, 50.0f, 50.0f, 1.0f, 0.0f, 0.0f);
+        SDL_RenderTextureRotated(gRenderer, texture, &tex_rect, &dest_rect,
+                                 45.0f, &center, SDL_FlipMode::SDL_FLIP_NONE);
 
         SDL_RenderPresent(gRenderer);
     }
