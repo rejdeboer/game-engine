@@ -3,7 +3,8 @@
 const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
 
-#ifdef NDEBUG
+// TODO: Can we use validation layers on apple?
+#if defined(NDEBUG) || defined(__APPLE__)
 const bool enable_validation_layers = false;
 #else
 const bool enable_validation_layers = true;
@@ -128,7 +129,7 @@ static VkInstance create_vulkan_instance(SDL_Window *window) {
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo = &app_info;
 
-    if (0 && enable_validation_layers) {
+    if (enable_validation_layers) {
         create_info.enabledLayerCount =
             static_cast<uint32_t>(validation_layers.size());
         create_info.ppEnabledLayerNames = validation_layers.data();
