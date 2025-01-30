@@ -1,11 +1,20 @@
 #include "config.h"
 #include <optional>
+#include <set>
 #include <vector>
 
 const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
 
-// TODO: Can we use validation layers on apple?
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphics_family;
+    std::optional<uint32_t> present_family;
+    bool is_complete() {
+        return graphics_family.has_value() && present_family.has_value();
+    }
+};
+
+// TODO: Can we use validation layers on Apple?
 #if defined(NDEBUG) || defined(__APPLE__)
 const bool enable_validation_layers = false;
 #else
@@ -36,8 +45,11 @@ static bool has_validation_layer_support() {
     return true;
 }
 
-static std::optional<uint32_t>
-find_compatible_queue_family_index(VkPhysicalDevice device) {
+static QueueFamilyIndices
+find_compatible_queue_family_index(VkPhysicalDevice device,
+                                   VkSurfaceKHR surface) {
+    QueueFamilyIndices res = {};
+
     uint32_t queue_count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_count, nullptr);
     std::vector<VkQueueFamilyProperties> queue_families(queue_count);
@@ -47,12 +59,24 @@ find_compatible_queue_family_index(VkPhysicalDevice device) {
     uint32_t index = 0;
     for (const auto &queue_family : queue_families) {
         if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            return index;
+            res.graphics_family = index;
         }
+
+        VkBool32 present_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface,
+                                             &present_support);
+        if (present_support) {
+            res.present_family = index;
+        }
+
+        if (res.is_complete()) {
+            break;
+        }
+
         index++;
     }
 
-    return {};
+    return res;
 }
 
 static inline int rate_device_suitability(VkPhysicalDevice device) {
@@ -78,11 +102,13 @@ static inline int rate_device_suitability(VkPhysicalDevice device) {
     return score;
 }
 
-static bool is_suitable_physical_device(VkPhysicalDevice device) {
-    return find_compatible_queue_family_index(device).has_value();
+static bool is_suitable_physical_device(VkPhysicalDevice device,
+                                        VkSurfaceKHR surface) {
+    return find_compatible_queue_family_index(device, surface).is_complete();
 }
 
-static VkPhysicalDevice pick_physical_device(VkInstance instance) {
+static VkPhysicalDevice pick_physical_device(VkInstance instance,
+                                             VkSurfaceKHR surface) {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
 
@@ -96,7 +122,7 @@ static VkPhysicalDevice pick_physical_device(VkInstance instance) {
     int max_score = -1;
     VkPhysicalDevice best_device;
     for (int i = 0; i < device_count; i++) {
-        if (!is_suitable_physical_device(devices[i])) {
+        if (!is_suitable_physical_device(devices[i], surface)) {
             continue;
         }
         int score = rate_device_suitability(devices[i]);
@@ -169,17 +195,25 @@ static VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance) {
     return surface;
 }
 
-static VkDevice create_device(VkPhysicalDevice physical_device) {
-    std::optional<uint32_t> queue_family_index =
-        find_compatible_queue_family_index(physical_device);
-    assert(queue_family_index.has_value());
+static VkDevice create_device(VkPhysicalDevice physical_device,
+                              VkSurfaceKHR surface) {
+    QueueFamilyIndices indices =
+        find_compatible_queue_family_index(physical_device, surface);
+    assert(indices.is_complete());
 
-    VkDeviceQueueCreateInfo queue_create_info = {};
-    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queue_create_info.queueFamilyIndex = queue_family_index.value();
-    queue_create_info.queueCount = 1;
-    float queue_priority = 1.0f;
-    queue_create_info.pQueuePriorities = &queue_priority;
+    std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+    std::set<uint32_t> unique_queue_families = {indices.graphics_family.value(),
+                                                indices.present_family.value()};
+
+    for (uint32_t queue_family_index : unique_queue_families) {
+        VkDeviceQueueCreateInfo queue_create_info = {};
+        queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queue_create_info.queueFamilyIndex = queue_family_index;
+        queue_create_info.queueCount = 1;
+        float queue_priority = 1.0f;
+        queue_create_info.pQueuePriorities = &queue_priority;
+        queue_create_infos.push_back(queue_create_info);
+    }
 
     VkPhysicalDeviceFeatures physical_device_features;
     vkGetPhysicalDeviceFeatures(physical_device, &physical_device_features);
@@ -187,8 +221,9 @@ static VkDevice create_device(VkPhysicalDevice physical_device) {
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.pEnabledFeatures = &physical_device_features;
-    device_create_info.queueCreateInfoCount = 1;
-    device_create_info.pQueueCreateInfos = &queue_create_info;
+    device_create_info.queueCreateInfoCount =
+        static_cast<uint32_t>(unique_queue_families.size());
+    device_create_info.pQueueCreateInfos = &queue_create_infos[0];
 
     VkDevice device;
     VkResult result =
@@ -210,7 +245,7 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     if (!surface) {
         throw std::runtime_error("could not create vulkan surface");
     }
-    VkPhysicalDevice physical_device = pick_physical_device(instance);
-    VkDevice device = create_device(physical_device);
+    VkPhysicalDevice physical_device = pick_physical_device(instance, surface);
+    VkDevice device = create_device(physical_device, surface);
     return VulkanContext(instance, device, surface);
 }
