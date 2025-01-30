@@ -6,6 +6,9 @@
 const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
 
+const std::vector<const char *> device_extensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphics_family;
     std::optional<uint32_t> present_family;
@@ -20,6 +23,25 @@ const bool enable_validation_layers = false;
 #else
 const bool enable_validation_layers = true;
 #endif
+
+static inline bool has_device_extension_support(VkPhysicalDevice device) {
+    uint32_t extension_count;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
+                                         nullptr);
+
+    std::vector<VkExtensionProperties> available_extensions(extension_count);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
+                                         available_extensions.data());
+
+    std::set<std::string> required_extensions(device_extensions.begin(),
+                                              device_extensions.end());
+
+    for (const auto &extension : available_extensions) {
+        required_extensions.erase(extension.extensionName);
+    }
+
+    return required_extensions.empty();
+}
 
 static bool has_validation_layer_support() {
     uint32_t layer_count;
@@ -104,7 +126,9 @@ static inline int rate_device_suitability(VkPhysicalDevice device) {
 
 static bool is_suitable_physical_device(VkPhysicalDevice device,
                                         VkSurfaceKHR surface) {
-    return find_compatible_queue_family_indices(device, surface).is_complete();
+    return find_compatible_queue_family_indices(device, surface)
+               .is_complete() &&
+           has_device_extension_support(device);
 }
 
 static VkPhysicalDevice pick_physical_device(VkInstance instance,
@@ -156,6 +180,9 @@ static VkInstance create_vulkan_instance(SDL_Window *window) {
     VkInstanceCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo = &app_info;
+    create_info.enabledExtensionCount =
+        static_cast<uint32_t>(device_extensions.size());
+    create_info.ppEnabledExtensionNames = &device_extensions[0];
 
     if (enable_validation_layers) {
         create_info.enabledLayerCount =
