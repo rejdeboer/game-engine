@@ -2,10 +2,13 @@
 #include "SDL3/SDL_vulkan.h"
 
 VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
-                             VkSurfaceKHR surface) {
+                             VkSurfaceKHR surface, VkQueue graphics_queue,
+                             VkQueue presentation_queue) {
     instance = instance;
     device = device;
     surface = surface;
+    graphics_queue = graphics_queue;
+    presentation_queue = presentation_queue;
 }
 
 void VulkanContext::deinit() {

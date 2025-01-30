@@ -233,6 +233,13 @@ static VkDevice create_device(VkPhysicalDevice physical_device,
     return device;
 }
 
+static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
+                                       uint32_t queue_index) {
+    VkQueue queue;
+    vkGetDeviceQueue(device, family_index, queue_index, &queue);
+    return queue;
+}
+
 VulkanContext vulkan_initialize(SDL_Window *window) {
     VkInstance instance = create_vulkan_instance(window);
     if (!instance) {
@@ -253,5 +260,7 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     VkDevice device =
         create_device(physical_device, graphics_index, presentation_index);
 
-    return VulkanContext(instance, device, surface);
+    return VulkanContext(instance, device, surface,
+                         get_device_queue(device, graphics_index, 0),
+                         get_device_queue(device, presentation_index, 0));
 }
