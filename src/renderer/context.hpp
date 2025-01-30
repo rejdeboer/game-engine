@@ -10,7 +10,7 @@ class VulkanContext {
     VkSurfaceKHR surface;
 
   public:
-    VulkanContext(VkInstance instance, VkDevice device);
+    VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface);
     void deinit();
 };
 

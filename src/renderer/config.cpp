@@ -160,6 +160,15 @@ static VkInstance create_vulkan_instance(SDL_Window *window) {
     return instance;
 }
 
+static VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance) {
+    VkSurfaceKHR surface;
+    if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)) {
+        fprintf(stderr, "error creating vulkan surface: %s\n", SDL_GetError());
+        return VK_NULL_HANDLE;
+    }
+    return surface;
+}
+
 static VkDevice create_device(VkPhysicalDevice physical_device) {
     std::optional<uint32_t> queue_family_index =
         find_compatible_queue_family_index(physical_device);
@@ -197,7 +206,11 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     if (!instance) {
         throw std::runtime_error("could not create vulkan instance");
     }
+    VkSurfaceKHR surface = create_surface(window, instance);
+    if (!surface) {
+        throw std::runtime_error("could not create vulkan surface");
+    }
     VkPhysicalDevice physical_device = pick_physical_device(instance);
     VkDevice device = create_device(physical_device);
-    return VulkanContext(instance, device);
+    return VulkanContext(instance, device, surface);
 }
