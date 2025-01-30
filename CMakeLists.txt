@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
 
 add_executable(mygame src/main.cpp src/tile.cpp src/memory.cpp)
-add_executable(vulkan_test src/vulkan_test.cpp src/renderer.cpp)
+add_executable(vulkan_test src/vulkan_test.cpp src/renderer/context.cpp src/renderer/config.cpp)
 add_executable(test src/test.cpp)
 
 target_link_libraries(mygame PRIVATE SDL3::SDL3 EnTT::EnTT SDL3_image::SDL3_image)

@@ -1,7 +1,6 @@
 #include "SDL3/SDL_rect.h"
 #include "main.h"
-#include "renderer/config.h"
-#include "renderer/context.hpp"
+#include "renderer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
 #include <cassert>
@@ -54,7 +53,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    VulkanContext vk_renderer = vulkan_initialize(gWindow);
+    VulkanContext vk_renderer = VulkanContext(gWindow);
 
     Uint64 next_game_step = SDL_GetTicks();
     SDL_Event e;

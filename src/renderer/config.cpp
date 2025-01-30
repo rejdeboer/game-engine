@@ -1,4 +1,6 @@
-#include "renderer.hpp"
+#include "config.h"
+#include <optional>
+#include <vector>
 
 const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -190,17 +192,12 @@ static VkDevice create_device(VkPhysicalDevice physical_device) {
     return device;
 }
 
-Renderer::Renderer(SDL_Window *window) {
-    instance = create_vulkan_instance(window);
+VulkanContext vulkan_initialize(SDL_Window *window) {
+    VkInstance instance = create_vulkan_instance(window);
     if (!instance) {
         throw std::runtime_error("could not create vulkan instance");
     }
     VkPhysicalDevice physical_device = pick_physical_device(instance);
-    device = create_device(physical_device);
-}
-
-void Renderer::deinit() {
-    vkDestroyDevice(device, nullptr);
-    vkDestroyInstance(instance, nullptr);
-    SDL_Vulkan_UnloadLibrary();
+    VkDevice device = create_device(physical_device);
+    return VulkanContext(instance, device);
 }
