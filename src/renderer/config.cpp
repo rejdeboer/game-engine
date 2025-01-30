@@ -46,8 +46,8 @@ static bool has_validation_layer_support() {
 }
 
 static QueueFamilyIndices
-find_compatible_queue_family_index(VkPhysicalDevice device,
-                                   VkSurfaceKHR surface) {
+find_compatible_queue_family_indices(VkPhysicalDevice device,
+                                     VkSurfaceKHR surface) {
     QueueFamilyIndices res = {};
 
     uint32_t queue_count = 0;
@@ -104,7 +104,7 @@ static inline int rate_device_suitability(VkPhysicalDevice device) {
 
 static bool is_suitable_physical_device(VkPhysicalDevice device,
                                         VkSurfaceKHR surface) {
-    return find_compatible_queue_family_index(device, surface).is_complete();
+    return find_compatible_queue_family_indices(device, surface).is_complete();
 }
 
 static VkPhysicalDevice pick_physical_device(VkInstance instance,
@@ -196,14 +196,11 @@ static VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance) {
 }
 
 static VkDevice create_device(VkPhysicalDevice physical_device,
-                              VkSurfaceKHR surface) {
-    QueueFamilyIndices indices =
-        find_compatible_queue_family_index(physical_device, surface);
-    assert(indices.is_complete());
-
+                              uint32_t graphics_index,
+                              uint32_t presentation_index) {
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-    std::set<uint32_t> unique_queue_families = {indices.graphics_family.value(),
-                                                indices.present_family.value()};
+    std::set<uint32_t> unique_queue_families = {graphics_index,
+                                                presentation_index};
 
     for (uint32_t queue_family_index : unique_queue_families) {
         VkDeviceQueueCreateInfo queue_create_info = {};
@@ -245,7 +242,16 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     if (!surface) {
         throw std::runtime_error("could not create vulkan surface");
     }
+
     VkPhysicalDevice physical_device = pick_physical_device(instance, surface);
-    VkDevice device = create_device(physical_device, surface);
+    QueueFamilyIndices queue_family_indices =
+        find_compatible_queue_family_indices(physical_device, surface);
+    assert(queue_family_indices.is_complete());
+
+    uint32_t graphics_index = queue_family_indices.graphics_family.value();
+    uint32_t presentation_index = queue_family_indices.present_family.value();
+    VkDevice device =
+        create_device(physical_device, graphics_index, presentation_index);
+
     return VulkanContext(instance, device, surface);
 }
