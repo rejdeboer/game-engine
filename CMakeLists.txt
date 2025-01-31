@@ -27,7 +27,7 @@ endForeach()
 add_custom_target(shaders ALL DEPENDS ${SPV_SHADERS})
 
 add_executable(mygame src/main.cpp src/tile.cpp src/memory.cpp)
-add_executable(vulkan_test src/vulkan_test.cpp src/renderer/context.cpp src/renderer/config.cpp ${SHADERS})
+add_executable(vulkan_test src/vulkan_test.cpp src/renderer/context.cpp src/file.cpp src/renderer/config.cpp ${SHADERS})
 add_executable(test src/test.cpp)
 
 add_dependencies(vulkan_test shaders)

@@ -3,12 +3,14 @@
 
 VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
                              VkSurfaceKHR surface, VkSwapchainKHR swap_chain,
+                             VkPipelineLayout pipeline_layout,
                              VkQueue graphics_queue,
                              VkQueue presentation_queue) {
     instance = instance;
     device = device;
     surface = surface;
     swap_chain = swap_chain;
+    pipeline_layout = pipeline_layout;
     graphics_queue = graphics_queue;
     presentation_queue = presentation_queue;
 }
