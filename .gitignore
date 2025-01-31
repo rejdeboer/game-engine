@@ -5,3 +5,4 @@ Build
 assets
 vcpkg_installed
 .idea
+shaders/spv
