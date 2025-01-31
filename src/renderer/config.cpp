@@ -17,6 +17,12 @@ struct QueueFamilyIndices {
     }
 };
 
+struct SwapChainSupportDetails {
+    VkSurfaceCapabilitiesKHR capabilities;
+    std::vector<VkSurfaceFormatKHR> formats;
+    std::vector<VkPresentModeKHR> present_modes;
+};
+
 // TODO: Can we use validation layers on Apple?
 #if defined(NDEBUG) || defined(__APPLE__)
 const bool enable_validation_layers = false;
@@ -65,6 +71,78 @@ static bool has_validation_layer_support() {
     }
 
     return true;
+}
+
+static SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device,
+                                                        VkSurfaceKHR surface) {
+    SwapChainSupportDetails details;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+                                              &details.capabilities);
+
+    uint32_t format_count;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
+                                         nullptr);
+    if (format_count != 0) {
+        details.formats.resize(format_count);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
+                                             &details.formats[0]);
+    }
+
+    uint32_t present_mode_count;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                              &present_mode_count, nullptr);
+    if (present_mode_count != 0) {
+        details.present_modes.resize(present_mode_count);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(
+            device, surface, &present_mode_count, &details.present_modes[0]);
+    }
+
+    return details;
+}
+
+static inline VkSurfaceFormatKHR choose_swap_surface_format(
+    const std::vector<VkSurfaceFormatKHR> &available_formats) {
+    for (const auto &format : available_formats) {
+        if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
+            format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            return format;
+        }
+    }
+
+    // TODO: Rank the remaining formats
+    return available_formats[0];
+}
+
+static inline VkPresentModeKHR
+choose_swap_present_mode(const std::vector<VkPresentModeKHR> &available_modes) {
+    for (const auto &mode : available_modes) {
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            return mode;
+        }
+    }
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+static VkExtent2D
+choose_swap_extent(SDL_Window *window,
+                   const VkSurfaceCapabilitiesKHR &capabilities) {
+    if (capabilities.currentExtent.width !=
+        std::numeric_limits<uint32_t>::max()) {
+        return capabilities.currentExtent;
+    }
+
+    int width, height;
+    SDL_GetWindowSizeInPixels(window, &width, &height);
+    VkExtent2D extent = {
+        static_cast<uint32_t>(width),
+        static_cast<uint32_t>(height),
+    };
+    extent.width = std::clamp(extent.width, capabilities.minImageExtent.width,
+                              capabilities.maxImageExtent.width);
+    extent.height =
+        std::clamp(extent.height, capabilities.minImageExtent.height,
+                   capabilities.maxImageExtent.height);
+    return extent;
 }
 
 static QueueFamilyIndices
@@ -126,9 +204,21 @@ static inline int rate_device_suitability(VkPhysicalDevice device) {
 
 static bool is_suitable_physical_device(VkPhysicalDevice device,
                                         VkSurfaceKHR surface) {
-    return find_compatible_queue_family_indices(device, surface)
+    bool has_extension_support = has_device_extension_support(device);
+
+    bool has_adequate_swap_chain = false;
+    if (has_extension_support) {
+        SwapChainSupportDetails swap_chain_support_details =
+            query_swap_chain_support(device, surface);
+        has_adequate_swap_chain =
+            !swap_chain_support_details.formats.empty() &&
+            !swap_chain_support_details.present_modes.empty();
+    }
+
+    return has_adequate_swap_chain &&
+           find_compatible_queue_family_indices(device, surface)
                .is_complete() &&
-           has_device_extension_support(device);
+           has_extension_support;
 }
 
 static VkPhysicalDevice pick_physical_device(VkInstance instance,
@@ -248,6 +338,9 @@ static VkDevice create_device(VkPhysicalDevice physical_device,
     device_create_info.queueCreateInfoCount =
         static_cast<uint32_t>(unique_queue_families.size());
     device_create_info.pQueueCreateInfos = &queue_create_infos[0];
+    device_create_info.enabledExtensionCount =
+        static_cast<uint32_t>(device_extensions.size());
+    device_create_info.ppEnabledExtensionNames = &device_extensions[0];
 
     VkDevice device;
     VkResult result =
@@ -258,6 +351,63 @@ static VkDevice create_device(VkPhysicalDevice physical_device,
     };
 
     return device;
+}
+
+static VkSwapchainKHR create_swap_chain(SDL_Window *window,
+                                        VkPhysicalDevice physical_device,
+                                        VkDevice device, VkSurfaceKHR surface,
+                                        uint32_t graphics_index,
+                                        uint32_t presentation_index) {
+    SwapChainSupportDetails support_details =
+        query_swap_chain_support(physical_device, surface);
+    VkSurfaceFormatKHR surface_format =
+        choose_swap_surface_format(support_details.formats);
+    VkPresentModeKHR present_mode =
+        choose_swap_present_mode(support_details.present_modes);
+    VkExtent2D extent =
+        choose_swap_extent(window, support_details.capabilities);
+
+    uint32_t image_count = support_details.capabilities.minImageCount + 1;
+    if (support_details.capabilities.maxImageCount > 0 &&
+        support_details.capabilities.maxImageCount < image_count) {
+        image_count = support_details.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    create_info.surface = surface;
+    create_info.minImageCount = image_count;
+    create_info.imageFormat = surface_format.format;
+    create_info.imageColorSpace = surface_format.colorSpace;
+    create_info.imageExtent = extent;
+    create_info.imageArrayLayers = 1;
+    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    create_info.preTransform = support_details.capabilities.currentTransform;
+    create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    create_info.presentMode = present_mode;
+    create_info.clipped = VK_TRUE;
+    create_info.oldSwapchain = VK_NULL_HANDLE;
+
+    if (graphics_index != presentation_index) {
+        create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        create_info.queueFamilyIndexCount = 2;
+        uint32_t queue_family_indices[] = {graphics_index, presentation_index};
+        create_info.pQueueFamilyIndices = queue_family_indices;
+    } else {
+        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.queueFamilyIndexCount = 0;
+        create_info.pQueueFamilyIndices = nullptr;
+    }
+
+    VkSwapchainKHR swap_chain;
+    VkResult result =
+        vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
+    if (result != VK_SUCCESS) {
+        fprintf(stderr, "error with code %d creating swap chain\n", result);
+        throw std::runtime_error("error creating swap chain");
+    }
+
+    return swap_chain;
 }
 
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
@@ -286,8 +436,11 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     uint32_t presentation_index = queue_family_indices.present_family.value();
     VkDevice device =
         create_device(physical_device, graphics_index, presentation_index);
+    VkSwapchainKHR swap_chain =
+        create_swap_chain(window, physical_device, device, surface,
+                          graphics_index, presentation_index);
 
-    return VulkanContext(instance, device, surface,
+    return VulkanContext(instance, device, surface, swap_chain,
                          get_device_queue(device, graphics_index, 0),
                          get_device_queue(device, presentation_index, 0));
 }

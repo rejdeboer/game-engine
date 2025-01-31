@@ -8,12 +8,14 @@ class VulkanContext {
     VkInstance instance;
     VkDevice device;
     VkSurfaceKHR surface;
+    VkSwapchainKHR swap_chain;
     VkQueue graphics_queue;
     VkQueue presentation_queue;
 
   public:
     VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
-                  VkQueue graphics_queue, VkQueue presentation_queue);
+                  VkSwapchainKHR swap_chain, VkQueue graphics_queue,
+                  VkQueue presentation_queue);
     void deinit();
 };
 
