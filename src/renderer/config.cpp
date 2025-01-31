@@ -357,9 +357,8 @@ static VkDevice create_device(VkPhysicalDevice physical_device,
 static VkSwapchainKHR
 create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
                   VkDevice device, VkSurfaceKHR surface, VkExtent2D extent,
-                  uint32_t graphics_index, uint32_t presentation_index) {
-    VkSurfaceFormatKHR surface_format =
-        choose_swap_surface_format(support_details.formats);
+                  VkSurfaceFormatKHR surface_format, uint32_t graphics_index,
+                  uint32_t presentation_index) {
     VkPresentModeKHR present_mode =
         choose_swap_present_mode(support_details.present_modes);
 
@@ -557,6 +556,42 @@ static VkPipelineLayout create_graphics_pipeline(VkDevice device,
     return pipeline_layout;
 }
 
+static VkRenderPass create_render_pass(VkDevice device,
+                                       VkSurfaceFormatKHR surface_format) {
+    VkAttachmentDescription color_attachment = {};
+    color_attachment.format = surface_format.format;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_attachment_ref = {};
+    color_attachment_ref.attachment = 0;
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+
+    VkRenderPassCreateInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_info.attachmentCount = 1;
+    render_pass_info.pAttachments = &color_attachment;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    VkRenderPass render_pass;
+    if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) !=
+        VK_SUCCESS) {
+        throw new std::runtime_error("failed to create render pass");
+    }
+    return render_pass;
+}
+
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                                        uint32_t queue_index) {
     VkQueue queue;
@@ -588,14 +623,20 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
         query_swap_chain_support(physical_device, surface);
     VkExtent2D swap_chain_extent =
         choose_swap_extent(window, swap_chain_support_details.capabilities);
+    VkSurfaceFormatKHR surface_format =
+        choose_swap_surface_format(swap_chain_support_details.formats);
     VkSwapchainKHR swap_chain = create_swap_chain(
         window, swap_chain_support_details, device, surface, swap_chain_extent,
-        graphics_index, presentation_index);
+        surface_format, graphics_index, presentation_index);
+
+    // TODO: Create image views
 
     VkPipelineLayout pipeline_layout =
         create_graphics_pipeline(device, swap_chain_extent);
+    VkRenderPass render_pass = create_render_pass(device, surface_format);
 
     return VulkanContext(instance, device, surface, swap_chain, pipeline_layout,
+                         render_pass,
                          get_device_queue(device, graphics_index, 0),
                          get_device_queue(device, presentation_index, 0));
 }

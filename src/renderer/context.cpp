@@ -4,18 +4,21 @@
 VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
                              VkSurfaceKHR surface, VkSwapchainKHR swap_chain,
                              VkPipelineLayout pipeline_layout,
-                             VkQueue graphics_queue,
+                             VkRenderPass render_pass, VkQueue graphics_queue,
                              VkQueue presentation_queue) {
     instance = instance;
     device = device;
     surface = surface;
     swap_chain = swap_chain;
     pipeline_layout = pipeline_layout;
+    render_pass = render_pass;
     graphics_queue = graphics_queue;
     presentation_queue = presentation_queue;
 }
 
 void VulkanContext::deinit() {
+    vkDestroyRenderPass(device, render_pass, nullptr);
+    vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
     vkDestroySwapchainKHR(device, swap_chain, nullptr);
     vkDestroyDevice(device, nullptr);
     SDL_Vulkan_DestroySurface(instance, surface, nullptr);

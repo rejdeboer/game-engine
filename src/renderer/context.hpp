@@ -10,13 +10,15 @@ class VulkanContext {
     VkSurfaceKHR surface;
     VkSwapchainKHR swap_chain;
     VkPipelineLayout pipeline_layout;
+    VkRenderPass render_pass;
     VkQueue graphics_queue;
     VkQueue presentation_queue;
 
   public:
     VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
                   VkSwapchainKHR swap_chain, VkPipelineLayout pipeline_layout,
-                  VkQueue graphics_queue, VkQueue presentation_queue);
+                  VkRenderPass render_pass, VkQueue graphics_queue,
+                  VkQueue presentation_queue);
     void deinit();
 };
 
