@@ -48,6 +48,7 @@ int main(int argc, char *args[]) {
         }
 
         // TODO: Render here!!!
+        vk_renderer.draw_frame();
     }
     vk_renderer.deinit();
     SDL_DestroyWindow(gWindow);

@@ -2,25 +2,25 @@
 #include "SDL3/SDL_vulkan.h"
 
 VulkanContext::VulkanContext(
-    VkInstance instance, VkDevice device, VkSurfaceKHR surface,
-    VkSwapchainKHR swap_chain, std::vector<VkImageView> image_views,
-    VkPipelineLayout pipeline_layout, VkPipeline pipeline,
-    VkRenderPass render_pass, std::vector<VkFramebuffer> frame_buffers,
-    VkCommandPool command_pool, VkCommandBuffer command_buffer,
-    VkQueue graphics_queue, VkQueue presentation_queue) {
-    instance = instance;
-    device = device;
-    surface = surface;
-    swap_chain = swap_chain;
-    image_views = image_views;
-    pipeline_layout = pipeline_layout;
-    pipeline = pipeline;
-    render_pass = render_pass;
-    frame_buffers = frame_buffers;
-    command_pool = command_pool;
-    command_buffer = command_buffer;
-    graphics_queue = graphics_queue;
-    presentation_queue = presentation_queue;
+    VkInstance _instance, VkDevice _device, VkSurfaceKHR _surface,
+    VkSwapchainKHR _swap_chain, std::vector<VkImageView> _image_views,
+    VkPipelineLayout _pipeline_layout, VkPipeline _pipeline,
+    VkRenderPass _render_pass, std::vector<VkFramebuffer> _frame_buffers,
+    VkCommandPool _command_pool, VkCommandBuffer _command_buffer,
+    VkQueue _graphics_queue, VkQueue _presentation_queue) {
+    instance = _instance;
+    device = _device;
+    surface = _surface;
+    swap_chain = _swap_chain;
+    image_views = _image_views;
+    pipeline_layout = _pipeline_layout;
+    pipeline = _pipeline;
+    render_pass = _render_pass;
+    frame_buffers = _frame_buffers;
+    command_pool = _command_pool;
+    command_buffer = _command_buffer;
+    graphics_queue = _graphics_queue;
+    presentation_queue = _presentation_queue;
 
     VkSemaphoreCreateInfo semaphore_create_info = {};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
