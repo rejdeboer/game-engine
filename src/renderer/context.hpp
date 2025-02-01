@@ -20,6 +20,10 @@ class VulkanContext {
     VkQueue graphics_queue;
     VkQueue presentation_queue;
 
+    VkSemaphore image_available;
+    VkSemaphore render_finished;
+    VkFence in_flight;
+
   public:
     VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
                   VkSwapchainKHR swap_chain,
@@ -30,6 +34,7 @@ class VulkanContext {
                   VkCommandPool command_pool, VkCommandBuffer command_buffer,
                   VkQueue graphics_queue, VkQueue presentation_queue);
     void deinit();
+    void draw_frame();
 };
 
 #define RENDERER_CONTEXT_H

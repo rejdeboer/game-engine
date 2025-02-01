@@ -21,6 +21,19 @@ VulkanContext::VulkanContext(
     command_buffer = command_buffer;
     graphics_queue = graphics_queue;
     presentation_queue = presentation_queue;
+
+    VkSemaphoreCreateInfo semaphore_create_info = {};
+    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VkFenceCreateInfo fence_create_info = {};
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    if (vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+                          &image_available) != VK_SUCCESS ||
+        vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+                          &render_finished) != VK_SUCCESS ||
+        vkCreateFence(device, &fence_create_info, nullptr, &in_flight) !=
+            VK_SUCCESS) {
+        throw std::runtime_error("failed to create sync primitives");
+    }
 }
 
 void VulkanContext::deinit() {
@@ -40,3 +53,16 @@ void VulkanContext::deinit() {
     vkDestroyInstance(instance, nullptr);
     SDL_Vulkan_UnloadLibrary();
 }
+
+static void record_command_buffer(VkCommandBuffer buffer,
+                                  uint32_t image_index) {
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0;
+    begin_info.pInheritanceInfo = nullptr;
+    if (vkBeginCommandBuffer(buffer, &begin_info) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin command buffer");
+    }
+}
+
+void VulkanContext::draw_frame() {}
