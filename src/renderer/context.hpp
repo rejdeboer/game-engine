@@ -10,6 +10,7 @@ class VulkanContext {
     VkDevice device;
     VkSurfaceKHR surface;
     VkSwapchainKHR swap_chain;
+    VkExtent2D swap_chain_extent;
     std::vector<VkImageView> image_views;
     VkPipelineLayout pipeline_layout;
     VkPipeline pipeline;
@@ -24,9 +25,11 @@ class VulkanContext {
     VkSemaphore render_finished;
     VkFence in_flight;
 
+    void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
+
   public:
     VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
-                  VkSwapchainKHR swap_chain,
+                  VkSwapchainKHR swap_chain, VkExtent2D swap_chain_extent,
                   std::vector<VkImageView> image_views,
                   VkPipelineLayout pipeline_layout, VkPipeline pipeline,
                   VkRenderPass render_pass,

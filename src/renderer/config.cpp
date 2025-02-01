@@ -29,8 +29,7 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> present_modes;
 };
 
-// TODO: Can we use validation layers on Apple?
-#if defined(NDEBUG) || defined(__APPLE__)
+#if defined(NDEBUG)
 const bool enable_validation_layers = false;
 #else
 const bool enable_validation_layers = true;
@@ -784,10 +783,10 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     VkCommandBuffer command_buffer =
         create_command_buffer(device, command_pool);
 
-    return VulkanContext(instance, device, surface, swap_chain, image_views,
-                         pipeline_context.layout, pipeline_context.pipeline,
-                         render_pass, frame_buffers, command_pool,
-                         command_buffer,
-                         get_device_queue(device, graphics_index, 0),
-                         get_device_queue(device, presentation_index, 0));
+    return VulkanContext(
+        instance, device, surface, swap_chain, swap_chain_extent, image_views,
+        pipeline_context.layout, pipeline_context.pipeline, render_pass,
+        frame_buffers, command_pool, command_buffer,
+        get_device_queue(device, graphics_index, 0),
+        get_device_queue(device, presentation_index, 0));
 }

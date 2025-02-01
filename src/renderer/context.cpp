@@ -3,11 +3,12 @@
 
 VulkanContext::VulkanContext(
     VkInstance _instance, VkDevice _device, VkSurfaceKHR _surface,
-    VkSwapchainKHR _swap_chain, std::vector<VkImageView> _image_views,
-    VkPipelineLayout _pipeline_layout, VkPipeline _pipeline,
-    VkRenderPass _render_pass, std::vector<VkFramebuffer> _frame_buffers,
-    VkCommandPool _command_pool, VkCommandBuffer _command_buffer,
-    VkQueue _graphics_queue, VkQueue _presentation_queue) {
+    VkSwapchainKHR _swap_chain, VkExtent2D _swap_chain_extent,
+    std::vector<VkImageView> _image_views, VkPipelineLayout _pipeline_layout,
+    VkPipeline _pipeline, VkRenderPass _render_pass,
+    std::vector<VkFramebuffer> _frame_buffers, VkCommandPool _command_pool,
+    VkCommandBuffer _command_buffer, VkQueue _graphics_queue,
+    VkQueue _presentation_queue) {
     instance = _instance;
     device = _device;
     surface = _surface;
@@ -58,14 +59,46 @@ void VulkanContext::deinit() {
     SDL_Vulkan_UnloadLibrary();
 }
 
-static void record_command_buffer(VkCommandBuffer buffer,
-                                  uint32_t image_index) {
+void VulkanContext::record_command_buffer(VkCommandBuffer buffer,
+                                          uint32_t image_index) {
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = 0;
     begin_info.pInheritanceInfo = nullptr;
     if (vkBeginCommandBuffer(buffer, &begin_info) != VK_SUCCESS) {
         throw std::runtime_error("failed to begin command buffer");
+    }
+
+    VkRenderPassBeginInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    render_pass_info.renderPass = render_pass;
+    render_pass_info.framebuffer = frame_buffers[image_index];
+    render_pass_info.renderArea.offset = {0, 0};
+    render_pass_info.renderArea.extent = swap_chain_extent;
+    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    render_pass_info.clearValueCount = 1;
+    render_pass_info.pClearValues = &clear_color;
+    vkCmdBeginRenderPass(buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swap_chain_extent.width);
+    viewport.height = static_cast<float>(swap_chain_extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(buffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swap_chain_extent;
+    vkCmdSetScissor(buffer, 0, 1, &scissor);
+
+    vkCmdDraw(buffer, 3, 1, 0, 0);
+    vkCmdEndRenderPass(buffer);
+    if (vkEndCommandBuffer(buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record command buffer");
     }
 }
 
