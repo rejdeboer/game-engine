@@ -703,6 +703,23 @@ static inline VkCommandPool create_command_pool(VkDevice device,
     return pool;
 }
 
+static inline VkCommandBuffer
+create_command_buffer(VkDevice device, VkCommandPool command_pool) {
+    VkCommandBufferAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocate_info.commandPool = command_pool;
+    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocate_info.commandBufferCount = 1;
+
+    VkCommandBuffer buffer;
+    if (vkAllocateCommandBuffers(device, &allocate_info, &buffer) !=
+        VK_SUCCESS) {
+        throw std::runtime_error("failed to create command buffer");
+    }
+
+    return buffer;
+}
+
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                                        uint32_t queue_index) {
     VkQueue queue;
@@ -754,10 +771,13 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
         device, render_pass, image_views, swap_chain_extent);
 
     VkCommandPool command_pool = create_command_pool(device, graphics_index);
+    VkCommandBuffer command_buffer =
+        create_command_buffer(device, command_pool);
 
     return VulkanContext(instance, device, surface, swap_chain, image_views,
                          pipeline_context.layout, pipeline_context.pipeline,
                          render_pass, frame_buffers, command_pool,
+                         command_buffer,
                          get_device_queue(device, graphics_index, 0),
                          get_device_queue(device, presentation_index, 0));
 }

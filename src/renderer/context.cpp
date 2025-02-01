@@ -1,14 +1,13 @@
 #include "context.hpp"
 #include "SDL3/SDL_vulkan.h"
 
-VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
-                             VkSurfaceKHR surface, VkSwapchainKHR swap_chain,
-                             std::vector<VkImageView> image_views,
-                             VkPipelineLayout pipeline_layout,
-                             VkPipeline pipeline, VkRenderPass render_pass,
-                             std::vector<VkFramebuffer> frame_buffers,
-                             VkCommandPool command_pool, VkQueue graphics_queue,
-                             VkQueue presentation_queue) {
+VulkanContext::VulkanContext(
+    VkInstance instance, VkDevice device, VkSurfaceKHR surface,
+    VkSwapchainKHR swap_chain, std::vector<VkImageView> image_views,
+    VkPipelineLayout pipeline_layout, VkPipeline pipeline,
+    VkRenderPass render_pass, std::vector<VkFramebuffer> frame_buffers,
+    VkCommandPool command_pool, VkCommandBuffer command_buffer,
+    VkQueue graphics_queue, VkQueue presentation_queue) {
     instance = instance;
     device = device;
     surface = surface;
@@ -19,6 +18,7 @@ VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
     render_pass = render_pass;
     frame_buffers = frame_buffers;
     command_pool = command_pool;
+    command_buffer = command_buffer;
     graphics_queue = graphics_queue;
     presentation_queue = presentation_queue;
 }
