@@ -687,6 +687,22 @@ create_frame_buffers(VkDevice device, VkRenderPass render_pass,
     return frame_buffers;
 }
 
+static inline VkCommandPool create_command_pool(VkDevice device,
+                                                uint32_t queue_family_index) {
+    VkCommandPoolCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    create_info.queueFamilyIndex = queue_family_index;
+
+    VkCommandPool pool;
+    if (vkCreateCommandPool(device, &create_info, nullptr, &pool) !=
+        VK_SUCCESS) {
+        throw std::runtime_error("failed to create command pool");
+    }
+
+    return pool;
+}
+
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                                        uint32_t queue_index) {
     VkQueue queue;
@@ -737,9 +753,11 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     std::vector<VkFramebuffer> frame_buffers = create_frame_buffers(
         device, render_pass, image_views, swap_chain_extent);
 
+    VkCommandPool command_pool = create_command_pool(device, graphics_index);
+
     return VulkanContext(instance, device, surface, swap_chain, image_views,
                          pipeline_context.layout, pipeline_context.pipeline,
-                         render_pass, frame_buffers,
+                         render_pass, frame_buffers, command_pool,
                          get_device_queue(device, graphics_index, 0),
                          get_device_queue(device, presentation_index, 0));
 }
