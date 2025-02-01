@@ -5,6 +5,7 @@ find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +34,6 @@ add_executable(test src/test.cpp)
 add_dependencies(vulkan_test shaders)
 
 target_link_libraries(mygame PRIVATE SDL3::SDL3 EnTT::EnTT SDL3_image::SDL3_image)
-target_link_libraries(vulkan_test PRIVATE SDL3::SDL3 Vulkan::Vulkan)
+target_link_libraries(vulkan_test PRIVATE SDL3::SDL3 Vulkan::Vulkan glm::glm-header-only)
 target_link_libraries(test PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 
