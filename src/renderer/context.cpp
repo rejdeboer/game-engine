@@ -26,6 +26,7 @@ VulkanContext::VulkanContext(
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkFenceCreateInfo fence_create_info = {};
     fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     if (vkCreateSemaphore(device, &semaphore_create_info, nullptr,
                           &image_available) != VK_SUCCESS ||
         vkCreateSemaphore(device, &semaphore_create_info, nullptr,
@@ -37,6 +38,9 @@ VulkanContext::VulkanContext(
 }
 
 void VulkanContext::deinit() {
+    vkDestroySemaphore(device, image_available, nullptr);
+    vkDestroySemaphore(device, render_finished, nullptr);
+    vkDestroyFence(device, in_flight, nullptr);
     vkDestroyCommandPool(device, command_pool, nullptr);
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
@@ -65,4 +69,46 @@ static void record_command_buffer(VkCommandBuffer buffer,
     }
 }
 
-void VulkanContext::draw_frame() {}
+void VulkanContext::draw_frame() {
+    vkWaitForFences(device, 1, &in_flight, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &in_flight);
+
+    uint32_t image_index;
+    vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX, image_available,
+                          VK_NULL_HANDLE, &image_index);
+
+    vkResetCommandBuffer(command_buffer, 0);
+    record_command_buffer(command_buffer, image_index);
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore wait_semaphores[] = {image_available};
+    VkPipelineStageFlags wait_stages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+    VkSemaphore signal_semaphores[] = {render_finished};
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+
+    if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight) !=
+        VK_SUCCESS) {
+        throw std::runtime_error("failed to submit draw command buffer");
+    }
+
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+    VkSwapchainKHR swap_chains[] = {swap_chain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &image_index;
+    present_info.pResults = nullptr;
+
+    vkQueuePresentKHR(presentation_queue, &present_info);
+}
