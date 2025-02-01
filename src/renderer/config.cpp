@@ -660,6 +660,33 @@ static VkRenderPass create_render_pass(VkDevice device,
     return render_pass;
 }
 
+static std::vector<VkFramebuffer>
+create_frame_buffers(VkDevice device, VkRenderPass render_pass,
+                     std::vector<VkImageView> image_views,
+                     VkExtent2D swap_chain_extent) {
+    std::vector<VkFramebuffer> frame_buffers(image_views.size());
+
+    for (size_t i = 0; i < image_views.size(); i++) {
+        VkImageView attachments[] = {image_views[i]};
+
+        VkFramebufferCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        create_info.renderPass = render_pass;
+        create_info.attachmentCount = 1;
+        create_info.pAttachments = attachments;
+        create_info.width = swap_chain_extent.width;
+        create_info.height = swap_chain_extent.height;
+        create_info.layers = 1;
+
+        if (vkCreateFramebuffer(device, &create_info, nullptr,
+                                &frame_buffers[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create frame buffers");
+        }
+    }
+
+    return frame_buffers;
+}
+
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                                        uint32_t queue_index) {
     VkQueue queue;
@@ -707,9 +734,12 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     PipelineContext pipeline_context =
         create_graphics_pipeline(device, render_pass, swap_chain_extent);
 
+    std::vector<VkFramebuffer> frame_buffers = create_frame_buffers(
+        device, render_pass, image_views, swap_chain_extent);
+
     return VulkanContext(instance, device, surface, swap_chain, image_views,
                          pipeline_context.layout, pipeline_context.pipeline,
-                         render_pass,
+                         render_pass, frame_buffers,
                          get_device_queue(device, graphics_index, 0),
                          get_device_queue(device, presentation_index, 0));
 }

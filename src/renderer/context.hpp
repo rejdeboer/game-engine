@@ -14,6 +14,7 @@ class VulkanContext {
     VkPipelineLayout pipeline_layout;
     VkPipeline pipeline;
     VkRenderPass render_pass;
+    std::vector<VkFramebuffer> frame_buffers;
     VkQueue graphics_queue;
     VkQueue presentation_queue;
 
@@ -22,8 +23,9 @@ class VulkanContext {
                   VkSwapchainKHR swap_chain,
                   std::vector<VkImageView> image_views,
                   VkPipelineLayout pipeline_layout, VkPipeline pipeline,
-                  VkRenderPass render_pass, VkQueue graphics_queue,
-                  VkQueue presentation_queue);
+                  VkRenderPass render_pass,
+                  std::vector<VkFramebuffer> frame_buffers,
+                  VkQueue graphics_queue, VkQueue presentation_queue);
     void deinit();
 };
 

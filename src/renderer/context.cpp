@@ -6,6 +6,7 @@ VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
                              std::vector<VkImageView> image_views,
                              VkPipelineLayout pipeline_layout,
                              VkPipeline pipeline, VkRenderPass render_pass,
+                             std::vector<VkFramebuffer> frame_buffers,
                              VkQueue graphics_queue,
                              VkQueue presentation_queue) {
     instance = instance;
@@ -16,11 +17,15 @@ VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
     pipeline_layout = pipeline_layout;
     pipeline = pipeline;
     render_pass = render_pass;
+    frame_buffers = frame_buffers;
     graphics_queue = graphics_queue;
     presentation_queue = presentation_queue;
 }
 
 void VulkanContext::deinit() {
+    for (auto frame_buffer : frame_buffers) {
+        vkDestroyFramebuffer(device, frame_buffer, nullptr);
+    }
     vkDestroyRenderPass(device, render_pass, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
