@@ -13,6 +13,7 @@ VulkanContext::VulkanContext(
     device = _device;
     surface = _surface;
     swap_chain = _swap_chain;
+    swap_chain_extent = _swap_chain_extent;
     image_views = _image_views;
     pipeline_layout = _pipeline_layout;
     pipeline = _pipeline;
