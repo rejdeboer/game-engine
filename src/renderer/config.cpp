@@ -8,7 +8,11 @@ const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char *> device_extensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+#if __APPLE__
+    "VK_KHR_portability_subset",
+#endif
+};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphics_family;
