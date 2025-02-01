@@ -1,5 +1,10 @@
 #include "context.hpp"
 #include "SDL3/SDL_vulkan.h"
+#include "vertex.h"
+
+const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+                                      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
 VulkanContext::VulkanContext(
     VkInstance _instance, VkDevice _device, VkSurfaceKHR _surface,
