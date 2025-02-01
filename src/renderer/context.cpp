@@ -3,6 +3,7 @@
 
 VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
                              VkSurfaceKHR surface, VkSwapchainKHR swap_chain,
+                             std::vector<VkImageView> image_views,
                              VkPipelineLayout pipeline_layout,
                              VkPipeline pipeline, VkRenderPass render_pass,
                              VkQueue graphics_queue,
@@ -11,6 +12,7 @@ VulkanContext::VulkanContext(VkInstance instance, VkDevice device,
     device = device;
     surface = surface;
     swap_chain = swap_chain;
+    image_views = image_views;
     pipeline_layout = pipeline_layout;
     pipeline = pipeline;
     render_pass = render_pass;
@@ -22,6 +24,9 @@ void VulkanContext::deinit() {
     vkDestroyRenderPass(device, render_pass, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+    for (auto image_view : image_views) {
+        vkDestroyImageView(device, image_view, nullptr);
+    }
     vkDestroySwapchainKHR(device, swap_chain, nullptr);
     vkDestroyDevice(device, nullptr);
     SDL_Vulkan_DestroySurface(instance, surface, nullptr);

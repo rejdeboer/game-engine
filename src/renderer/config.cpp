@@ -410,6 +410,44 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     return swap_chain;
 }
 
+static inline std::vector<VkImage>
+get_swap_chain_images(VkDevice device, VkSwapchainKHR swap_chain) {
+    uint32_t image_count;
+    vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
+    std::vector<VkImage> images(image_count);
+    vkGetSwapchainImagesKHR(device, swap_chain, &image_count, &images[0]);
+    return images;
+}
+
+static std::vector<VkImageView> create_image_views(VkDevice device,
+                                                   std::vector<VkImage> images,
+                                                   VkFormat image_format) {
+    std::vector<VkImageView> image_views(images.size());
+    for (size_t i = 0; i < images.size(); i++) {
+        VkImageViewCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        create_info.image = images[i];
+        create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        create_info.format = image_format;
+        create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        create_info.subresourceRange.baseMipLevel = 0;
+        create_info.subresourceRange.levelCount = 1;
+        create_info.subresourceRange.baseArrayLayer = 0;
+        create_info.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(device, &create_info, nullptr, &image_views[i]) !=
+            VK_SUCCESS) {
+            throw std::runtime_error("failed to create image views");
+        }
+    }
+
+    return image_views;
+}
+
 static VkShaderModule create_shader_module(VkDevice device,
                                            const std::vector<char> &code) {
     VkShaderModuleCreateInfo create_info = {};
@@ -587,9 +625,9 @@ static PipelineContext create_graphics_pipeline(VkDevice device,
 }
 
 static VkRenderPass create_render_pass(VkDevice device,
-                                       VkSurfaceFormatKHR surface_format) {
+                                       VkFormat color_attachment_format) {
     VkAttachmentDescription color_attachment = {};
-    color_attachment.format = surface_format.format;
+    color_attachment.format = color_attachment_format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -659,13 +697,17 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
         window, swap_chain_support_details, device, surface, swap_chain_extent,
         surface_format, graphics_index, presentation_index);
 
-    // TODO: Create image views
+    std::vector<VkImage> swap_chain_images =
+        get_swap_chain_images(device, swap_chain);
+    std::vector<VkImageView> image_views =
+        create_image_views(device, swap_chain_images, surface_format.format);
 
-    VkRenderPass render_pass = create_render_pass(device, surface_format);
+    VkRenderPass render_pass =
+        create_render_pass(device, surface_format.format);
     PipelineContext pipeline_context =
         create_graphics_pipeline(device, render_pass, swap_chain_extent);
 
-    return VulkanContext(instance, device, surface, swap_chain,
+    return VulkanContext(instance, device, surface, swap_chain, image_views,
                          pipeline_context.layout, pipeline_context.pipeline,
                          render_pass,
                          get_device_queue(device, graphics_index, 0),
