@@ -1,10 +1,10 @@
-#ifndef RENDERER_CONTEXT_H
+#ifndef RENDERER_RENDERER_H
 
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
-class VulkanContext {
+class Renderer {
   private:
     VkInstance instance;
     VkDevice device;
@@ -16,6 +16,7 @@ class VulkanContext {
     VkPipeline pipeline;
     VkRenderPass render_pass;
     std::vector<VkFramebuffer> frame_buffers;
+    VkBuffer vertex_buffer;
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
     VkQueue graphics_queue;
@@ -28,17 +29,17 @@ class VulkanContext {
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
 
   public:
-    VulkanContext(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
-                  VkSwapchainKHR swap_chain, VkExtent2D swap_chain_extent,
-                  std::vector<VkImageView> image_views,
-                  VkPipelineLayout pipeline_layout, VkPipeline pipeline,
-                  VkRenderPass render_pass,
-                  std::vector<VkFramebuffer> frame_buffers,
-                  VkCommandPool command_pool, VkCommandBuffer command_buffer,
-                  VkQueue graphics_queue, VkQueue presentation_queue);
+    Renderer(VkInstance instance, VkDevice device, VkSurfaceKHR surface,
+             VkSwapchainKHR swap_chain, VkExtent2D swap_chain_extent,
+             std::vector<VkImageView> image_views,
+             VkPipelineLayout pipeline_layout, VkPipeline pipeline,
+             VkRenderPass render_pass, std::vector<VkFramebuffer> frame_buffers,
+             VkBuffer vertex_buffer, VkCommandPool command_pool,
+             VkCommandBuffer command_buffer, VkQueue graphics_queue,
+             VkQueue presentation_queue);
     void deinit();
     void draw_frame();
 };
 
-#define RENDERER_CONTEXT_H
+#define RENDERER_RENDERER_H
 #endif

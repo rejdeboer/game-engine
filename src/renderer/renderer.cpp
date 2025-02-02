@@ -1,4 +1,4 @@
-#include "context.hpp"
+#include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
 #include "vertex.h"
 
@@ -6,14 +6,16 @@ const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
                                       {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
                                       {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
-VulkanContext::VulkanContext(
-    VkInstance _instance, VkDevice _device, VkSurfaceKHR _surface,
-    VkSwapchainKHR _swap_chain, VkExtent2D _swap_chain_extent,
-    std::vector<VkImageView> _image_views, VkPipelineLayout _pipeline_layout,
-    VkPipeline _pipeline, VkRenderPass _render_pass,
-    std::vector<VkFramebuffer> _frame_buffers, VkCommandPool _command_pool,
-    VkCommandBuffer _command_buffer, VkQueue _graphics_queue,
-    VkQueue _presentation_queue) {
+Renderer::Renderer(VkInstance _instance, VkDevice _device,
+                   VkSurfaceKHR _surface, VkSwapchainKHR _swap_chain,
+                   VkExtent2D _swap_chain_extent,
+                   std::vector<VkImageView> _image_views,
+                   VkPipelineLayout _pipeline_layout, VkPipeline _pipeline,
+                   VkRenderPass _render_pass,
+                   std::vector<VkFramebuffer> _frame_buffers,
+                   VkBuffer _vertex_buffer, VkCommandPool _command_pool,
+                   VkCommandBuffer _command_buffer, VkQueue _graphics_queue,
+                   VkQueue _presentation_queue) {
     instance = _instance;
     device = _device;
     surface = _surface;
@@ -24,6 +26,7 @@ VulkanContext::VulkanContext(
     pipeline = _pipeline;
     render_pass = _render_pass;
     frame_buffers = _frame_buffers;
+    vertex_buffer = _vertex_buffer;
     command_pool = _command_pool;
     command_buffer = _command_buffer;
     graphics_queue = _graphics_queue;
@@ -44,7 +47,7 @@ VulkanContext::VulkanContext(
     }
 }
 
-void VulkanContext::deinit() {
+void Renderer::deinit() {
     vkDestroySemaphore(device, image_available, nullptr);
     vkDestroySemaphore(device, render_finished, nullptr);
     vkDestroyFence(device, in_flight, nullptr);
@@ -59,14 +62,15 @@ void VulkanContext::deinit() {
         vkDestroyImageView(device, image_view, nullptr);
     }
     vkDestroySwapchainKHR(device, swap_chain, nullptr);
+    vkDestroyBuffer(device, vertex_buffer, nullptr);
     vkDestroyDevice(device, nullptr);
     SDL_Vulkan_DestroySurface(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
     SDL_Vulkan_UnloadLibrary();
 }
 
-void VulkanContext::record_command_buffer(VkCommandBuffer buffer,
-                                          uint32_t image_index) {
+void Renderer::record_command_buffer(VkCommandBuffer buffer,
+                                     uint32_t image_index) {
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = 0;
@@ -108,7 +112,7 @@ void VulkanContext::record_command_buffer(VkCommandBuffer buffer,
     }
 }
 
-void VulkanContext::draw_frame() {
+void Renderer::draw_frame() {
     vkWaitForFences(device, 1, &in_flight, VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &in_flight);
 

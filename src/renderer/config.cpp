@@ -1,5 +1,6 @@
 #include "config.h"
 #include "../file.h"
+#include "vertex.h"
 #include <optional>
 #include <set>
 #include <vector>
@@ -733,6 +734,21 @@ create_command_buffer(VkDevice device, VkCommandPool command_pool) {
     return buffer;
 }
 
+static inline VkBuffer create_vertex_buffer(VkDevice device) {
+    VkBufferCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    // TODO: This is a mess
+    create_info.size = sizeof(Vertex) * 3;
+    create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer buffer;
+    if (vkCreateBuffer(device, &create_info, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create vertex buffer");
+    }
+    return buffer;
+}
+
 static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                                        uint32_t queue_index) {
     VkQueue queue;
@@ -783,6 +799,8 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     std::vector<VkFramebuffer> frame_buffers = create_frame_buffers(
         device, render_pass, image_views, swap_chain_extent);
 
+    VkBuffer vertex_buffer = create_vertex_buffer(device);
+
     VkCommandPool command_pool = create_command_pool(device, graphics_index);
     VkCommandBuffer command_buffer =
         create_command_buffer(device, command_pool);
@@ -790,7 +808,7 @@ VulkanContext vulkan_initialize(SDL_Window *window) {
     return VulkanContext(
         instance, device, surface, swap_chain, swap_chain_extent, image_views,
         pipeline_context.layout, pipeline_context.pipeline, render_pass,
-        frame_buffers, command_pool, command_buffer,
+        frame_buffers, vertex_buffer, command_pool, command_buffer,
         get_device_queue(device, graphics_index, 0),
         get_device_queue(device, presentation_index, 0));
 }
