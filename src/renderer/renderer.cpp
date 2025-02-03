@@ -1,36 +1,48 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
+#include "bootstrap.h"
 #include "vertex.h"
 
 const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
                                       {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
                                       {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
-Renderer::Renderer(VkInstance _instance, VkDevice _device,
-                   VkSurfaceKHR _surface, VkSwapchainKHR _swap_chain,
-                   VkExtent2D _swap_chain_extent,
-                   std::vector<VkImageView> _image_views,
-                   VkPipelineLayout _pipeline_layout, VkPipeline _pipeline,
-                   VkRenderPass _render_pass,
-                   std::vector<VkFramebuffer> _frame_buffers,
-                   VkBuffer _vertex_buffer, VkCommandPool _command_pool,
-                   VkCommandBuffer _command_buffer, VkQueue _graphics_queue,
-                   VkQueue _presentation_queue) {
-    instance = _instance;
-    device = _device;
-    surface = _surface;
-    swap_chain = _swap_chain;
-    swap_chain_extent = _swap_chain_extent;
-    image_views = _image_views;
-    pipeline_layout = _pipeline_layout;
-    pipeline = _pipeline;
-    render_pass = _render_pass;
-    frame_buffers = _frame_buffers;
-    vertex_buffer = _vertex_buffer;
-    command_pool = _command_pool;
-    command_buffer = _command_buffer;
-    graphics_queue = _graphics_queue;
-    presentation_queue = _presentation_queue;
+Renderer::Renderer(SDL_Window *window) {
+    instance = create_vulkan_instance(window);
+    surface = create_surface(window, instance);
+    VkPhysicalDevice physical_device = pick_physical_device(instance, surface);
+    QueueFamilyIndices queue_family_indices =
+        find_compatible_queue_family_indices(physical_device, surface);
+    assert(queue_family_indices.is_complete());
+
+    uint32_t graphics_index = queue_family_indices.graphics_family.value();
+    uint32_t presentation_index = queue_family_indices.present_family.value();
+    device = create_device(physical_device, graphics_index, presentation_index);
+
+    SwapChainSupportDetails swap_chain_support_details =
+        query_swap_chain_support(physical_device, surface);
+    swap_chain_extent =
+        choose_swap_extent(window, swap_chain_support_details.capabilities);
+    VkSurfaceFormatKHR surface_format =
+        choose_swap_surface_format(swap_chain_support_details.formats);
+    swap_chain = create_swap_chain(window, swap_chain_support_details, device,
+                                   surface, swap_chain_extent, surface_format,
+                                   graphics_index, presentation_index);
+    std::vector<VkImage> swap_chain_images =
+        get_swap_chain_images(device, swap_chain);
+    image_views =
+        create_image_views(device, swap_chain_images, surface_format.format);
+
+    render_pass = create_render_pass(device, surface_format.format);
+    PipelineContext pipeline_context =
+        create_graphics_pipeline(device, render_pass, swap_chain_extent);
+    pipeline = pipeline_context.pipeline;
+    pipeline_layout = pipeline_context.layout;
+    frame_buffers = create_frame_buffers(device, render_pass, image_views,
+                                         swap_chain_extent);
+    vertex_buffer = create_vertex_buffer(device);
+    command_pool = create_command_pool(device, graphics_index);
+    command_buffer = create_command_buffer(device, command_pool);
 
     VkSemaphoreCreateInfo semaphore_create_info = {};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;

@@ -1,4 +1,4 @@
-#include "config.h"
+#include "bootstrap.h"
 #include "../file.h"
 #include "vertex.h"
 #include <optional>
@@ -13,25 +13,6 @@ const std::vector<const char *> device_extensions = {
 #if __APPLE__
     "VK_KHR_portability_subset",
 #endif
-};
-
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphics_family;
-    std::optional<uint32_t> present_family;
-    bool is_complete() {
-        return graphics_family.has_value() && present_family.has_value();
-    }
-};
-
-struct PipelineContext {
-    VkPipelineLayout layout;
-    VkPipeline pipeline;
-};
-
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> present_modes;
 };
 
 #if defined(NDEBUG)
@@ -83,8 +64,31 @@ static bool has_validation_layer_support() {
     return true;
 }
 
-static SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device,
-                                                        VkSurfaceKHR surface) {
+static inline int rate_device_suitability(VkPhysicalDevice device) {
+    int score = 0;
+
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+    // Discrete GPUs have a significant performance advantage
+    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        score += 1000;
+    }
+
+    // Maximum possible size of textures affects graphics quality
+    score += deviceProperties.limits.maxImageDimension2D;
+
+    if (!deviceFeatures.geometryShader) {
+        return 0;
+    }
+
+    return score;
+}
+
+SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device,
+                                                 VkSurfaceKHR surface) {
     SwapChainSupportDetails details;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
                                               &details.capabilities);
@@ -110,7 +114,26 @@ static SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device,
     return details;
 }
 
-static inline VkSurfaceFormatKHR choose_swap_surface_format(
+static bool is_suitable_physical_device(VkPhysicalDevice device,
+                                        VkSurfaceKHR surface) {
+    bool has_extension_support = has_device_extension_support(device);
+
+    bool has_adequate_swap_chain = false;
+    if (has_extension_support) {
+        SwapChainSupportDetails swap_chain_support_details =
+            query_swap_chain_support(device, surface);
+        has_adequate_swap_chain =
+            !swap_chain_support_details.formats.empty() &&
+            !swap_chain_support_details.present_modes.empty();
+    }
+
+    return has_adequate_swap_chain &&
+           find_compatible_queue_family_indices(device, surface)
+               .is_complete() &&
+           has_extension_support;
+}
+
+VkSurfaceFormatKHR choose_swap_surface_format(
     const std::vector<VkSurfaceFormatKHR> &available_formats) {
     for (const auto &format : available_formats) {
         if (format.format == VK_FORMAT_B8G8R8A8_SRGB &&
@@ -123,7 +146,7 @@ static inline VkSurfaceFormatKHR choose_swap_surface_format(
     return available_formats[0];
 }
 
-static inline VkPresentModeKHR
+VkPresentModeKHR
 choose_swap_present_mode(const std::vector<VkPresentModeKHR> &available_modes) {
     for (const auto &mode : available_modes) {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -133,9 +156,8 @@ choose_swap_present_mode(const std::vector<VkPresentModeKHR> &available_modes) {
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-static VkExtent2D
-choose_swap_extent(SDL_Window *window,
-                   const VkSurfaceCapabilitiesKHR &capabilities) {
+VkExtent2D choose_swap_extent(SDL_Window *window,
+                              const VkSurfaceCapabilitiesKHR &capabilities) {
     if (capabilities.currentExtent.width !=
         std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
@@ -155,9 +177,8 @@ choose_swap_extent(SDL_Window *window,
     return extent;
 }
 
-static QueueFamilyIndices
-find_compatible_queue_family_indices(VkPhysicalDevice device,
-                                     VkSurfaceKHR surface) {
+QueueFamilyIndices find_compatible_queue_family_indices(VkPhysicalDevice device,
+                                                        VkSurfaceKHR surface) {
     QueueFamilyIndices res = {};
 
     uint32_t queue_count = 0;
@@ -189,50 +210,8 @@ find_compatible_queue_family_indices(VkPhysicalDevice device,
     return res;
 }
 
-static inline int rate_device_suitability(VkPhysicalDevice device) {
-    int score = 0;
-
-    VkPhysicalDeviceProperties deviceProperties;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-    // Discrete GPUs have a significant performance advantage
-    if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        score += 1000;
-    }
-
-    // Maximum possible size of textures affects graphics quality
-    score += deviceProperties.limits.maxImageDimension2D;
-
-    if (!deviceFeatures.geometryShader) {
-        return 0;
-    }
-
-    return score;
-}
-
-static bool is_suitable_physical_device(VkPhysicalDevice device,
-                                        VkSurfaceKHR surface) {
-    bool has_extension_support = has_device_extension_support(device);
-
-    bool has_adequate_swap_chain = false;
-    if (has_extension_support) {
-        SwapChainSupportDetails swap_chain_support_details =
-            query_swap_chain_support(device, surface);
-        has_adequate_swap_chain =
-            !swap_chain_support_details.formats.empty() &&
-            !swap_chain_support_details.present_modes.empty();
-    }
-
-    return has_adequate_swap_chain &&
-           find_compatible_queue_family_indices(device, surface)
-               .is_complete() &&
-           has_extension_support;
-}
-
-static VkPhysicalDevice pick_physical_device(VkInstance instance,
-                                             VkSurfaceKHR surface) {
+VkPhysicalDevice pick_physical_device(VkInstance instance,
+                                      VkSurfaceKHR surface) {
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
 
@@ -263,10 +242,10 @@ static VkPhysicalDevice pick_physical_device(VkInstance instance,
     return best_device;
 }
 
-static VkInstance create_vulkan_instance(SDL_Window *window) {
+VkInstance create_vulkan_instance(SDL_Window *window) {
     if (enable_validation_layers && !has_validation_layer_support()) {
         printf("validation layers requested, but not available\n");
-        return VK_NULL_HANDLE;
+        throw std::runtime_error("could not create vulkan instance");
     }
 
     VkApplicationInfo app_info = {};
@@ -307,24 +286,23 @@ static VkInstance create_vulkan_instance(SDL_Window *window) {
     VkResult result = vkCreateInstance(&create_info, nullptr, &instance);
     if (result != VK_SUCCESS) {
         printf("failed to create vulkan instance; result: %d\n", result);
-        return VK_NULL_HANDLE;
+        throw std::runtime_error("could not create vulkan instance");
     }
 
     return instance;
 }
 
-static VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance) {
+VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance) {
     VkSurfaceKHR surface;
     if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)) {
         fprintf(stderr, "error creating vulkan surface: %s\n", SDL_GetError());
-        return VK_NULL_HANDLE;
+        throw std::runtime_error("could not create vulkan surface");
     }
     return surface;
 }
 
-static VkDevice create_device(VkPhysicalDevice physical_device,
-                              uint32_t graphics_index,
-                              uint32_t presentation_index) {
+VkDevice create_device(VkPhysicalDevice physical_device,
+                       uint32_t graphics_index, uint32_t presentation_index) {
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
     std::set<uint32_t> unique_queue_families = {graphics_index,
                                                 presentation_index};
@@ -363,7 +341,7 @@ static VkDevice create_device(VkPhysicalDevice physical_device,
     return device;
 }
 
-static VkSwapchainKHR
+VkSwapchainKHR
 create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
                   VkDevice device, VkSurfaceKHR surface, VkExtent2D extent,
                   VkSurfaceFormatKHR surface_format, uint32_t graphics_index,
@@ -414,8 +392,8 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     return swap_chain;
 }
 
-static inline std::vector<VkImage>
-get_swap_chain_images(VkDevice device, VkSwapchainKHR swap_chain) {
+std::vector<VkImage> get_swap_chain_images(VkDevice device,
+                                           VkSwapchainKHR swap_chain) {
     uint32_t image_count;
     vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
     std::vector<VkImage> images(image_count);
@@ -423,9 +401,9 @@ get_swap_chain_images(VkDevice device, VkSwapchainKHR swap_chain) {
     return images;
 }
 
-static std::vector<VkImageView> create_image_views(VkDevice device,
-                                                   std::vector<VkImage> images,
-                                                   VkFormat image_format) {
+std::vector<VkImageView> create_image_views(VkDevice device,
+                                            std::vector<VkImage> images,
+                                            VkFormat image_format) {
     std::vector<VkImageView> image_views(images.size());
     for (size_t i = 0; i < images.size(); i++) {
         VkImageViewCreateInfo create_info = {};
@@ -467,9 +445,9 @@ static VkShaderModule create_shader_module(VkDevice device,
     return module;
 }
 
-static PipelineContext create_graphics_pipeline(VkDevice device,
-                                                VkRenderPass render_pass,
-                                                VkExtent2D extent) {
+PipelineContext create_graphics_pipeline(VkDevice device,
+                                         VkRenderPass render_pass,
+                                         VkExtent2D extent) {
     auto vert_shader_code = read_file("shaders/spv/shader.vert.spv");
     auto frag_shader_code = read_file("shaders/spv/shader.frag.spv");
     VkShaderModule vert_shader_module =
@@ -628,8 +606,8 @@ static PipelineContext create_graphics_pipeline(VkDevice device,
     return {pipeline_layout, pipeline};
 }
 
-static VkRenderPass create_render_pass(VkDevice device,
-                                       VkFormat color_attachment_format) {
+VkRenderPass create_render_pass(VkDevice device,
+                                VkFormat color_attachment_format) {
     VkAttachmentDescription color_attachment = {};
     color_attachment.format = color_attachment_format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -674,7 +652,7 @@ static VkRenderPass create_render_pass(VkDevice device,
     return render_pass;
 }
 
-static std::vector<VkFramebuffer>
+std::vector<VkFramebuffer>
 create_frame_buffers(VkDevice device, VkRenderPass render_pass,
                      std::vector<VkImageView> image_views,
                      VkExtent2D swap_chain_extent) {
@@ -701,8 +679,8 @@ create_frame_buffers(VkDevice device, VkRenderPass render_pass,
     return frame_buffers;
 }
 
-static inline VkCommandPool create_command_pool(VkDevice device,
-                                                uint32_t queue_family_index) {
+VkCommandPool create_command_pool(VkDevice device,
+                                  uint32_t queue_family_index) {
     VkCommandPoolCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -717,8 +695,8 @@ static inline VkCommandPool create_command_pool(VkDevice device,
     return pool;
 }
 
-static inline VkCommandBuffer
-create_command_buffer(VkDevice device, VkCommandPool command_pool) {
+VkCommandBuffer create_command_buffer(VkDevice device,
+                                      VkCommandPool command_pool) {
     VkCommandBufferAllocateInfo allocate_info = {};
     allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocate_info.commandPool = command_pool;
@@ -734,7 +712,7 @@ create_command_buffer(VkDevice device, VkCommandPool command_pool) {
     return buffer;
 }
 
-static inline VkBuffer create_vertex_buffer(VkDevice device) {
+VkBuffer create_vertex_buffer(VkDevice device) {
     VkBufferCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     // TODO: This is a mess
@@ -749,66 +727,9 @@ static inline VkBuffer create_vertex_buffer(VkDevice device) {
     return buffer;
 }
 
-static inline VkQueue get_device_queue(VkDevice device, uint32_t family_index,
-                                       uint32_t queue_index) {
+VkQueue get_device_queue(VkDevice device, uint32_t family_index,
+                         uint32_t queue_index) {
     VkQueue queue;
     vkGetDeviceQueue(device, family_index, queue_index, &queue);
     return queue;
-}
-
-VulkanContext vulkan_initialize(SDL_Window *window) {
-    VkInstance instance = create_vulkan_instance(window);
-    if (!instance) {
-        throw std::runtime_error("could not create vulkan instance");
-    }
-    VkSurfaceKHR surface = create_surface(window, instance);
-    if (!surface) {
-        throw std::runtime_error("could not create vulkan surface");
-    }
-
-    VkPhysicalDevice physical_device = pick_physical_device(instance, surface);
-    QueueFamilyIndices queue_family_indices =
-        find_compatible_queue_family_indices(physical_device, surface);
-    assert(queue_family_indices.is_complete());
-
-    uint32_t graphics_index = queue_family_indices.graphics_family.value();
-    uint32_t presentation_index = queue_family_indices.present_family.value();
-    VkDevice device =
-        create_device(physical_device, graphics_index, presentation_index);
-
-    SwapChainSupportDetails swap_chain_support_details =
-        query_swap_chain_support(physical_device, surface);
-    VkExtent2D swap_chain_extent =
-        choose_swap_extent(window, swap_chain_support_details.capabilities);
-    VkSurfaceFormatKHR surface_format =
-        choose_swap_surface_format(swap_chain_support_details.formats);
-    VkSwapchainKHR swap_chain = create_swap_chain(
-        window, swap_chain_support_details, device, surface, swap_chain_extent,
-        surface_format, graphics_index, presentation_index);
-
-    std::vector<VkImage> swap_chain_images =
-        get_swap_chain_images(device, swap_chain);
-    std::vector<VkImageView> image_views =
-        create_image_views(device, swap_chain_images, surface_format.format);
-
-    VkRenderPass render_pass =
-        create_render_pass(device, surface_format.format);
-    PipelineContext pipeline_context =
-        create_graphics_pipeline(device, render_pass, swap_chain_extent);
-
-    std::vector<VkFramebuffer> frame_buffers = create_frame_buffers(
-        device, render_pass, image_views, swap_chain_extent);
-
-    VkBuffer vertex_buffer = create_vertex_buffer(device);
-
-    VkCommandPool command_pool = create_command_pool(device, graphics_index);
-    VkCommandBuffer command_buffer =
-        create_command_buffer(device, command_pool);
-
-    return VulkanContext(
-        instance, device, surface, swap_chain, swap_chain_extent, image_views,
-        pipeline_context.layout, pipeline_context.pipeline, render_pass,
-        frame_buffers, vertex_buffer, command_pool, command_buffer,
-        get_device_queue(device, graphics_index, 0),
-        get_device_queue(device, presentation_index, 0));
 }

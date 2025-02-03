@@ -1,5 +1,4 @@
 #include "main.h"
-#include "renderer/config.h"
 #include "renderer/renderer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
@@ -25,7 +24,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
-    Renderer vk_renderer = vulkan_initialize(gWindow);
+    Renderer vk_renderer = Renderer(gWindow);
 
     Uint64 next_game_step = SDL_GetTicks();
     SDL_Event e;
