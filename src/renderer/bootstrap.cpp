@@ -473,13 +473,18 @@ PipelineContext create_graphics_pipeline(VkDevice device,
     VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info,
                                                        frag_shader_stage_info};
 
+    auto binding_description = Vertex::get_binding_description();
+    auto attribute_descriptions = Vertex::get_attribute_descriptions();
+
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     vertex_input_info.sType =
         VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input_info.vertexBindingDescriptionCount = 0;
-    vertex_input_info.pVertexBindingDescriptions = nullptr;
-    vertex_input_info.vertexAttributeDescriptionCount = 0;
-    vertex_input_info.pVertexAttributeDescriptions = nullptr;
+    vertex_input_info.vertexBindingDescriptionCount = 1;
+    vertex_input_info.pVertexBindingDescriptions = &binding_description;
+    vertex_input_info.vertexAttributeDescriptionCount =
+        static_cast<uint32_t>(attribute_descriptions.size());
+    vertex_input_info.pVertexAttributeDescriptions =
+        attribute_descriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
     input_assembly.sType =
@@ -732,4 +737,41 @@ VkQueue get_device_queue(VkDevice device, uint32_t family_index,
     VkQueue queue;
     vkGetDeviceQueue(device, family_index, queue_index, &queue);
     return queue;
+}
+
+static uint32_t find_memory_type(VkPhysicalDevice physical_device,
+                                 uint32_t type_filter,
+                                 VkMemoryPropertyFlags props) {
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_props);
+
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++) {
+        if (((1 << i) & type_filter) &&
+            mem_props.memoryTypes[i].propertyFlags & props) {
+            return i;
+        }
+    }
+    throw std::runtime_error("failed to find suitable memory type");
+}
+
+VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
+                                      VkDevice device, VkBuffer buffer) {
+    VkMemoryRequirements mem_requirements;
+    vkGetBufferMemoryRequirements(device, buffer, &mem_requirements);
+
+    VkMemoryAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocate_info.allocationSize = mem_requirements.size;
+    allocate_info.memoryTypeIndex =
+        find_memory_type(physical_device, mem_requirements.memoryTypeBits,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    VkDeviceMemory memory;
+    if (vkAllocateMemory(device, &allocate_info, nullptr, &memory) !=
+        VK_SUCCESS) {
+        std::runtime_error("failed to allocate vertex buffer");
+    }
+    vkBindBufferMemory(device, buffer, memory, 0);
+    return memory;
 }

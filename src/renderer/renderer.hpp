@@ -19,6 +19,7 @@ class Renderer {
     VkRenderPass render_pass;
     std::vector<VkFramebuffer> frame_buffers;
     VkBuffer vertex_buffer;
+    VkDeviceMemory vertex_buffer_memory;
     VkCommandPool command_pool;
     VkCommandBuffer command_buffer;
     VkQueue graphics_queue;

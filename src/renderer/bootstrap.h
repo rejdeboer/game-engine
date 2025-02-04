@@ -67,6 +67,8 @@ VkCommandBuffer create_command_buffer(VkDevice device,
 VkBuffer create_vertex_buffer(VkDevice device);
 VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                          uint32_t queue_index);
+VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
+                                      VkDevice device, VkBuffer buffer);
 
 #define RENDERER_CONFIG_H
 #endif

@@ -41,8 +41,12 @@ Renderer::Renderer(SDL_Window *window) {
     frame_buffers = create_frame_buffers(device, render_pass, image_views,
                                          swap_chain_extent);
     vertex_buffer = create_vertex_buffer(device);
+    vertex_buffer_memory =
+        allocate_vertex_buffer(physical_device, device, vertex_buffer);
     command_pool = create_command_pool(device, graphics_index);
     command_buffer = create_command_buffer(device, command_pool);
+    graphics_queue = get_device_queue(device, graphics_index, 0);
+    presentation_queue = get_device_queue(device, presentation_index, 0);
 
     VkSemaphoreCreateInfo semaphore_create_info = {};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -57,6 +61,13 @@ Renderer::Renderer(SDL_Window *window) {
             VK_SUCCESS) {
         throw std::runtime_error("failed to create sync primitives");
     }
+
+    // TODO: Cleanup
+    void *data;
+    vkMapMemory(device, vertex_buffer_memory, 0,
+                vertices.size() * sizeof(Vertex), 0, &data);
+    memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
+    vkUnmapMemory(device, vertex_buffer_memory);
 }
 
 void Renderer::deinit() {
@@ -75,6 +86,7 @@ void Renderer::deinit() {
     }
     vkDestroySwapchainKHR(device, swap_chain, nullptr);
     vkDestroyBuffer(device, vertex_buffer, nullptr);
+    vkFreeMemory(device, vertex_buffer_memory, nullptr);
     vkDestroyDevice(device, nullptr);
     SDL_Vulkan_DestroySurface(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
@@ -103,6 +115,10 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     vkCmdBeginRenderPass(buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
+    VkBuffer vertex_buffers[] = {vertex_buffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(buffer, 0, 1, vertex_buffers, offsets);
+
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -117,7 +133,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.extent = swap_chain_extent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    vkCmdDraw(buffer, 3, 1, 0, 0);
+    vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     vkCmdEndRenderPass(buffer);
     if (vkEndCommandBuffer(buffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to record command buffer");
