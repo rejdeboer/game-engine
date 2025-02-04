@@ -53,15 +53,9 @@ class Renderer {
     std::vector<VkFramebuffer> frame_buffers;
     VkBuffer vertex_buffer;
     VkDeviceMemory vertex_buffer_memory;
-    VkCommandPool command_pool;
-    VkCommandBuffer command_buffer;
-    VkQueue graphics_queue;
-    VkQueue presentation_queue;
+    VkQueue _graphicsQueue;
+    VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
-
-    VkSemaphore image_available;
-    VkSemaphore render_finished;
-    VkFence in_flight;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     FrameData &get_current_frame() {

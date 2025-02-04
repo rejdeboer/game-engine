@@ -44,23 +44,28 @@ Renderer::Renderer(SDL_Window *window) {
     vertex_buffer = create_vertex_buffer(device);
     vertex_buffer_memory =
         allocate_vertex_buffer(physical_device, device, vertex_buffer);
-    command_pool = create_command_pool(device, graphics_index);
-    command_buffer = create_command_buffer(device, command_pool);
-    graphics_queue = get_device_queue(device, graphics_index, 0);
-    presentation_queue = get_device_queue(device, presentation_index, 0);
+
+    for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+        _frames[i]._commandPool = create_command_pool(device, graphics_index);
+        _frames[i]._mainCommandBuffer =
+            create_command_buffer(device, _frames[i]._commandPool);
+    }
+
+    _graphicsQueue = get_device_queue(device, graphics_index, 0);
+    _presentationQueue = get_device_queue(device, presentation_index, 0);
 
     VkSemaphoreCreateInfo semaphore_create_info = {};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkFenceCreateInfo fence_create_info = {};
     fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    if (vkCreateSemaphore(device, &semaphore_create_info, nullptr,
-                          &image_available) != VK_SUCCESS ||
-        vkCreateSemaphore(device, &semaphore_create_info, nullptr,
-                          &render_finished) != VK_SUCCESS ||
-        vkCreateFence(device, &fence_create_info, nullptr, &in_flight) !=
-            VK_SUCCESS) {
-        throw std::runtime_error("failed to create sync primitives");
+    for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+        VK_CHECK(vkCreateFence(device, &fence_create_info, nullptr,
+                               &_frames[i]._renderFence));
+        VK_CHECK(vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+                                   &_frames[i]._renderSemaphore));
+        VK_CHECK(vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+                                   &_frames[i]._swapchainSemaphore));
     }
 
     // TODO: Cleanup
@@ -72,10 +77,12 @@ Renderer::Renderer(SDL_Window *window) {
 }
 
 void Renderer::deinit() {
-    vkDestroySemaphore(device, image_available, nullptr);
-    vkDestroySemaphore(device, render_finished, nullptr);
-    vkDestroyFence(device, in_flight, nullptr);
-    vkDestroyCommandPool(device, command_pool, nullptr);
+    for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+        vkDestroyCommandPool(device, _frames[i]._commandPool, nullptr);
+        vkDestroySemaphore(device, _frames[i]._renderSemaphore, nullptr);
+        vkDestroySemaphore(device, _frames[i]._swapchainSemaphore, nullptr);
+        vkDestroyFence(device, _frames[i]._renderFence, nullptr);
+    }
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
     }
@@ -100,9 +107,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = 0;
     begin_info.pInheritanceInfo = nullptr;
-    if (vkBeginCommandBuffer(buffer, &begin_info) != VK_SUCCESS) {
-        throw std::runtime_error("failed to begin command buffer");
-    }
+    VK_CHECK(vkBeginCommandBuffer(buffer, &begin_info));
 
     VkRenderPassBeginInfo render_pass_info = {};
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -136,41 +141,40 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
 
     vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     vkCmdEndRenderPass(buffer);
-    if (vkEndCommandBuffer(buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to record command buffer");
-    }
+    VK_CHECK(vkEndCommandBuffer(buffer));
 }
 
 void Renderer::draw_frame() {
-    vkWaitForFences(device, 1, &in_flight, VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &in_flight);
+    FrameData *currentFrame = &get_current_frame();
+    vkWaitForFences(device, 1, &currentFrame->_renderFence, VK_TRUE,
+                    UINT64_MAX);
+    vkResetFences(device, 1, &currentFrame->_renderFence);
 
     uint32_t image_index;
-    vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX, image_available,
-                          VK_NULL_HANDLE, &image_index);
+    vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX,
+                          currentFrame->_renderSemaphore, VK_NULL_HANDLE,
+                          &image_index);
 
-    vkResetCommandBuffer(command_buffer, 0);
-    record_command_buffer(command_buffer, image_index);
+    vkResetCommandBuffer(currentFrame->_mainCommandBuffer, 0);
+    record_command_buffer(currentFrame->_mainCommandBuffer, image_index);
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore wait_semaphores[] = {image_available};
+    VkSemaphore wait_semaphores[] = {currentFrame->_renderSemaphore};
     VkPipelineStageFlags wait_stages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = wait_semaphores;
     submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffer;
-    VkSemaphore signal_semaphores[] = {render_finished};
+    submit_info.pCommandBuffers = &currentFrame->_mainCommandBuffer;
+    VkSemaphore signal_semaphores[] = {currentFrame->_swapchainSemaphore};
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = signal_semaphores;
 
-    if (vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight) !=
-        VK_SUCCESS) {
-        throw std::runtime_error("failed to submit draw command buffer");
-    }
+    VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit_info,
+                           currentFrame->_renderFence));
 
     VkPresentInfoKHR present_info = {};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -182,5 +186,5 @@ void Renderer::draw_frame() {
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
-    vkQueuePresentKHR(presentation_queue, &present_info);
+    vkQueuePresentKHR(_presentationQueue, &present_info);
 }
