@@ -1,5 +1,6 @@
 #include "bootstrap.h"
 #include "../file.h"
+#include "types.h"
 #include "vertex.h"
 #include <optional>
 #include <set>
@@ -283,11 +284,7 @@ VkInstance create_vulkan_instance(SDL_Window *window) {
     create_info.ppEnabledExtensionNames = extensions;
 
     VkInstance instance;
-    VkResult result = vkCreateInstance(&create_info, nullptr, &instance);
-    if (result != VK_SUCCESS) {
-        printf("failed to create vulkan instance; result: %d\n", result);
-        throw std::runtime_error("could not create vulkan instance");
-    }
+    VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
 
     return instance;
 }
@@ -331,12 +328,8 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     device_create_info.ppEnabledExtensionNames = &device_extensions[0];
 
     VkDevice device;
-    VkResult result =
-        vkCreateDevice(physical_device, &device_create_info, nullptr, &device);
-    if (result != VK_SUCCESS) {
-        printf("could not create logical device; error: %d", result);
-        throw std::runtime_error("could not create logical device");
-    };
+    VK_CHECK(
+        vkCreateDevice(physical_device, &device_create_info, nullptr, &device));
 
     return device;
 }
@@ -382,12 +375,7 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     }
 
     VkSwapchainKHR swap_chain;
-    VkResult result =
-        vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain);
-    if (result != VK_SUCCESS) {
-        fprintf(stderr, "error with code %d creating swap chain\n", result);
-        throw std::runtime_error("error creating swap chain");
-    }
+    VK_CHECK(vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain));
 
     return swap_chain;
 }
@@ -421,10 +409,8 @@ std::vector<VkImageView> create_image_views(VkDevice device,
         create_info.subresourceRange.baseArrayLayer = 0;
         create_info.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(device, &create_info, nullptr, &image_views[i]) !=
-            VK_SUCCESS) {
-            throw std::runtime_error("failed to create image views");
-        }
+        VK_CHECK(
+            vkCreateImageView(device, &create_info, nullptr, &image_views[i]));
     }
 
     return image_views;
@@ -438,10 +424,7 @@ static VkShaderModule create_shader_module(VkDevice device,
     create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
 
     VkShaderModule module;
-    if (vkCreateShaderModule(device, &create_info, nullptr, &module) !=
-        VK_SUCCESS) {
-        throw std::runtime_error("failed to create shader module");
-    }
+    VK_CHECK(vkCreateShaderModule(device, &create_info, nullptr, &module));
     return module;
 }
 
@@ -577,10 +560,8 @@ PipelineContext create_graphics_pipeline(VkDevice device,
     pipeline_layout_info.pPushConstantRanges = nullptr;
 
     VkPipelineLayout pipeline_layout;
-    if (vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr,
-                               &pipeline_layout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create render pipeline");
-    }
+    VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr,
+                                    &pipeline_layout));
 
     VkGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -601,10 +582,8 @@ PipelineContext create_graphics_pipeline(VkDevice device,
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
     VkPipeline pipeline;
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info,
-                                  nullptr, &pipeline) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create graphics pipeline");
-    }
+    VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1,
+                                       &pipeline_info, nullptr, &pipeline));
 
     vkDestroyShaderModule(device, vert_shader_module, nullptr);
     vkDestroyShaderModule(device, frag_shader_module, nullptr);
@@ -650,10 +629,8 @@ VkRenderPass create_render_pass(VkDevice device,
     render_pass_info.pDependencies = &dependency;
 
     VkRenderPass render_pass;
-    if (vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) !=
-        VK_SUCCESS) {
-        throw new std::runtime_error("failed to create render pass");
-    }
+    VK_CHECK(
+        vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
     return render_pass;
 }
 
@@ -675,10 +652,8 @@ create_frame_buffers(VkDevice device, VkRenderPass render_pass,
         create_info.height = swap_chain_extent.height;
         create_info.layers = 1;
 
-        if (vkCreateFramebuffer(device, &create_info, nullptr,
-                                &frame_buffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create frame buffers");
-        }
+        VK_CHECK(vkCreateFramebuffer(device, &create_info, nullptr,
+                                     &frame_buffers[i]));
     }
 
     return frame_buffers;
@@ -692,11 +667,7 @@ VkCommandPool create_command_pool(VkDevice device,
     create_info.queueFamilyIndex = queue_family_index;
 
     VkCommandPool pool;
-    if (vkCreateCommandPool(device, &create_info, nullptr, &pool) !=
-        VK_SUCCESS) {
-        throw std::runtime_error("failed to create command pool");
-    }
-
+    VK_CHECK(vkCreateCommandPool(device, &create_info, nullptr, &pool));
     return pool;
 }
 
@@ -709,11 +680,7 @@ VkCommandBuffer create_command_buffer(VkDevice device,
     allocate_info.commandBufferCount = 1;
 
     VkCommandBuffer buffer;
-    if (vkAllocateCommandBuffers(device, &allocate_info, &buffer) !=
-        VK_SUCCESS) {
-        throw std::runtime_error("failed to create command buffer");
-    }
-
+    VK_CHECK(vkAllocateCommandBuffers(device, &allocate_info, &buffer));
     return buffer;
 }
 
@@ -726,9 +693,7 @@ VkBuffer create_vertex_buffer(VkDevice device) {
     create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     VkBuffer buffer;
-    if (vkCreateBuffer(device, &create_info, nullptr, &buffer) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create vertex buffer");
-    }
+    VK_CHECK(vkCreateBuffer(device, &create_info, nullptr, &buffer));
     return buffer;
 }
 
@@ -768,10 +733,7 @@ VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDeviceMemory memory;
-    if (vkAllocateMemory(device, &allocate_info, nullptr, &memory) !=
-        VK_SUCCESS) {
-        std::runtime_error("failed to allocate vertex buffer");
-    }
+    VK_CHECK(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
     vkBindBufferMemory(device, buffer, memory, 0);
     return memory;
 }

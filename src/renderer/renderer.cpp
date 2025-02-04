@@ -1,6 +1,7 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
 #include "bootstrap.h"
+#include "types.h"
 #include "vertex.h"
 
 const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
