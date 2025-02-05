@@ -342,8 +342,8 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     physical_device_features.sType =
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     vkGetPhysicalDeviceFeatures2(physical_device, &physical_device_features);
-    physical_device_features.pNext = &physical_device_features_13;
-    // physical_device_features_12.pNext = &physical_device_features_13;
+    physical_device_features.pNext = &physical_device_features_12;
+    physical_device_features_12.pNext = &physical_device_features_13;
 
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
