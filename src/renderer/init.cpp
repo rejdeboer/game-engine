@@ -1,6 +1,5 @@
-#include "bootstrap.h"
+#include "init.h"
 #include "../file.h"
-#include "types.h"
 #include "vertex.h"
 #include <optional>
 #include <set>
@@ -10,6 +9,8 @@ const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char *> device_extensions = {
+    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 #if __APPLE__
     "VK_KHR_portability_subset",
@@ -132,6 +133,18 @@ static bool is_suitable_physical_device(VkPhysicalDevice device,
            find_compatible_queue_family_indices(device, surface)
                .is_complete() &&
            has_extension_support;
+}
+
+static VkShaderModule create_shader_module(VkDevice device,
+                                           const std::vector<char> &code) {
+    VkShaderModuleCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    create_info.codeSize = code.size();
+    create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
+
+    VkShaderModule module;
+    VK_CHECK(vkCreateShaderModule(device, &create_info, nullptr, &module));
+    return module;
 }
 
 VkSurfaceFormatKHR choose_swap_surface_format(
@@ -314,12 +327,27 @@ VkDevice create_device(VkPhysicalDevice physical_device,
         queue_create_infos.push_back(queue_create_info);
     }
 
-    VkPhysicalDeviceFeatures physical_device_features;
-    vkGetPhysicalDeviceFeatures(physical_device, &physical_device_features);
+    VkPhysicalDeviceVulkan12Features physical_device_features_12 = {};
+    physical_device_features_12.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+    physical_device_features_12.bufferDeviceAddress = true;
+
+    VkPhysicalDeviceVulkan13Features physical_device_features_13 = {};
+    physical_device_features_13.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    physical_device_features_13.dynamicRendering = true;
+    physical_device_features_13.synchronization2 = true;
+
+    VkPhysicalDeviceFeatures2 physical_device_features = {};
+    physical_device_features.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    vkGetPhysicalDeviceFeatures2(physical_device, &physical_device_features);
+    physical_device_features.pNext = &physical_device_features_13;
+    // physical_device_features_12.pNext = &physical_device_features_13;
 
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    device_create_info.pEnabledFeatures = &physical_device_features;
+    device_create_info.pNext = &physical_device_features;
     device_create_info.queueCreateInfoCount =
         static_cast<uint32_t>(unique_queue_families.size());
     device_create_info.pQueueCreateInfos = &queue_create_infos[0];
@@ -416,16 +444,54 @@ std::vector<VkImageView> create_image_views(VkDevice device,
     return image_views;
 }
 
-static VkShaderModule create_shader_module(VkDevice device,
-                                           const std::vector<char> &code) {
-    VkShaderModuleCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    create_info.codeSize = code.size();
-    create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
+AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
+                                 VkExtent2D swapChainExtent) {
+    VkExtent3D drawImageExtent = {swapChainExtent.width, swapChainExtent.height,
+                                  1};
 
-    VkShaderModule module;
-    VK_CHECK(vkCreateShaderModule(device, &create_info, nullptr, &module));
-    return module;
+    AllocatedImage allocatedImage;
+    allocatedImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    allocatedImage.extent = drawImageExtent;
+
+    VkImageUsageFlags drawImageUsages{};
+    drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+    drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    VkImageCreateInfo imageCreateInfo = {};
+    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format = allocatedImage.format;
+    imageCreateInfo.extent = allocatedImage.extent;
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageCreateInfo.usage = drawImageUsages;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
+        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VK_CHECK(vmaCreateImage(allocator, &imageCreateInfo, &allocInfo,
+                            &allocatedImage.image, &allocatedImage.allocation,
+                            nullptr));
+
+    VkImageViewCreateInfo imageViewCreateInfo = {};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCreateInfo.image = allocatedImage.image;
+    imageViewCreateInfo.format = allocatedImage.format;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr,
+                               &allocatedImage.imageView));
+
+    return allocatedImage;
 }
 
 PipelineContext create_graphics_pipeline(VkDevice device,
@@ -736,4 +802,30 @@ VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
     VK_CHECK(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
     vkBindBufferMemory(device, buffer, memory, 0);
     return memory;
+}
+
+VkSemaphoreSubmitInfo
+create_semaphore_submit_info(VkPipelineStageFlags2 stageMask,
+                             VkSemaphore semaphore) {
+    VkSemaphoreSubmitInfo sumbitInfo = {};
+    sumbitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    sumbitInfo.semaphore = semaphore;
+    sumbitInfo.stageMask = stageMask;
+    sumbitInfo.value = 1;
+    sumbitInfo.deviceIndex = 0;
+    return sumbitInfo;
+}
+
+VmaAllocator create_allocator(VkInstance instance,
+                              VkPhysicalDevice physicalDevice,
+                              VkDevice device) {
+    VmaAllocatorCreateInfo createInfo = {};
+    createInfo.physicalDevice = physicalDevice;
+    createInfo.device = device;
+    createInfo.instance = instance;
+    createInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+
+    VmaAllocator allocator;
+    vmaCreateAllocator(&createInfo, &allocator);
+    return allocator;
 }

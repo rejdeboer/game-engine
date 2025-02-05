@@ -1,4 +1,6 @@
 #pragma once
+#include "descriptor.h"
+#include "types.h"
 #include <SDL3/SDL.h>
 #include <deque>
 #include <vector>
@@ -38,13 +40,14 @@ struct FrameData {
 
 class Renderer {
   private:
-    SDL_Window *window;
+    SDL_Window *_window;
     VkInstance instance;
     VkDevice device;
     VkSurfaceKHR surface;
     VkSwapchainKHR swap_chain;
-    VkExtent2D swap_chain_extent;
-    std::vector<VkImageView> image_views;
+    VkExtent2D _swapChainExtent;
+    std::vector<VkImage> _swapChainImages;
+    std::vector<VkImageView> _swapChainImageViews;
     VkPipelineLayout pipeline_layout;
     VkPipeline pipeline;
     VkRenderPass render_pass;
@@ -57,10 +60,25 @@ class Renderer {
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
 
+    DescriptorAllocator _descriptorAllocator;
+    VkDescriptorSet _drawImageDescriptors;
+    VkDescriptorSetLayout _drawImageDescriptorLayout;
+
+    AllocatedImage _drawImage;
+
+    VmaAllocator _allocator;
+
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };
+
+    void init_swap_chain(VkPhysicalDevice physicalDevice,
+                         uint32_t graphicsQueueFamilyIndex,
+                         uint32_t presentationQueueFamilyIndex);
+    void init_commands(uint32_t queueFamilyIndex);
+    void init_sync_structures();
+    void init_descriptors();
 
   public:
     Renderer(SDL_Window *window);

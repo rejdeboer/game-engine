@@ -1,9 +1,11 @@
-#include <vector>
 #ifndef RENDERER_CONFIG_H
 
+#include "types.h"
+#include "vk_mem_alloc.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <cassert>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -56,6 +58,8 @@ std::vector<VkImage> get_swap_chain_images(VkDevice device,
 std::vector<VkImageView> create_image_views(VkDevice device,
                                             std::vector<VkImage> images,
                                             VkFormat image_format);
+AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
+                                 VkExtent2D swapChainExtent);
 PipelineContext create_graphics_pipeline(VkDevice device,
                                          VkRenderPass render_pass,
                                          VkExtent2D extent);
@@ -69,6 +73,11 @@ VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                          uint32_t queue_index);
 VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
                                       VkDevice device, VkBuffer buffer);
+VkSemaphoreSubmitInfo
+create_semaphore_submit_info(VkPipelineStageFlags2 stageMask,
+                             VkSemaphore semaphore);
+VmaAllocator create_allocator(VkInstance instance,
+                              VkPhysicalDevice physicalDevice, VkDevice device);
 
 #define RENDERER_CONFIG_H
 #endif
