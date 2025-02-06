@@ -1,7 +1,6 @@
 #include "init.h"
 #include "../file.h"
 #include "vertex.h"
-#include <optional>
 #include <set>
 #include <vector>
 
@@ -268,7 +267,7 @@ VkInstance create_vulkan_instance(SDL_Window *window) {
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName = "No Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = VK_API_VERSION_1_4;
+    app_info.apiVersion = VK_API_VERSION_1_3;
 
     VkInstanceCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

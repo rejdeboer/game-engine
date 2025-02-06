@@ -3,6 +3,7 @@
 #include "types.h"
 #include <SDL3/SDL.h>
 #include <deque>
+#include <functional>
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
