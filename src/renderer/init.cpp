@@ -3,6 +3,7 @@
 #include "vertex.h"
 #include <set>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 const std::vector<const char *> validation_layers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -328,7 +329,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
 
     VkPhysicalDeviceVulkan12Features physical_device_features_12 = {};
     physical_device_features_12.sType =
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     physical_device_features_12.bufferDeviceAddress = true;
 
     VkPhysicalDeviceVulkan13Features physical_device_features_13 = {};
@@ -340,9 +341,9 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     VkPhysicalDeviceFeatures2 physical_device_features = {};
     physical_device_features.sType =
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    vkGetPhysicalDeviceFeatures2(physical_device, &physical_device_features);
     physical_device_features.pNext = &physical_device_features_12;
     physical_device_features_12.pNext = &physical_device_features_13;
+    vkGetPhysicalDeviceFeatures2(physical_device, &physical_device_features);
 
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
