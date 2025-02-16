@@ -494,9 +494,7 @@ AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
     return allocatedImage;
 }
 
-PipelineContext create_graphics_pipeline(VkDevice device,
-                                         VkRenderPass render_pass,
-                                         VkExtent2D extent) {
+PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent) {
     auto vert_shader_code = read_file("shaders/spv/shader.vert.spv");
     auto frag_shader_code = read_file("shaders/spv/shader.frag.spv");
     VkShaderModule vert_shader_module =
@@ -642,7 +640,6 @@ PipelineContext create_graphics_pipeline(VkDevice device,
     pipeline_info.pColorBlendState = &color_blending;
     pipeline_info.pDynamicState = &dynamic_state;
     pipeline_info.layout = pipeline_layout;
-    pipeline_info.renderPass = render_pass;
     pipeline_info.subpass = 0;
     pipeline_info.basePipelineIndex = -1;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;

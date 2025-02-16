@@ -21,6 +21,7 @@ DescriptorLayoutBuilder::build(VkDevice device, VkShaderStageFlags shaderStages,
     }
 
     VkDescriptorSetLayoutCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     createInfo.pNext = pNext;
     createInfo.pBindings = &bindings[0];
     createInfo.bindingCount = static_cast<uint32_t>(bindings.size());

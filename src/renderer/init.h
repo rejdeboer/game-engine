@@ -61,9 +61,7 @@ std::vector<VkImageView> create_image_views(VkDevice device,
                                             VkFormat image_format);
 AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
                                  VkExtent2D swapChainExtent);
-PipelineContext create_graphics_pipeline(VkDevice device,
-                                         VkRenderPass render_pass,
-                                         VkExtent2D extent);
+PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent);
 VkRenderPass create_render_pass(VkDevice device,
                                 VkFormat color_attachment_format);
 VkCommandPool create_command_pool(VkDevice device, uint32_t queue_family_index);

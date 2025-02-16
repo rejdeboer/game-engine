@@ -29,7 +29,7 @@ Renderer::Renderer(SDL_Window *window) {
 
     // render_pass = create_render_pass(device, surface_format.format);
     PipelineContext pipeline_context =
-        create_graphics_pipeline(device, render_pass, _swapChainExtent);
+        create_graphics_pipeline(device, _swapChainExtent);
     pipeline = pipeline_context.pipeline;
     pipeline_layout = pipeline_context.layout;
     // frame_buffers = create_frame_buffers(device, render_pass, image_views,
