@@ -3,6 +3,7 @@
 #include "image.h"
 #include "init.h"
 #include "vertex.h"
+#include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -152,7 +153,7 @@ void Renderer::deinit() {
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
     }
-    vkDestroyRenderPass(device, render_pass, nullptr);
+    // vkDestroyRenderPass(device, render_pass, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
     for (auto image_view : _swapChainImageViews) {
@@ -186,6 +187,29 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     // render_pass_info.pClearValues = &clear_color;
     // vkCmdBeginRenderPass(buffer, &render_pass_info,
     // VK_SUBPASS_CONTENTS_INLINE);
+
+    vkutil::transition_image(buffer, _drawImage.image,
+                             VK_IMAGE_LAYOUT_UNDEFINED,
+                             VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::transition_image(buffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    // NOTE: Begin a rendering pass connected to our draw image
+    VkRenderingAttachmentInfo colorAttachment = {};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = _drawImage.imageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &colorAttachment;
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapChainExtent};
+    renderInfo.layerCount = 1;
+
+    vkCmdBeginRendering(buffer, &renderInfo);
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     vkutil::transition_image(buffer, _swapChainImages[image_index],
@@ -221,7 +245,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
     vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-    vkCmdEndRenderPass(buffer);
+    // vkCmdEndRenderPass(buffer);
     VK_CHECK(vkEndCommandBuffer(buffer));
 }
 
