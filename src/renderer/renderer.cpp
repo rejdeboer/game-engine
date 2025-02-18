@@ -3,6 +3,7 @@
 #include "image.h"
 #include "init.h"
 #include "vertex.h"
+#include <algorithm>
 #include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
@@ -28,13 +29,11 @@ Renderer::Renderer(SDL_Window *window) {
 
     init_swap_chain(physical_device, graphics_index, presentation_index);
 
-    // render_pass = create_render_pass(device, surface_format.format);
     PipelineContext pipeline_context =
         create_graphics_pipeline(device, _swapChainExtent);
     pipeline = pipeline_context.pipeline;
     pipeline_layout = pipeline_context.layout;
-    // frame_buffers = create_frame_buffers(device, render_pass, image_views,
-    //                                      swap_chain_extent);
+
     vertex_buffer = create_vertex_buffer(device);
     vertex_buffer_memory =
         allocate_vertex_buffer(physical_device, device, vertex_buffer);
@@ -206,25 +205,26 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapChainExtent};
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(buffer, &renderInfo);
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    vkutil::transition_image(buffer, _swapChainImages[image_index],
-                             VK_IMAGE_LAYOUT_UNDEFINED,
-                             VK_IMAGE_LAYOUT_GENERAL);
+    // vkutil::transition_image(buffer, _swapChainImages[image_index],
+    //                          VK_IMAGE_LAYOUT_UNDEFINED,
+    //                          VK_IMAGE_LAYOUT_GENERAL);
 
-    VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    VkImageSubresourceRange clearRange =
-        vkutil::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
-    vkCmdClearColorImage(buffer, _swapChainImages[image_index],
-                         VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
-
-    vkutil::transition_image(buffer, _swapChainImages[image_index],
-                             VK_IMAGE_LAYOUT_GENERAL,
-                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    // VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    // VkImageSubresourceRange clearRange =
+    //     vkutil::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
+    // vkCmdClearColorImage(buffer, _swapChainImages[image_index],
+    //                      VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1,
+    //                      &clearRange);
+    //
+    // vkutil::transition_image(buffer, _swapChainImages[image_index],
+    //                          VK_IMAGE_LAYOUT_GENERAL,
+    //                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VkBuffer vertex_buffers[] = {vertex_buffer};
     VkDeviceSize offsets[] = {0};
@@ -233,19 +233,28 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(_swapChainExtent.width);
-    viewport.height = static_cast<float>(_swapChainExtent.height);
+    viewport.width = static_cast<float>(_drawExtent.width);
+    viewport.height = static_cast<float>(_drawExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(buffer, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent = _swapChainExtent;
+    scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
     vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
     // vkCmdEndRenderPass(buffer);
+    vkCmdEndRendering(buffer);
+
+    vkutil::transition_image(buffer, _drawImage.image,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    vkutil::transition_image(buffer, _swapChainImages[image_index],
+                             VK_IMAGE_LAYOUT_UNDEFINED,
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
     VK_CHECK(vkEndCommandBuffer(buffer));
 }
 
@@ -260,6 +269,11 @@ void Renderer::draw_frame() {
     vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX,
                           currentFrame->_renderSemaphore, VK_NULL_HANDLE,
                           &image_index);
+
+    _drawExtent.width =
+        std::min(_swapChainExtent.width, _drawImage.extent.width);
+    _drawExtent.height =
+        std::min(_swapChainExtent.height, _drawImage.extent.height);
 
     vkResetCommandBuffer(currentFrame->_mainCommandBuffer, 0);
     record_command_buffer(currentFrame->_mainCommandBuffer, image_index);
