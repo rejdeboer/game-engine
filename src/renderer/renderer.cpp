@@ -118,7 +118,7 @@ void Renderer::init_descriptors() {
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
 
-    _descriptorAllocator.init_pool(device, 10, sizes);
+    _globalDescriptorAllocator.init_pool(device, 10, sizes);
 
     {
         DescriptorLayoutBuilder builder;
@@ -128,7 +128,7 @@ void Renderer::init_descriptors() {
     }
 
     _drawImageDescriptors =
-        _descriptorAllocator.allocate(device, _drawImageDescriptorLayout);
+        _globalDescriptorAllocator.allocate(device, _drawImageDescriptorLayout);
 
     VkDescriptorImageInfo imgInfo = {};
     imgInfo.imageView = _drawImage.imageView;
@@ -144,7 +144,7 @@ void Renderer::init_descriptors() {
     vkUpdateDescriptorSets(device, 1, &drawImageWrite, 0, nullptr);
 
     _mainDeletionQueue.push_function([&]() {
-        _descriptorAllocator.destroy_pool(device);
+        _globalDescriptorAllocator.destroy_pool(device);
         vkDestroyDescriptorSetLayout(device, _drawImageDescriptorLayout,
                                      nullptr);
     });
