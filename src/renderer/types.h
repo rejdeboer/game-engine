@@ -1,6 +1,7 @@
 #pragma once
 #include "vk_mem_alloc.h"
 #include <fmt/core.h>
+#include <glm/glm.hpp>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
@@ -10,6 +11,23 @@ struct AllocatedImage {
     VmaAllocation allocation;
     VkExtent3D extent;
     VkFormat format;
+};
+
+struct AllocatedBuffer {
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    VmaAllocationInfo info;
+};
+
+struct GPUMeshBuffers {
+    AllocatedBuffer indexBuffer;
+    AllocatedBuffer vertexBuffer;
+    VkDeviceAddress vertexBufferAddress;
+};
+
+struct GPUDrawPushConstants {
+    glm::mat4 worldMatrix;
+    VkDeviceAddress vertexBuffer;
 };
 
 #define VK_CHECK(x)                                                            \

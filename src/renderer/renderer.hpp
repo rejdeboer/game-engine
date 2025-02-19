@@ -1,6 +1,7 @@
 #pragma once
 #include "descriptor.h"
 #include "types.h"
+#include "vertex.h"
 #include <SDL3/SDL.h>
 #include <deque>
 #include <functional>
@@ -55,11 +56,13 @@ class Renderer {
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
     std::vector<VkFramebuffer> frame_buffers;
-    VkBuffer vertex_buffer;
-    VkDeviceMemory vertex_buffer_memory;
     VkQueue _graphicsQueue;
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
+
+    VkFence _immFence;
+    VkCommandBuffer _immCommandBuffer;
+    VkCommandPool _immCommandPool;
 
     DescriptorAllocator _descriptorAllocator;
     VkDescriptorSet _drawImageDescriptors;
@@ -70,11 +73,23 @@ class Renderer {
 
     VmaAllocator _allocator;
 
+    GPUMeshBuffers rectangle;
+
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };
 
+    GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
+                              std::span<Vertex> vertices);
+
+    void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
+
+    AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
+                                  VmaMemoryUsage memoryUsage);
+    void destroy_buffer(const AllocatedBuffer &buffer);
+
+    void init_default_data();
     void init_swap_chain(VkPhysicalDevice physicalDevice,
                          uint32_t graphicsQueueFamilyIndex,
                          uint32_t presentationQueueFamilyIndex);

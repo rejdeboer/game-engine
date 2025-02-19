@@ -384,7 +384,9 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     create_info.imageColorSpace = surface_format.colorSpace;
     create_info.imageExtent = extent;
     create_info.imageArrayLayers = 1;
-    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    // create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    create_info.imageUsage =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     create_info.preTransform = support_details.capabilities.currentTransform;
     create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     create_info.presentMode = present_mode;
@@ -494,7 +496,8 @@ AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
     return allocatedImage;
 }
 
-PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent) {
+PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent,
+                                         VkFormat colorAttachmentFormat) {
     auto vert_shader_code = read_file("shaders/spv/shader.vert.spv");
     auto frag_shader_code = read_file("shaders/spv/shader.frag.spv");
     VkShaderModule vert_shader_module =
@@ -627,8 +630,14 @@ PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent) {
     VK_CHECK(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr,
                                     &pipeline_layout));
 
+    VkPipelineRenderingCreateInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+
     VkGraphicsPipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_info.pNext = &renderInfo;
     pipeline_info.stageCount = 2;
     pipeline_info.pStages = shader_stages;
     pipeline_info.pVertexInputState = &vertex_input_info;

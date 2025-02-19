@@ -2,16 +2,11 @@
 #include "SDL3/SDL_vulkan.h"
 #include "image.h"
 #include "init.h"
-#include "vertex.h"
 #include <algorithm>
 #include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
-
-const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                                      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
 Renderer::Renderer(SDL_Window *window) {
     _window = window;
@@ -30,30 +25,52 @@ Renderer::Renderer(SDL_Window *window) {
     init_swap_chain(physical_device, graphics_index, presentation_index);
 
     PipelineContext pipeline_context =
-        create_graphics_pipeline(device, _swapChainExtent);
+        create_graphics_pipeline(device, _swapChainExtent, _drawImage.format);
     pipeline = pipeline_context.pipeline;
     pipeline_layout = pipeline_context.layout;
-
-    vertex_buffer = create_vertex_buffer(device);
-    vertex_buffer_memory =
-        allocate_vertex_buffer(physical_device, device, vertex_buffer);
-
-    init_commands(graphics_index);
-    init_sync_structures();
-    init_descriptors();
 
     _graphicsQueue = get_device_queue(device, graphics_index, 0);
     _presentationQueue = get_device_queue(device, presentation_index, 0);
 
+    init_commands(graphics_index);
+    init_sync_structures();
+    init_descriptors();
+    init_default_data();
+
     _mainDeletionQueue.push_function(
         [&]() { vmaDestroyAllocator(_allocator); });
+}
 
-    // TODO: Cleanup
-    void *data;
-    vkMapMemory(device, vertex_buffer_memory, 0,
-                vertices.size() * sizeof(Vertex), 0, &data);
-    memcpy(data, vertices.data(), vertices.size() * sizeof(Vertex));
-    vkUnmapMemory(device, vertex_buffer_memory);
+void Renderer::init_default_data() {
+    std::array<Vertex, 4> rect_vertices;
+
+    rect_vertices[0].pos = {0.5, -0.5};
+    rect_vertices[1].pos = {0.5, 0.5};
+    rect_vertices[2].pos = {-0.5, -0.5};
+    rect_vertices[3].pos = {-0.5, 0.5};
+
+    rect_vertices[0].color = {0, 0, 0};
+    rect_vertices[1].color = {0.5, 0.5, 0.5};
+    rect_vertices[2].color = {1, 0, 0};
+    rect_vertices[3].color = {0, 1, 0};
+
+    std::array<uint32_t, 6> rect_indices;
+
+    rect_indices[0] = 0;
+    rect_indices[1] = 1;
+    rect_indices[2] = 2;
+
+    rect_indices[3] = 2;
+    rect_indices[4] = 1;
+    rect_indices[5] = 3;
+
+    rectangle = uploadMesh(rect_indices, rect_vertices);
+
+    // delete the rectangle data on engine shutdown
+    _mainDeletionQueue.push_function([&]() {
+        destroy_buffer(rectangle.indexBuffer);
+        destroy_buffer(rectangle.vertexBuffer);
+    });
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -65,6 +82,13 @@ void Renderer::init_commands(uint32_t queueFamilyIndex) {
             vkDestroyCommandPool(device, _frames[i]._commandPool, nullptr);
         });
     }
+
+    _immCommandPool = create_command_pool(device, queueFamilyIndex);
+    _immCommandBuffer = create_command_buffer(device, _immCommandPool);
+
+    _mainDeletionQueue.push_function([=, this]() {
+        vkDestroyCommandPool(device, _immCommandPool, nullptr);
+    });
 }
 
 void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
@@ -145,6 +169,10 @@ void Renderer::init_sync_structures() {
             vkDestroyFence(device, _frames[i]._renderFence, nullptr);
         });
     }
+
+    VK_CHECK(vkCreateFence(device, &fence_create_info, nullptr, &_immFence));
+    _mainDeletionQueue.push_function(
+        [=, this]() { vkDestroyFence(device, _immFence, nullptr); });
 }
 
 void Renderer::deinit() {
@@ -159,8 +187,6 @@ void Renderer::deinit() {
         vkDestroyImageView(device, image_view, nullptr);
     }
     vkDestroySwapchainKHR(device, swap_chain, nullptr);
-    vkDestroyBuffer(device, vertex_buffer, nullptr);
-    vkFreeMemory(device, vertex_buffer_memory, nullptr);
     vkDestroyDevice(device, nullptr);
     SDL_Vulkan_DestroySurface(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
@@ -226,10 +252,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     //                          VK_IMAGE_LAYOUT_GENERAL,
     //                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    VkBuffer vertex_buffers[] = {vertex_buffer};
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(buffer, 0, 1, vertex_buffers, offsets);
-
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -244,8 +266,12 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    vkCmdDraw(buffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-    // vkCmdEndRenderPass(buffer);
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(buffer, 0, 1, &rectangle.vertexBuffer.buffer,
+                           offsets);
+    vkCmdBindIndexBuffer(buffer, rectangle.indexBuffer.buffer, 0,
+                         VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(buffer, 6, 1, 0, 0, 0);
     vkCmdEndRendering(buffer);
 
     vkutil::transition_image(buffer, _drawImage.image,
@@ -254,6 +280,19 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     vkutil::transition_image(buffer, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    vkutil::copy_image_to_image(buffer, _drawImage.image,
+                                _swapChainImages[image_index], _drawExtent,
+                                _swapChainExtent);
+
+    // set swapchain image layout to Attachment Optimal so we can draw it
+    vkutil::transition_image(buffer, _swapChainImages[image_index],
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    // set swapchain image layout to Present so we can draw it
+    vkutil::transition_image(buffer, _swapChainImages[image_index],
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_CHECK(vkEndCommandBuffer(buffer));
 }
@@ -267,7 +306,7 @@ void Renderer::draw_frame() {
 
     uint32_t image_index;
     vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX,
-                          currentFrame->_renderSemaphore, VK_NULL_HANDLE,
+                          currentFrame->_swapchainSemaphore, VK_NULL_HANDLE,
                           &image_index);
 
     _drawExtent.width =
@@ -331,4 +370,122 @@ void Renderer::draw_frame() {
 
     vkQueuePresentKHR(_presentationQueue, &present_info);
     _frameNumber++;
+}
+
+void Renderer::immediate_submit(
+    std::function<void(VkCommandBuffer cmd)> &&function) {
+    VK_CHECK(vkResetFences(device, 1, &_immFence));
+    VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
+
+    VkCommandBuffer cmd = _immCommandBuffer;
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &beginInfo));
+
+    function(cmd);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    VkCommandBufferSubmitInfo cmdSubmitInfo = {};
+    cmdSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    cmdSubmitInfo.commandBuffer = cmd;
+    cmdSubmitInfo.deviceMask = 0;
+
+    VkSubmitInfo2 submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfo.commandBufferInfoCount = 1;
+    submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
+    submitInfo.signalSemaphoreInfoCount = 0;
+    submitInfo.waitSemaphoreInfoCount = 0;
+
+    VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo, _immFence));
+
+    VK_CHECK(vkWaitForFences(device, 1, &_immFence, true, 9999999999));
+}
+
+GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,
+                                    std::span<Vertex> vertices) {
+    const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+
+    GPUMeshBuffers newSurface;
+
+    newSurface.vertexBuffer = create_buffer(
+        vertexBufferSize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    VkBufferDeviceAddressInfo deviceAdressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = newSurface.vertexBuffer.buffer};
+    newSurface.vertexBufferAddress =
+        vkGetBufferDeviceAddress(device, &deviceAdressInfo);
+
+    newSurface.indexBuffer = create_buffer(indexBufferSize,
+                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                           VMA_MEMORY_USAGE_GPU_ONLY);
+
+    AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize,
+                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                            VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void *data = staging.allocation->GetMappedData();
+
+    memcpy(data, vertices.data(), vertexBufferSize);
+    memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
+
+    immediate_submit([&](VkCommandBuffer cmd) {
+        VkBufferCopy vertexCopy{0};
+        vertexCopy.dstOffset = 0;
+        vertexCopy.srcOffset = 0;
+        vertexCopy.size = vertexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1,
+                        &vertexCopy);
+
+        VkBufferCopy indexCopy{0};
+        indexCopy.dstOffset = 0;
+        indexCopy.srcOffset = vertexBufferSize;
+        indexCopy.size = indexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1,
+                        &indexCopy);
+    });
+
+    destroy_buffer(staging);
+
+    return newSurface;
+}
+
+AllocatedBuffer Renderer::create_buffer(size_t allocSize,
+                                        VkBufferUsageFlags usage,
+                                        VmaMemoryUsage memoryUsage) {
+    VkBufferCreateInfo bufferInfo = {.sType =
+                                         VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bufferInfo.pNext = nullptr;
+    bufferInfo.size = allocSize;
+
+    bufferInfo.usage = usage;
+
+    VmaAllocationCreateInfo vmaallocInfo = {};
+    vmaallocInfo.usage = memoryUsage;
+    vmaallocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    AllocatedBuffer newBuffer;
+
+    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+                             &newBuffer.buffer, &newBuffer.allocation,
+                             &newBuffer.info));
+
+    return newBuffer;
+}
+
+void Renderer::destroy_buffer(const AllocatedBuffer &buffer) {
+    vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
 }
