@@ -180,7 +180,6 @@ void Renderer::deinit() {
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
     }
-    // vkDestroyRenderPass(device, render_pass, nullptr);
     vkDestroyPipeline(device, pipeline, nullptr);
     vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
     for (auto image_view : _swapChainImageViews) {
@@ -200,18 +199,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     begin_info.flags = 0;
     begin_info.pInheritanceInfo = nullptr;
     VK_CHECK(vkBeginCommandBuffer(buffer, &begin_info));
-
-    // VkRenderPassBeginInfo render_pass_info = {};
-    // render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    // render_pass_info.renderPass = render_pass;
-    // render_pass_info.framebuffer = frame_buffers[image_index];
-    // render_pass_info.renderArea.offset = {0, 0};
-    // render_pass_info.renderArea.extent = swap_chain_extent;
-    // VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-    // render_pass_info.clearValueCount = 1;
-    // render_pass_info.pClearValues = &clear_color;
-    // vkCmdBeginRenderPass(buffer, &render_pass_info,
-    // VK_SUBPASS_CONTENTS_INLINE);
 
     vkutil::transition_image(buffer, _drawImage.image,
                              VK_IMAGE_LAYOUT_UNDEFINED,
@@ -236,21 +223,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
 
     vkCmdBeginRendering(buffer, &renderInfo);
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    // vkutil::transition_image(buffer, _swapChainImages[image_index],
-    //                          VK_IMAGE_LAYOUT_UNDEFINED,
-    //                          VK_IMAGE_LAYOUT_GENERAL);
-
-    // VkClearColorValue clearValue = {{0.0f, 0.0f, 0.0f, 1.0f}};
-    // VkImageSubresourceRange clearRange =
-    //     vkutil::image_subresource_range(VK_IMAGE_ASPECT_COLOR_BIT);
-    // vkCmdClearColorImage(buffer, _swapChainImages[image_index],
-    //                      VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1,
-    //                      &clearRange);
-    //
-    // vkutil::transition_image(buffer, _swapChainImages[image_index],
-    //                          VK_IMAGE_LAYOUT_GENERAL,
-    //                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -284,12 +256,10 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                                 _swapChainImages[image_index], _drawExtent,
                                 _swapChainExtent);
 
-    // set swapchain image layout to Attachment Optimal so we can draw it
     vkutil::transition_image(buffer, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    // set swapchain image layout to Present so we can draw it
     vkutil::transition_image(buffer, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -336,24 +306,6 @@ void Renderer::draw_frame() {
     submitInfo.pSignalSemaphoreInfos = &signalInfo;
     submitInfo.commandBufferInfoCount = 1;
     submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
-
-    // VkSubmitInfo submit_info = {};
-    // submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    //
-    // VkSemaphore wait_semaphores[] = {currentFrame->_renderSemaphore};
-    // VkPipelineStageFlags wait_stages[] = {
-    //     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    // submit_info.waitSemaphoreCount = 1;
-    // submit_info.pWaitSemaphores = wait_semaphores;
-    // submit_info.pWaitDstStageMask = wait_stages;
-    // submit_info.commandBufferCount = 1;
-    // submit_info.pCommandBuffers = &currentFrame->_mainCommandBuffer;
-    // VkSemaphore signal_semaphores[] = {currentFrame->_swapchainSemaphore};
-    // submit_info.signalSemaphoreCount = 1;
-    // submit_info.pSignalSemaphores = signal_semaphores;
-    //
-    // VK_CHECK(vkQueueSubmit(_graphicsQueue, 1, &submit_info,
-    //                        currentFrame->_renderFence));
 
     VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo,
                             currentFrame->_renderFence));

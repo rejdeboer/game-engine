@@ -384,7 +384,6 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     create_info.imageColorSpace = surface_format.colorSpace;
     create_info.imageExtent = extent;
     create_info.imageArrayLayers = 1;
-    // create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     create_info.imageUsage =
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     create_info.preTransform = support_details.capabilities.currentTransform;
@@ -661,77 +660,6 @@ PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent,
     vkDestroyShaderModule(device, frag_shader_module, nullptr);
     return {pipeline_layout, pipeline};
 }
-
-// TODO: Remove
-// VkRenderPass create_render_pass(VkDevice device,
-//                                 VkFormat color_attachment_format) {
-//     VkAttachmentDescription color_attachment = {};
-//     color_attachment.format = color_attachment_format;
-//     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-//     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-//     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-//     color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-//     color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-//     color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-//     color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-//
-//     VkAttachmentReference color_attachment_ref = {};
-//     color_attachment_ref.attachment = 0;
-//     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-//
-//     VkSubpassDescription subpass = {};
-//     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-//     subpass.colorAttachmentCount = 1;
-//     subpass.pColorAttachments = &color_attachment_ref;
-//
-//     VkSubpassDependency dependency = {};
-//     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-//     dependency.dstSubpass = 0;
-//     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//     dependency.srcAccessMask = 0;
-//     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-//
-//     VkRenderPassCreateInfo render_pass_info = {};
-//     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-//     render_pass_info.attachmentCount = 1;
-//     render_pass_info.pAttachments = &color_attachment;
-//     render_pass_info.subpassCount = 1;
-//     render_pass_info.pSubpasses = &subpass;
-//     render_pass_info.dependencyCount = 1;
-//     render_pass_info.pDependencies = &dependency;
-//
-//     VkRenderPass render_pass;
-//     VK_CHECK(
-//         vkCreateRenderPass(device, &render_pass_info, nullptr,
-//         &render_pass));
-//     return render_pass;
-// }
-
-// std::vector<VkFramebuffer>
-// create_frame_buffers(VkDevice device, VkRenderPass render_pass,
-//                      std::vector<VkImageView> image_views,
-//                      VkExtent2D swap_chain_extent) {
-//     std::vector<VkFramebuffer> frame_buffers(image_views.size());
-//
-//     for (size_t i = 0; i < image_views.size(); i++) {
-//         VkImageView attachments[] = {image_views[i]};
-//
-//         VkFramebufferCreateInfo create_info = {};
-//         create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-//         create_info.renderPass = render_pass;
-//         create_info.attachmentCount = 1;
-//         create_info.pAttachments = attachments;
-//         create_info.width = swap_chain_extent.width;
-//         create_info.height = swap_chain_extent.height;
-//         create_info.layers = 1;
-//
-//         VK_CHECK(vkCreateFramebuffer(device, &create_info, nullptr,
-//                                      &frame_buffers[i]));
-//     }
-//
-//     return frame_buffers;
-// }
 
 VkCommandPool create_command_pool(VkDevice device,
                                   uint32_t queue_family_index) {
