@@ -5,8 +5,8 @@
 #include <vulkan/vulkan_core.h>
 
 struct Vertex {
-    glm::vec2 pos;
-    glm::vec3 color;
+    glm::vec3 pos;
+    glm::vec4 color;
 
     static VkVertexInputBindingDescription get_binding_description() {
         VkVertexInputBindingDescription desc = {};
@@ -22,11 +22,11 @@ struct Vertex {
             attribute_descriptions{};
         attribute_descriptions[0].binding = 0;
         attribute_descriptions[0].location = 0;
-        attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attribute_descriptions[0].offset = offsetof(Vertex, pos);
         attribute_descriptions[1].binding = 0;
         attribute_descriptions[1].location = 1;
-        attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attribute_descriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
         attribute_descriptions[1].offset = offsetof(Vertex, color);
         return attribute_descriptions;
     }

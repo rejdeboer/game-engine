@@ -41,15 +41,15 @@ Renderer::Renderer(SDL_Window *window) {
 void Renderer::init_default_data() {
     std::array<Vertex, 4> rect_vertices;
 
-    rect_vertices[0].pos = {0.5, -0.5};
-    rect_vertices[1].pos = {0.5, 0.5};
-    rect_vertices[2].pos = {-0.5, -0.5};
-    rect_vertices[3].pos = {-0.5, 0.5};
+    rect_vertices[0].pos = {0.5, -0.5, 0.0};
+    rect_vertices[1].pos = {0.5, 0.5, 0.0};
+    rect_vertices[2].pos = {-0.5, -0.5, 0.0};
+    rect_vertices[3].pos = {-0.5, 0.5, 0.0};
 
-    rect_vertices[0].color = {0, 0, 0};
-    rect_vertices[1].color = {0.5, 0.5, 0.5};
-    rect_vertices[2].color = {1, 0, 0};
-    rect_vertices[3].color = {0, 1, 0};
+    rect_vertices[0].color = {0, 0, 0, 1};
+    rect_vertices[1].color = {0.5, 0.5, 0.5, 1};
+    rect_vertices[2].color = {1, 0, 0, 1};
+    rect_vertices[3].color = {0, 1, 0, 1};
 
     std::array<uint32_t, 6> rect_indices;
 
