@@ -11,23 +11,25 @@
 
 Renderer::Renderer(SDL_Window *window) {
     _window = window;
-    instance = create_vulkan_instance(window);
-    surface = create_surface(window, instance);
-    VkPhysicalDevice physical_device = pick_physical_device(instance, surface);
+    _instance = create_vulkan_instance(window);
+    _surface = create_surface(window, _instance);
+    VkPhysicalDevice physical_device =
+        pick_physical_device(_instance, _surface);
     QueueFamilyIndices queue_family_indices =
-        find_compatible_queue_family_indices(physical_device, surface);
+        find_compatible_queue_family_indices(physical_device, _surface);
     assert(queue_family_indices.is_complete());
 
     uint32_t graphics_index = queue_family_indices.graphics_family.value();
     uint32_t presentation_index = queue_family_indices.present_family.value();
-    device = create_device(physical_device, graphics_index, presentation_index);
-    _allocator = create_allocator(instance, physical_device, device);
+    _device =
+        create_device(physical_device, graphics_index, presentation_index);
+    _allocator = create_allocator(_instance, physical_device, _device);
 
     init_swap_chain(physical_device, graphics_index, presentation_index);
     init_pipelines();
 
-    _graphicsQueue = get_device_queue(device, graphics_index, 0);
-    _presentationQueue = get_device_queue(device, presentation_index, 0);
+    _graphicsQueue = get_device_queue(_device, graphics_index, 0);
+    _presentationQueue = get_device_queue(_device, presentation_index, 0);
 
     init_commands(graphics_index);
     init_sync_structures();
@@ -71,19 +73,20 @@ void Renderer::init_default_data() {
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
     for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
-        _frames[i]._commandPool = create_command_pool(device, queueFamilyIndex);
+        _frames[i]._commandPool =
+            create_command_pool(_device, queueFamilyIndex);
         _frames[i]._mainCommandBuffer =
-            create_command_buffer(device, _frames[i]._commandPool);
+            create_command_buffer(_device, _frames[i]._commandPool);
         _mainDeletionQueue.push_function([&]() {
-            vkDestroyCommandPool(device, _frames[i]._commandPool, nullptr);
+            vkDestroyCommandPool(_device, _frames[i]._commandPool, nullptr);
         });
     }
 
-    _immCommandPool = create_command_pool(device, queueFamilyIndex);
-    _immCommandBuffer = create_command_buffer(device, _immCommandPool);
+    _immCommandPool = create_command_pool(_device, queueFamilyIndex);
+    _immCommandBuffer = create_command_buffer(_device, _immCommandPool);
 
     _mainDeletionQueue.push_function([=, this]() {
-        vkDestroyCommandPool(device, _immCommandPool, nullptr);
+        vkDestroyCommandPool(_device, _immCommandPool, nullptr);
     });
 }
 
@@ -91,21 +94,21 @@ void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
                                uint32_t graphicsQueueFamilyIndex,
                                uint32_t presentationQueueFamilyIndex) {
     SwapChainSupportDetails swapChainSupportDetails =
-        query_swap_chain_support(physicalDevice, surface);
+        query_swap_chain_support(physicalDevice, _surface);
     _swapChainExtent =
         choose_swap_extent(_window, swapChainSupportDetails.capabilities);
     VkSurfaceFormatKHR surfaceFormat =
         choose_swap_surface_format(swapChainSupportDetails.formats);
-    swap_chain = create_swap_chain(
-        _window, swapChainSupportDetails, device, surface, _swapChainExtent,
+    _swapChain = create_swap_chain(
+        _window, swapChainSupportDetails, _device, _surface, _swapChainExtent,
         surfaceFormat, graphicsQueueFamilyIndex, presentationQueueFamilyIndex);
-    _swapChainImages = get_swap_chain_images(device, swap_chain);
+    _swapChainImages = get_swap_chain_images(_device, _swapChain);
     _swapChainImageViews =
-        create_image_views(device, _swapChainImages, surfaceFormat.format);
+        create_image_views(_device, _swapChainImages, surfaceFormat.format);
 
-    _drawImage = create_draw_image(device, _allocator, _swapChainExtent);
+    _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
     _mainDeletionQueue.push_function([&]() {
-        vkDestroyImageView(device, _drawImage.imageView, nullptr);
+        vkDestroyImageView(_device, _drawImage.imageView, nullptr);
         vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
     });
 }
@@ -117,7 +120,7 @@ void Renderer::init_pipelines() {
 
 void Renderer::init_triangle_pipeline() {
     VkShaderModule triangleFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", device,
+    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", _device,
                                     &triangleFragShader)) {
         fmt::print("Error when building the triangle fragment shader module");
     } else {
@@ -125,7 +128,7 @@ void Renderer::init_triangle_pipeline() {
     }
 
     VkShaderModule triangleVertexShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.vert.spv", device,
+    if (!vkutil::load_shader_module("shaders/spv/shader.vert.spv", _device,
                                     &triangleVertexShader)) {
         fmt::print("Error when building the triangle vertex shader module");
     } else {
@@ -138,7 +141,7 @@ void Renderer::init_triangle_pipeline() {
     pipelineLayoutInfo.pSetLayouts = nullptr;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
-    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr,
+    VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                     &_trianglePipelineLayout));
 
     PipelineBuilder pipelineBuilder;
@@ -152,20 +155,20 @@ void Renderer::init_triangle_pipeline() {
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
-    _trianglePipeline = pipelineBuilder.build_pipeline(device);
+    _trianglePipeline = pipelineBuilder.build_pipeline(_device);
 
-    vkDestroyShaderModule(device, triangleFragShader, nullptr);
-    vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+    vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+    vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
 
     _mainDeletionQueue.push_function([&]() {
-        vkDestroyPipelineLayout(device, _trianglePipelineLayout, nullptr);
-        vkDestroyPipeline(device, _trianglePipeline, nullptr);
+        vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
+        vkDestroyPipeline(_device, _trianglePipeline, nullptr);
     });
 }
 
 void Renderer::init_mesh_pipeline() {
     VkShaderModule triangleFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", device,
+    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", _device,
                                     &triangleFragShader)) {
         fmt::print("Error when building the mesh fragment shader module");
     } else {
@@ -173,7 +176,7 @@ void Renderer::init_mesh_pipeline() {
     }
 
     VkShaderModule triangleVertexShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", device,
+    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", _device,
                                     &triangleVertexShader)) {
         fmt::print("Error when building the mesh vertex shader module");
     } else {
@@ -191,7 +194,7 @@ void Renderer::init_mesh_pipeline() {
     pipelineLayoutInfo.pSetLayouts = nullptr;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
-    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr,
+    VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                     &_meshPipelineLayout));
 
     PipelineBuilder pipelineBuilder;
@@ -206,15 +209,15 @@ void Renderer::init_mesh_pipeline() {
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
-    _meshPipeline = pipelineBuilder.build_pipeline(device);
+    _meshPipeline = pipelineBuilder.build_pipeline(_device);
 
     // clean structures
-    vkDestroyShaderModule(device, triangleFragShader, nullptr);
-    vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+    vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+    vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
 
     _mainDeletionQueue.push_function([&]() {
-        vkDestroyPipelineLayout(device, _meshPipelineLayout, nullptr);
-        vkDestroyPipeline(device, _meshPipeline, nullptr);
+        vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
+        vkDestroyPipeline(_device, _meshPipeline, nullptr);
     });
 }
 
@@ -222,17 +225,17 @@ void Renderer::init_descriptors() {
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
 
-    _globalDescriptorAllocator.init_pool(device, 10, sizes);
+    _globalDescriptorAllocator.init_pool(_device, 10, sizes);
 
     {
         DescriptorLayoutBuilder builder;
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
         _drawImageDescriptorLayout =
-            builder.build(device, VK_SHADER_STAGE_COMPUTE_BIT);
+            builder.build(_device, VK_SHADER_STAGE_COMPUTE_BIT);
     }
 
-    _drawImageDescriptors =
-        _globalDescriptorAllocator.allocate(device, _drawImageDescriptorLayout);
+    _drawImageDescriptors = _globalDescriptorAllocator.allocate(
+        _device, _drawImageDescriptorLayout);
 
     VkDescriptorImageInfo imgInfo = {};
     imgInfo.imageView = _drawImage.imageView;
@@ -245,11 +248,11 @@ void Renderer::init_descriptors() {
     drawImageWrite.descriptorCount = 1;
     drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     drawImageWrite.pImageInfo = &imgInfo;
-    vkUpdateDescriptorSets(device, 1, &drawImageWrite, 0, nullptr);
+    vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
 
     _mainDeletionQueue.push_function([&]() {
-        _globalDescriptorAllocator.destroy_pool(device);
-        vkDestroyDescriptorSetLayout(device, _drawImageDescriptorLayout,
+        _globalDescriptorAllocator.destroy_pool(_device);
+        vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout,
                                      nullptr);
     });
 }
@@ -261,36 +264,37 @@ void Renderer::init_sync_structures() {
     fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
-        VK_CHECK(vkCreateFence(device, &fence_create_info, nullptr,
+        VK_CHECK(vkCreateFence(_device, &fence_create_info, nullptr,
                                &_frames[i]._renderFence));
-        VK_CHECK(vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr,
                                    &_frames[i]._renderSemaphore));
-        VK_CHECK(vkCreateSemaphore(device, &semaphore_create_info, nullptr,
+        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr,
                                    &_frames[i]._swapchainSemaphore));
         _mainDeletionQueue.push_function([&]() {
-            vkDestroySemaphore(device, _frames[i]._renderSemaphore, nullptr);
-            vkDestroySemaphore(device, _frames[i]._swapchainSemaphore, nullptr);
-            vkDestroyFence(device, _frames[i]._renderFence, nullptr);
+            vkDestroySemaphore(_device, _frames[i]._renderSemaphore, nullptr);
+            vkDestroySemaphore(_device, _frames[i]._swapchainSemaphore,
+                               nullptr);
+            vkDestroyFence(_device, _frames[i]._renderFence, nullptr);
         });
     }
 
-    VK_CHECK(vkCreateFence(device, &fence_create_info, nullptr, &_immFence));
+    VK_CHECK(vkCreateFence(_device, &fence_create_info, nullptr, &_immFence));
     _mainDeletionQueue.push_function(
-        [=, this]() { vkDestroyFence(device, _immFence, nullptr); });
+        [=, this]() { vkDestroyFence(_device, _immFence, nullptr); });
 }
 
 void Renderer::deinit() {
     _mainDeletionQueue.flush();
     for (auto frame_buffer : frame_buffers) {
-        vkDestroyFramebuffer(device, frame_buffer, nullptr);
+        vkDestroyFramebuffer(_device, frame_buffer, nullptr);
     }
     for (auto image_view : _swapChainImageViews) {
-        vkDestroyImageView(device, image_view, nullptr);
+        vkDestroyImageView(_device, image_view, nullptr);
     }
-    vkDestroySwapchainKHR(device, swap_chain, nullptr);
-    vkDestroyDevice(device, nullptr);
-    SDL_Vulkan_DestroySurface(instance, surface, nullptr);
-    vkDestroyInstance(instance, nullptr);
+    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
+    vkDestroyDevice(_device, nullptr);
+    SDL_Vulkan_DestroySurface(_instance, _surface, nullptr);
+    vkDestroyInstance(_instance, nullptr);
     SDL_Vulkan_UnloadLibrary();
 }
 
@@ -372,13 +376,13 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
 
 void Renderer::draw_frame() {
     FrameData *currentFrame = &get_current_frame();
-    vkWaitForFences(device, 1, &currentFrame->_renderFence, VK_TRUE,
+    vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
                     UINT64_MAX);
     currentFrame->_deletionQueue.flush();
-    vkResetFences(device, 1, &currentFrame->_renderFence);
+    vkResetFences(_device, 1, &currentFrame->_renderFence);
 
     uint32_t image_index;
-    vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX,
+    vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX,
                           currentFrame->_swapchainSemaphore, VK_NULL_HANDLE,
                           &image_index);
 
@@ -417,7 +421,7 @@ void Renderer::draw_frame() {
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = &currentFrame->_renderSemaphore;
-    VkSwapchainKHR swap_chains[] = {swap_chain};
+    VkSwapchainKHR swap_chains[] = {_swapChain};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = swap_chains;
     present_info.pImageIndices = &image_index;
@@ -429,7 +433,7 @@ void Renderer::draw_frame() {
 
 void Renderer::immediate_submit(
     std::function<void(VkCommandBuffer cmd)> &&function) {
-    VK_CHECK(vkResetFences(device, 1, &_immFence));
+    VK_CHECK(vkResetFences(_device, 1, &_immFence));
     VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
 
     VkCommandBuffer cmd = _immCommandBuffer;
@@ -459,7 +463,7 @@ void Renderer::immediate_submit(
 
     VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo, _immFence));
 
-    VK_CHECK(vkWaitForFences(device, 1, &_immFence, true, 9999999999));
+    VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
 }
 
 GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,
@@ -480,7 +484,7 @@ GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = newSurface.vertexBuffer.buffer};
     newSurface.vertexBufferAddress =
-        vkGetBufferDeviceAddress(device, &deviceAdressInfo);
+        vkGetBufferDeviceAddress(_device, &deviceAdressInfo);
 
     newSurface.indexBuffer = create_buffer(indexBufferSize,
                                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT |

@@ -43,14 +43,13 @@ struct FrameData {
 class Renderer {
   private:
     SDL_Window *_window;
-    VkInstance instance;
-    VkDevice device;
-    VkSurfaceKHR surface;
-    VkSwapchainKHR swap_chain;
+    VkInstance _instance;
+    VkDevice _device;
+    VkSurfaceKHR _surface;
+    VkSwapchainKHR _swapChain;
     VkExtent2D _swapChainExtent;
     std::vector<VkImage> _swapChainImages;
     std::vector<VkImageView> _swapChainImageViews;
-    VkRenderPass render_pass;
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
     std::vector<VkFramebuffer> frame_buffers;
