@@ -172,3 +172,21 @@ void DescriptorAllocatorGrowable::destroy_pools(VkDevice device) {
     }
     fullPools.clear();
 }
+
+void DescriptorWriter::write_buffer(int binding, VkBuffer buffer, size_t size,
+                                    size_t offset, VkDescriptorType type) {
+    VkDescriptorBufferInfo &info =
+        bufferInfos.emplace_back(VkDescriptorBufferInfo{
+            .buffer = buffer,
+            .offset = offset,
+            .range = size,
+        });
+
+    VkWriteDescriptorSet write = {};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = VK_NULL_HANDLE;
+    write.descriptorCount = 1;
+    write.descriptorType = type;
+    write.pBufferInfo = &info;
+    writes.push_back(write);
+}
