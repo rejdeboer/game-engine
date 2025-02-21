@@ -52,7 +52,6 @@ class Renderer {
     std::vector<VkImageView> _swapChainImageViews;
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
-    std::vector<VkFramebuffer> frame_buffers;
     VkQueue _graphicsQueue;
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;

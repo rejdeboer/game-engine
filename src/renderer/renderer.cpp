@@ -285,9 +285,6 @@ void Renderer::init_sync_structures() {
 
 void Renderer::deinit() {
     _mainDeletionQueue.flush();
-    for (auto frame_buffer : frame_buffers) {
-        vkDestroyFramebuffer(_device, frame_buffer, nullptr);
-    }
     for (auto image_view : _swapChainImageViews) {
         vkDestroyImageView(_device, image_view, nullptr);
     }
