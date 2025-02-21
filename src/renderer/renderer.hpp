@@ -50,8 +50,6 @@ class Renderer {
     VkExtent2D _swapChainExtent;
     std::vector<VkImage> _swapChainImages;
     std::vector<VkImageView> _swapChainImageViews;
-    VkPipelineLayout pipeline_layout;
-    VkPipeline pipeline;
     VkRenderPass render_pass;
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
@@ -59,6 +57,11 @@ class Renderer {
     VkQueue _graphicsQueue;
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
+
+    VkPipelineLayout _trianglePipelineLayout;
+    VkPipeline _trianglePipeline;
+    VkPipelineLayout _meshPipelineLayout;
+    VkPipeline _meshPipeline;
 
     VkFence _immFence;
     VkCommandBuffer _immCommandBuffer;
@@ -93,6 +96,9 @@ class Renderer {
     void init_swap_chain(VkPhysicalDevice physicalDevice,
                          uint32_t graphicsQueueFamilyIndex,
                          uint32_t presentationQueueFamilyIndex);
+    void init_pipelines();
+    void init_triangle_pipeline();
+    void init_mesh_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();

@@ -2,6 +2,7 @@
 #include "SDL3/SDL_vulkan.h"
 #include "image.h"
 #include "init.h"
+#include "pipeline.h"
 #include <algorithm>
 #include <vulkan/vulkan_core.h>
 
@@ -23,11 +24,7 @@ Renderer::Renderer(SDL_Window *window) {
     _allocator = create_allocator(instance, physical_device, device);
 
     init_swap_chain(physical_device, graphics_index, presentation_index);
-
-    PipelineContext pipeline_context =
-        create_graphics_pipeline(device, _swapChainExtent, _drawImage.format);
-    pipeline = pipeline_context.pipeline;
-    pipeline_layout = pipeline_context.layout;
+    init_pipelines();
 
     _graphicsQueue = get_device_queue(device, graphics_index, 0);
     _presentationQueue = get_device_queue(device, presentation_index, 0);
@@ -66,7 +63,6 @@ void Renderer::init_default_data() {
 
     rectangle = uploadMesh(rect_indices, rect_vertices);
 
-    // delete the rectangle data on engine shutdown
     _mainDeletionQueue.push_function([&]() {
         destroy_buffer(rectangle.indexBuffer);
         destroy_buffer(rectangle.vertexBuffer);
@@ -111,6 +107,114 @@ void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
     _mainDeletionQueue.push_function([&]() {
         vkDestroyImageView(device, _drawImage.imageView, nullptr);
         vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
+    });
+}
+
+void Renderer::init_pipelines() {
+    init_triangle_pipeline();
+    init_mesh_pipeline();
+}
+
+void Renderer::init_triangle_pipeline() {
+    VkShaderModule triangleFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", device,
+                                    &triangleFragShader)) {
+        fmt::print("Error when building the triangle fragment shader module");
+    } else {
+        fmt::print("Triangle fragment shader succesfully loaded");
+    }
+
+    VkShaderModule triangleVertexShader;
+    if (!vkutil::load_shader_module("shaders/spv/shader.vert.spv", device,
+                                    &triangleVertexShader)) {
+        fmt::print("Error when building the triangle vertex shader module");
+    } else {
+        fmt::print("Triangle vertex shader succesfully loaded");
+    }
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr,
+                                    &_trianglePipelineLayout));
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
+    pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.disable_depthtest();
+    pipelineBuilder.set_color_attachment_format(_drawImage.format);
+    pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+    _trianglePipeline = pipelineBuilder.build_pipeline(device);
+
+    vkDestroyShaderModule(device, triangleFragShader, nullptr);
+    vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+
+    _mainDeletionQueue.push_function([&]() {
+        vkDestroyPipelineLayout(device, _trianglePipelineLayout, nullptr);
+        vkDestroyPipeline(device, _trianglePipeline, nullptr);
+    });
+}
+
+void Renderer::init_mesh_pipeline() {
+    VkShaderModule triangleFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", device,
+                                    &triangleFragShader)) {
+        fmt::print("Error when building the mesh fragment shader module");
+    } else {
+        fmt::print("Mesh fragment shader succesfully loaded");
+    }
+
+    VkShaderModule triangleVertexShader;
+    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", device,
+                                    &triangleVertexShader)) {
+        fmt::print("Error when building the mesh vertex shader module");
+    } else {
+        fmt::print("Mesh vertex shader succesfully loaded");
+    }
+
+    VkPushConstantRange bufferRange{};
+    bufferRange.offset = 0;
+    bufferRange.size = sizeof(GPUDrawPushConstants);
+    bufferRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr,
+                                    &_meshPipelineLayout));
+
+    PipelineBuilder pipelineBuilder;
+
+    pipelineBuilder._pipelineLayout = _meshPipelineLayout;
+    pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.disable_depthtest();
+    pipelineBuilder.set_color_attachment_format(_drawImage.format);
+    pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+    _meshPipeline = pipelineBuilder.build_pipeline(device);
+
+    // clean structures
+    vkDestroyShaderModule(device, triangleFragShader, nullptr);
+    vkDestroyShaderModule(device, triangleVertexShader, nullptr);
+
+    _mainDeletionQueue.push_function([&]() {
+        vkDestroyPipelineLayout(device, _meshPipelineLayout, nullptr);
+        vkDestroyPipeline(device, _meshPipeline, nullptr);
     });
 }
 
@@ -180,8 +284,8 @@ void Renderer::deinit() {
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
     }
-    vkDestroyPipeline(device, pipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+    vkDestroyPipeline(device, _trianglePipeline, nullptr);
+    vkDestroyPipelineLayout(device, _trianglePipelineLayout, nullptr);
     for (auto image_view : _swapChainImageViews) {
         vkDestroyImageView(device, image_view, nullptr);
     }
@@ -222,7 +326,8 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(buffer, &renderInfo);
-    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _trianglePipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -393,6 +498,9 @@ GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,
     memcpy(data, vertices.data(), vertexBufferSize);
     memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
 
+    // TODO: Here we are waiting for the GPU command to fully execute before
+    // continuing with CPU logic. It is probably better to use a separate thread
+    // for uploading / creating / deleting the staging buffer
     immediate_submit([&](VkCommandBuffer cmd) {
         VkBufferCopy vertexCopy{0};
         vertexCopy.dstOffset = 0;

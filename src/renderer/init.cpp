@@ -496,6 +496,7 @@ AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
     return allocatedImage;
 }
 
+// TODO: Remove?
 PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent,
                                          VkFormat colorAttachmentFormat) {
     auto vert_shader_code = read_file("shaders/spv/shader.vert.spv");
