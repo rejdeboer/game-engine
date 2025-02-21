@@ -1,6 +1,7 @@
 #include "init.h"
 #include "../file.h"
 #include "vertex.h"
+#include <algorithm>
 #include <set>
 #include <vector>
 #include <vulkan/vulkan_core.h>
