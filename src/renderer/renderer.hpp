@@ -81,9 +81,6 @@ class Renderer {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };
 
-    GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
-                              std::span<Vertex> vertices);
-
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
@@ -105,4 +102,7 @@ class Renderer {
     Renderer(SDL_Window *window);
     void deinit();
     void draw_frame();
+
+    GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
+                              std::span<Vertex> vertices);
 };

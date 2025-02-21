@@ -6,7 +6,10 @@
 
 struct Vertex {
     glm::vec3 pos;
+    glm::vec3 normal;
     glm::vec4 color;
+    float uv_x;
+    float uv_y;
 
     static VkVertexInputBindingDescription get_binding_description() {
         VkVertexInputBindingDescription desc = {};

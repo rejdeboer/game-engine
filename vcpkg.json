@@ -1,5 +1,6 @@
 {
   "dependencies": [
+    "fastgltf",
     "fmt",
     {
       "name": "sdl3",
@@ -12,6 +13,7 @@
     },
     "vulkan-memory-allocator",
     "glm",
-    "entt"
+    "entt",
+    "stb"
   ]
 }

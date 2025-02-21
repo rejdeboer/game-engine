@@ -342,9 +342,17 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(buffer, 0, 1, &rectangle.vertexBuffer.buffer,
-                           offsets);
+    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
+
+    GPUDrawPushConstants pushConstants;
+    pushConstants.worldMatrix = glm::mat4{1.f};
+    pushConstants.vertexBuffer = rectangle.vertexBufferAddress;
+
+    // VkDeviceSize offsets[] = {0};
+    // vkCmdBindVertexBuffers(buffer, 0, 1, &rectangle.vertexBuffer.buffer,
+    //                        offsets);
+    vkCmdPushConstants(buffer, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                       0, sizeof(GPUDrawPushConstants), &pushConstants);
     vkCmdBindIndexBuffer(buffer, rectangle.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(buffer, 6, 1, 0, 0, 0);
