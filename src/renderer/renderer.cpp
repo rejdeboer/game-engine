@@ -284,8 +284,6 @@ void Renderer::deinit() {
     for (auto frame_buffer : frame_buffers) {
         vkDestroyFramebuffer(device, frame_buffer, nullptr);
     }
-    vkDestroyPipeline(device, _trianglePipeline, nullptr);
-    vkDestroyPipelineLayout(device, _trianglePipelineLayout, nullptr);
     for (auto image_view : _swapChainImageViews) {
         vkDestroyImageView(device, image_view, nullptr);
     }
