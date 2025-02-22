@@ -1,5 +1,6 @@
 #pragma once
 #include "descriptor.h"
+#include "init.h"
 #include "loader.h"
 #include "types.h"
 #include "vertex.h"
@@ -45,17 +46,20 @@ class Renderer {
   private:
     SDL_Window *_window;
     VkInstance _instance;
+    VkPhysicalDevice _physicalDevice;
     VkDevice _device;
     VkSurfaceKHR _surface;
-    VkSwapchainKHR _swapChain;
-    VkExtent2D _swapChainExtent;
-    std::vector<VkImage> _swapChainImages;
-    std::vector<VkImageView> _swapChainImageViews;
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
     VkQueue _graphicsQueue;
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
+
+    VkSwapchainKHR _swapChain;
+    VkExtent2D _swapChainExtent;
+    VkSurfaceFormatKHR _swapChainImageFormat;
+    std::vector<VkImage> _swapChainImages;
+    std::vector<VkImageView> _swapChainImageViews;
 
     VkPipelineLayout _meshPipelineLayout;
     VkPipeline _meshPipeline;
@@ -74,6 +78,8 @@ class Renderer {
 
     VmaAllocator _allocator;
 
+    bool _resizeRequested;
+
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
@@ -88,14 +94,13 @@ class Renderer {
     void destroy_buffer(const AllocatedBuffer &buffer);
 
     void init_default_data();
-    void init_swap_chain(VkPhysicalDevice physicalDevice,
-                         uint32_t graphicsQueueFamilyIndex,
-                         uint32_t presentationQueueFamilyIndex);
+    void init_swap_chain();
     void init_pipelines();
     void init_mesh_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
+    void destroy_swap_chain();
 
   public:
     Renderer(SDL_Window *window);
@@ -104,4 +109,6 @@ class Renderer {
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);
+
+    void resize_swap_chain();
 };

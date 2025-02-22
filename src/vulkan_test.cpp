@@ -18,7 +18,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
     gWindow = SDL_CreateWindow("hello_sdl3", SCREEN_WIDTH, SCREEN_HEIGHT,
-                               SDL_WINDOW_VULKAN);
+                               SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (gWindow == NULL) {
         fprintf(stderr, "could not create window: %s\n", SDL_GetError());
         return 1;

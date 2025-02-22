@@ -1,7 +1,6 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
 #include "image.h"
-#include "init.h"
 #include "pipeline.h"
 #include <algorithm>
 #include <glm/gtx/transform.hpp>
@@ -14,25 +13,34 @@ Renderer::Renderer(SDL_Window *window) {
     _window = window;
     _instance = create_vulkan_instance(window);
     _surface = create_surface(window, _instance);
-    VkPhysicalDevice physical_device =
-        pick_physical_device(_instance, _surface);
-    QueueFamilyIndices queue_family_indices =
-        find_compatible_queue_family_indices(physical_device, _surface);
-    assert(queue_family_indices.is_complete());
+    _physicalDevice = pick_physical_device(_instance, _surface);
 
-    uint32_t graphics_index = queue_family_indices.graphics_family.value();
-    uint32_t presentation_index = queue_family_indices.present_family.value();
-    _device =
-        create_device(physical_device, graphics_index, presentation_index);
-    _allocator = create_allocator(_instance, physical_device, _device);
+    QueueFamilyIndices queueFamilyIndices =
+        find_compatible_queue_family_indices(_physicalDevice, _surface);
+    assert(queueFamilyIndices.is_complete());
+    uint32_t graphicsIndex = queueFamilyIndices.graphics_family.value();
+    uint32_t presentationIndex = queueFamilyIndices.present_family.value();
 
-    init_swap_chain(physical_device, graphics_index, presentation_index);
+    _device = create_device(_physicalDevice, graphicsIndex, presentationIndex);
+    _allocator = create_allocator(_instance, _physicalDevice, _device);
+
+    init_swap_chain();
+    _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
+    _depthImage = create_depth_image(_device, _allocator, _swapChainExtent);
+
+    _mainDeletionQueue.push_function([&]() {
+        vkDestroyImageView(_device, _drawImage.imageView, nullptr);
+        vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
+        vkDestroyImageView(_device, _depthImage.imageView, nullptr);
+        vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
+    });
+
     init_pipelines();
 
-    _graphicsQueue = get_device_queue(_device, graphics_index, 0);
-    _presentationQueue = get_device_queue(_device, presentation_index, 0);
+    _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
+    _presentationQueue = get_device_queue(_device, presentationIndex, 0);
 
-    init_commands(graphics_index);
+    init_commands(graphicsIndex);
     init_sync_structures();
     init_descriptors();
     init_default_data();
@@ -64,31 +72,20 @@ void Renderer::init_commands(uint32_t queueFamilyIndex) {
     });
 }
 
-void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
-                               uint32_t graphicsQueueFamilyIndex,
-                               uint32_t presentationQueueFamilyIndex) {
+void Renderer::init_swap_chain() {
     SwapChainSupportDetails swapChainSupportDetails =
-        query_swap_chain_support(physicalDevice, _surface);
+        query_swap_chain_support(_physicalDevice, _surface);
     _swapChainExtent =
         choose_swap_extent(_window, swapChainSupportDetails.capabilities);
-    VkSurfaceFormatKHR surfaceFormat =
+    _swapChainImageFormat =
         choose_swap_surface_format(swapChainSupportDetails.formats);
-    _swapChain = create_swap_chain(
-        _window, swapChainSupportDetails, _device, _surface, _swapChainExtent,
-        surfaceFormat, graphicsQueueFamilyIndex, presentationQueueFamilyIndex);
+
+    _swapChain = create_swap_chain(_window, swapChainSupportDetails, _device,
+                                   _surface, _swapChainExtent,
+                                   _swapChainImageFormat, _physicalDevice);
     _swapChainImages = get_swap_chain_images(_device, _swapChain);
-    _swapChainImageViews =
-        create_image_views(_device, _swapChainImages, surfaceFormat.format);
-
-    _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
-    _depthImage = create_depth_image(_device, _allocator, _swapChainExtent);
-
-    _mainDeletionQueue.push_function([&]() {
-        vkDestroyImageView(_device, _drawImage.imageView, nullptr);
-        vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
-        vkDestroyImageView(_device, _depthImage.imageView, nullptr);
-        vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
-    });
+    _swapChainImageViews = create_image_views(_device, _swapChainImages,
+                                              _swapChainImageFormat.format);
 }
 
 void Renderer::init_pipelines() { init_mesh_pipeline(); }
@@ -218,14 +215,17 @@ void Renderer::deinit() {
         destroy_buffer(mesh->meshBuffers.vertexBuffer);
     }
     _mainDeletionQueue.flush();
-    for (auto image_view : _swapChainImageViews) {
-        vkDestroyImageView(_device, image_view, nullptr);
-    }
-    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
+    destroy_swap_chain();
     vkDestroyDevice(_device, nullptr);
     SDL_Vulkan_DestroySurface(_instance, _surface, nullptr);
     vkDestroyInstance(_instance, nullptr);
     SDL_Vulkan_UnloadLibrary();
+}
+
+void Renderer::resize_swap_chain() {
+    vkDeviceWaitIdle(_device);
+    destroy_swap_chain();
+    init_swap_chain();
 }
 
 void Renderer::record_command_buffer(VkCommandBuffer buffer,
@@ -337,9 +337,13 @@ void Renderer::draw_frame() {
     vkResetFences(_device, 1, &currentFrame->_renderFence);
 
     uint32_t image_index;
-    vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX,
-                          currentFrame->_swapchainSemaphore, VK_NULL_HANDLE,
-                          &image_index);
+    VkResult acquireResult = vkAcquireNextImageKHR(
+        _device, _swapChain, UINT64_MAX, currentFrame->_swapchainSemaphore,
+        VK_NULL_HANDLE, &image_index);
+    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        _resizeRequested = true;
+        return;
+    }
 
     _drawExtent.width =
         std::min(_swapChainExtent.width, _drawImage.extent.width);
@@ -382,7 +386,12 @@ void Renderer::draw_frame() {
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
-    vkQueuePresentKHR(_presentationQueue, &present_info);
+    VkResult presentResult =
+        vkQueuePresentKHR(_presentationQueue, &present_info);
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        _resizeRequested = true;
+        return;
+    }
     _frameNumber++;
 }
 
@@ -504,4 +513,11 @@ AllocatedBuffer Renderer::create_buffer(size_t allocSize,
 
 void Renderer::destroy_buffer(const AllocatedBuffer &buffer) {
     vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
+}
+
+void Renderer::destroy_swap_chain() {
+    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
+    for (int i = 0; i < _swapChainImageViews.size(); i++) {
+        vkDestroyImageView(_device, _swapChainImageViews[i], nullptr);
+    }
 }

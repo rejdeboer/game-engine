@@ -364,11 +364,12 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     return device;
 }
 
-VkSwapchainKHR
-create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
-                  VkDevice device, VkSurfaceKHR surface, VkExtent2D extent,
-                  VkSurfaceFormatKHR surface_format, uint32_t graphics_index,
-                  uint32_t presentation_index) {
+VkSwapchainKHR create_swap_chain(SDL_Window *window,
+                                 SwapChainSupportDetails support_details,
+                                 VkDevice device, VkSurfaceKHR surface,
+                                 VkExtent2D extent,
+                                 VkSurfaceFormatKHR surface_format,
+                                 VkPhysicalDevice physicalDevice) {
     VkPresentModeKHR present_mode =
         choose_swap_present_mode(support_details.present_modes);
 
@@ -394,6 +395,12 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
     create_info.clipped = VK_TRUE;
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
+    QueueFamilyIndices queueFamilyIndices =
+        find_compatible_queue_family_indices(physicalDevice, surface);
+    assert(queueFamilyIndices.is_complete());
+    uint32_t graphics_index = queueFamilyIndices.graphics_family.value();
+    uint32_t presentation_index = queueFamilyIndices.present_family.value();
+
     if (graphics_index != presentation_index) {
         create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         create_info.queueFamilyIndexCount = 2;
@@ -407,7 +414,6 @@ create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
 
     VkSwapchainKHR swap_chain;
     VK_CHECK(vkCreateSwapchainKHR(device, &create_info, nullptr, &swap_chain));
-
     return swap_chain;
 }
 

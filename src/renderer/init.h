@@ -16,6 +16,15 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> present_modes;
 };
 
+struct SwapChainProps {
+    VkSurfaceFormatKHR imageFormat;
+    VkExtent2D extent;
+    VkPresentModeKHR presentMode;
+    uint32_t imageCount;
+    uint32_t graphicsQueueFamilyIndex;
+    uint32_t presentQueueFamilyIndex;
+};
+
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphics_family;
     std::optional<uint32_t> present_family;
@@ -45,11 +54,12 @@ SwapChainSupportDetails query_swap_chain_support(VkPhysicalDevice device,
                                                  VkSurfaceKHR surface);
 VkDevice create_device(VkPhysicalDevice physical_device,
                        uint32_t graphics_index, uint32_t presentation_index);
-VkSwapchainKHR
-create_swap_chain(SDL_Window *window, SwapChainSupportDetails support_details,
-                  VkDevice device, VkSurfaceKHR surface, VkExtent2D extent,
-                  VkSurfaceFormatKHR surface_format, uint32_t graphics_index,
-                  uint32_t presentation_index);
+VkSwapchainKHR create_swap_chain(SDL_Window *window,
+                                 SwapChainSupportDetails support_details,
+                                 VkDevice device, VkSurfaceKHR surface,
+                                 VkExtent2D extent,
+                                 VkSurfaceFormatKHR surface_format,
+                                 VkPhysicalDevice physicalDevice);
 std::vector<VkFramebuffer>
 create_frame_buffers(VkDevice device, VkRenderPass render_pass,
                      std::vector<VkImageView> image_views,
