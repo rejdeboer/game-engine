@@ -294,6 +294,10 @@ void Renderer::init_sync_structures() {
 }
 
 void Renderer::deinit() {
+    for (auto &mesh : testMeshes) {
+        destroy_buffer(mesh->meshBuffers.indexBuffer);
+        destroy_buffer(mesh->meshBuffers.vertexBuffer);
+    }
     _mainDeletionQueue.flush();
     for (auto image_view : _swapChainImageViews) {
         vkDestroyImageView(_device, image_view, nullptr);
