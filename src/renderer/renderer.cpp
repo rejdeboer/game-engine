@@ -132,12 +132,12 @@ void Renderer::init_mesh_pipeline() {
     pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
     pipelineBuilder.set_multisampling_none();
-    pipelineBuilder.disable_blending();
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(_depthImage.format);
     // TODO: Vkguide uses 0 as far and 1 as near
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.enable_blending_additive();
     _meshPipeline = pipelineBuilder.build_pipeline(_device);
 
     // clean structures
