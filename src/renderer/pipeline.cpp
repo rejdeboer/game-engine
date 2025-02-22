@@ -39,17 +39,18 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device) {
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments = &_colorBlendAttachment;
 
-    auto bindingDescription = Vertex::get_binding_description();
+    auto binding_description = Vertex::get_binding_description();
     auto attribute_descriptions = Vertex::get_attribute_descriptions();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount =
-        static_cast<uint32_t>(attribute_descriptions.size());
-    vertexInputInfo.pVertexAttributeDescriptions =
-        attribute_descriptions.data();
+    // TODO: Do we need this?
+    // vertexInputInfo.vertexBindingDescriptionCount = 1;
+    // vertexInputInfo.pVertexBindingDescriptions = &binding_description;
+    // vertexInputInfo.vertexAttributeDescriptionCount =
+    //     static_cast<uint32_t>(attribute_descriptions.size());
+    // vertexInputInfo.pVertexAttributeDescriptions =
+    //     attribute_descriptions.data();
 
     // build the actual pipeline
     // we now use all of the info structs we have been writing into into this

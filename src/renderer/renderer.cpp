@@ -4,6 +4,7 @@
 #include "init.h"
 #include "pipeline.h"
 #include <algorithm>
+#include <glm/gtx/transform.hpp>
 #include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
@@ -64,6 +65,7 @@ void Renderer::init_default_data() {
     rect_indices[5] = 3;
 
     rectangle = uploadMesh(rect_indices, rect_vertices);
+    testMeshes = load_gltf_meshes(this, "assets/meshes/basicmesh.glb").value();
 
     _mainDeletionQueue.push_function([&]() {
         destroy_buffer(rectangle.indexBuffer);
@@ -167,17 +169,17 @@ void Renderer::init_triangle_pipeline() {
 }
 
 void Renderer::init_mesh_pipeline() {
-    VkShaderModule triangleFragShader;
+    VkShaderModule meshFragShader;
     if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", _device,
-                                    &triangleFragShader)) {
+                                    &meshFragShader)) {
         fmt::print("Error when building the mesh fragment shader module");
     } else {
         fmt::print("Mesh fragment shader succesfully loaded");
     }
 
-    VkShaderModule triangleVertexShader;
+    VkShaderModule meshVertexShader;
     if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", _device,
-                                    &triangleVertexShader)) {
+                                    &meshVertexShader)) {
         fmt::print("Error when building the mesh vertex shader module");
     } else {
         fmt::print("Mesh vertex shader succesfully loaded");
@@ -192,15 +194,15 @@ void Renderer::init_mesh_pipeline() {
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
     pipelineLayoutInfo.pSetLayouts = nullptr;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
     VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                     &_meshPipelineLayout));
 
     PipelineBuilder pipelineBuilder;
 
     pipelineBuilder._pipelineLayout = _meshPipelineLayout;
-    pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
+    pipelineBuilder.set_shaders(meshVertexShader, meshFragShader);
     pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
@@ -212,8 +214,8 @@ void Renderer::init_mesh_pipeline() {
     _meshPipeline = pipelineBuilder.build_pipeline(_device);
 
     // clean structures
-    vkDestroyShaderModule(_device, triangleFragShader, nullptr);
-    vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
+    vkDestroyShaderModule(_device, meshFragShader, nullptr);
+    vkDestroyShaderModule(_device, meshVertexShader, nullptr);
 
     _mainDeletionQueue.push_function([&]() {
         vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
@@ -356,6 +358,27 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     vkCmdBindIndexBuffer(buffer, rectangle.indexBuffer.buffer, 0,
                          VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(buffer, 6, 1, 0, 0, 0);
+
+    glm::mat4 view = glm::translate(glm::vec3{0, 0, -5});
+    // camera projection
+    glm::mat4 projection = glm::perspective(
+        glm::radians(70.f),
+        (float)_drawExtent.width / (float)_drawExtent.height, 10000.f, 0.1f);
+
+    // invert Y direction
+    projection[1][1] *= -1;
+
+    pushConstants.worldMatrix = projection * view;
+    pushConstants.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress;
+
+    vkCmdPushConstants(buffer, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                       0, sizeof(GPUDrawPushConstants), &pushConstants);
+    vkCmdBindIndexBuffer(buffer, testMeshes[2]->meshBuffers.indexBuffer.buffer,
+                         0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdDrawIndexed(buffer, testMeshes[2]->surfaces[0].count, 1,
+                     testMeshes[2]->surfaces[0].startIndex, 0, 0);
+
     vkCmdEndRendering(buffer);
 
     vkutil::transition_image(buffer, _drawImage.image,
@@ -480,8 +503,7 @@ GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,
 
     newSurface.vertexBuffer = create_buffer(
         vertexBufferSize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY);
 

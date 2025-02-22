@@ -1,5 +1,6 @@
 #pragma once
 #include "descriptor.h"
+#include "loader.h"
 #include "types.h"
 #include "vertex.h"
 #include <SDL3/SDL.h>
@@ -75,6 +76,7 @@ class Renderer {
     VmaAllocator _allocator;
 
     GPUMeshBuffers rectangle;
+    std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     FrameData &get_current_frame() {

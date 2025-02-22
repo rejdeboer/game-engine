@@ -1,8 +1,11 @@
 #pragma once
 #include "types.h"
 #include <filesystem>
+#include <optional>
 #include <unordered_map>
 #include <vector>
+
+class Renderer;
 
 struct GeoSurface {
     uint32_t startIndex;
@@ -15,4 +18,5 @@ struct MeshAsset {
     GPUMeshBuffers meshBuffers;
 };
 
-class Renderer;
+std::optional<std::vector<std::shared_ptr<MeshAsset>>>
+load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath);

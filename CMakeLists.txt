@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(mygame)
 
+find_package(fastgltf CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
@@ -8,6 +9,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(Stb REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,6 +39,7 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/renderer/descriptor.cpp
                 src/renderer/image.cpp
                 src/renderer/init.cpp 
+                src/renderer/loader.cpp
                 src/renderer/pipeline.cpp
                 src/renderer/renderer.cpp 
                 ${SHADERS})
@@ -46,10 +49,12 @@ add_dependencies(vulkan_test shaders)
 
 target_link_libraries(mygame PRIVATE SDL3::SDL3 EnTT::EnTT SDL3_image::SDL3_image)
 target_link_libraries(vulkan_test PRIVATE 
+                        fastgltf::fastgltf
                         SDL3::SDL3 
                         Vulkan::Vulkan 
                         glm::glm-header-only 
                         GPUOpen::VulkanMemoryAllocator 
-                        fmt::fmt)
+                        fmt::fmt
+                        ${Stb_INCLUDE_DIR})
 target_link_libraries(test PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 

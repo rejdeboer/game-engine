@@ -332,6 +332,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     physical_device_features_12.sType =
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     physical_device_features_12.bufferDeviceAddress = true;
+    physical_device_features_12.descriptorIndexing = true;
 
     VkPhysicalDeviceVulkan13Features physical_device_features_13 = {};
     physical_device_features_13.sType =

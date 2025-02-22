@@ -2,33 +2,33 @@
 #include "renderer.hpp"
 #include "stb_image.h"
 #include "types.h"
+#include "vertex.h"
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
-#include <iostream>
-
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include <iostream>
 
 std::optional<std::vector<std::shared_ptr<MeshAsset>>>
 load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath) {
     std::cout << "Loading GLTF: " << filePath << std::endl;
 
-    fastgltf::GltfDataBuffer data;
-    data.FromPath(filePath);
-
     constexpr auto GLTF_OPTIONS = fastgltf::Options::LoadExternalBuffers;
-    fastgltf::Asset gltf;
     fastgltf::Parser parser{};
 
-    auto load =
-        parser.loadGltfBinary(data, filePath.parent_path(), GLTF_OPTIONS);
-    if (load) {
-        gltf = std::move(load.get());
-    } else {
-        fmt::print("Failed to load glTF: {} \n",
-                   fastgltf::to_underlying(load.error()));
+    auto gltfFile = fastgltf::MappedGltfFile::FromPath(filePath);
+    if (!bool(gltfFile)) {
+        std::cerr << "Failed to open glTF file: "
+                  << fastgltf::getErrorMessage(gltfFile.error()) << '\n';
         return {};
     }
+
+    auto asset = parser.loadGltf(gltfFile.get(), filePath.parent_path());
+    if (asset.error() != fastgltf::Error::None) {
+        fmt::print("Failed to load glTF: {} \n",
+                   fastgltf::getErrorMessage(asset.error()));
+        return {};
+    }
+    fastgltf::Asset gltf = std::move(asset.get());
 
     std::vector<std::shared_ptr<MeshAsset>> meshes;
 
