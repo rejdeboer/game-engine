@@ -497,6 +497,54 @@ AllocatedImage create_draw_image(VkDevice device, VmaAllocator allocator,
     return allocatedImage;
 }
 
+AllocatedImage create_depth_image(VkDevice device, VmaAllocator allocator,
+                                  VkExtent2D swapChainExtent) {
+    VkExtent3D depthImageExtent = {swapChainExtent.width,
+                                   swapChainExtent.height, 1};
+
+    AllocatedImage allocatedImage;
+    allocatedImage.format = VK_FORMAT_D32_SFLOAT;
+    allocatedImage.extent = depthImageExtent;
+
+    VkImageUsageFlags depthImageUsages{};
+    depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    VkImageCreateInfo imageCreateInfo = {};
+    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format = allocatedImage.format;
+    imageCreateInfo.extent = allocatedImage.extent;
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageCreateInfo.usage = depthImageUsages;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
+        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VK_CHECK(vmaCreateImage(allocator, &imageCreateInfo, &allocInfo,
+                            &allocatedImage.image, &allocatedImage.allocation,
+                            nullptr));
+
+    VkImageViewCreateInfo imageViewCreateInfo = {};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCreateInfo.image = allocatedImage.image;
+    imageViewCreateInfo.format = allocatedImage.format;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    VK_CHECK(vkCreateImageView(device, &imageViewCreateInfo, nullptr,
+                               &allocatedImage.imageView));
+
+    return allocatedImage;
+}
+
 // TODO: Remove?
 PipelineContext create_graphics_pipeline(VkDevice device, VkExtent2D extent,
                                          VkFormat colorAttachmentFormat) {

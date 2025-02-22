@@ -109,9 +109,13 @@ void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
         create_image_views(_device, _swapChainImages, surfaceFormat.format);
 
     _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
+    _depthImage = create_depth_image(_device, _allocator, _swapChainExtent);
+
     _mainDeletionQueue.push_function([&]() {
         vkDestroyImageView(_device, _drawImage.imageView, nullptr);
         vmaDestroyImage(_allocator, _drawImage.image, _drawImage.allocation);
+        vkDestroyImageView(_device, _depthImage.imageView, nullptr);
+        vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
     });
 }
 
@@ -156,7 +160,9 @@ void Renderer::init_triangle_pipeline() {
     pipelineBuilder.disable_blending();
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
-    pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+    pipelineBuilder.set_depth_format(_depthImage.format);
+    // TODO: Vkguide uses 0 as far and 1 as near
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     _trianglePipeline = pipelineBuilder.build_pipeline(_device);
 
     vkDestroyShaderModule(_device, triangleFragShader, nullptr);
@@ -210,7 +216,9 @@ void Renderer::init_mesh_pipeline() {
     pipelineBuilder.disable_blending();
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
-    pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+    pipelineBuilder.set_depth_format(_depthImage.format);
+    // TODO: Vkguide uses 0 as far and 1 as near
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     _meshPipeline = pipelineBuilder.build_pipeline(_device);
 
     // clean structures
@@ -310,6 +318,9 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                              VK_IMAGE_LAYOUT_GENERAL);
     vkutil::transition_image(buffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkutil::transition_image(buffer, _depthImage.image,
+                             VK_IMAGE_LAYOUT_UNDEFINED,
+                             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     // NOTE: Begin a rendering pass connected to our draw image
     VkRenderingAttachmentInfo colorAttachment = {};
@@ -318,6 +329,15 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingAttachmentInfo depthAttachment = {};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = _depthImage.imageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    // TODO: Vkguide uses 0.f as the far value here, do we need that?
+    depthAttachment.clearValue.depthStencil.depth = 1.f;
 
     VkRenderingInfo renderInfo = {};
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;

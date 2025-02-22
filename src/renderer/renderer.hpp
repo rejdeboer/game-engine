@@ -71,6 +71,7 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     AllocatedImage _drawImage;
+    AllocatedImage _depthImage;
     VkExtent2D _drawExtent;
 
     VmaAllocator _allocator;
