@@ -350,9 +350,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     pushConstants.worldMatrix = glm::mat4{1.f};
     pushConstants.vertexBuffer = rectangle.vertexBufferAddress;
 
-    // VkDeviceSize offsets[] = {0};
-    // vkCmdBindVertexBuffers(buffer, 0, 1, &rectangle.vertexBuffer.buffer,
-    //                        offsets);
     vkCmdPushConstants(buffer, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
                        0, sizeof(GPUDrawPushConstants), &pushConstants);
     vkCmdBindIndexBuffer(buffer, rectangle.indexBuffer.buffer, 0,
@@ -362,8 +359,8 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     glm::mat4 view = glm::translate(glm::vec3{0, 0, -5});
     // camera projection
     glm::mat4 projection = glm::perspective(
-        glm::radians(70.f),
-        (float)_drawExtent.width / (float)_drawExtent.height, 10000.f, 0.1f);
+        glm::radians(35.0f),
+        (float)_drawExtent.width / (float)_drawExtent.height, 0.0f, 1.0f);
 
     // invert Y direction
     projection[1][1] *= -1;
@@ -375,7 +372,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                        0, sizeof(GPUDrawPushConstants), &pushConstants);
     vkCmdBindIndexBuffer(buffer, testMeshes[2]->meshBuffers.indexBuffer.buffer,
                          0, VK_INDEX_TYPE_UINT32);
-
     vkCmdDrawIndexed(buffer, testMeshes[2]->surfaces[0].count, 1,
                      testMeshes[2]->surfaces[0].startIndex, 0, 0);
 
