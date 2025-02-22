@@ -57,8 +57,6 @@ class Renderer {
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
 
-    VkPipelineLayout _trianglePipelineLayout;
-    VkPipeline _trianglePipeline;
     VkPipelineLayout _meshPipelineLayout;
     VkPipeline _meshPipeline;
 
@@ -76,7 +74,6 @@ class Renderer {
 
     VmaAllocator _allocator;
 
-    GPUMeshBuffers rectangle;
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
@@ -95,7 +92,6 @@ class Renderer {
                          uint32_t graphicsQueueFamilyIndex,
                          uint32_t presentationQueueFamilyIndex);
     void init_pipelines();
-    void init_triangle_pipeline();
     void init_mesh_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();

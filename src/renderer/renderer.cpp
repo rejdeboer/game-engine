@@ -42,35 +42,7 @@ Renderer::Renderer(SDL_Window *window) {
 }
 
 void Renderer::init_default_data() {
-    std::array<Vertex, 4> rect_vertices;
-
-    rect_vertices[0].pos = {0.5, -0.5, 0.0};
-    rect_vertices[1].pos = {0.5, 0.5, 0.0};
-    rect_vertices[2].pos = {-0.5, -0.5, 0.0};
-    rect_vertices[3].pos = {-0.5, 0.5, 0.0};
-
-    rect_vertices[0].color = {0, 0, 0, 1};
-    rect_vertices[1].color = {0.5, 0.5, 0.5, 1};
-    rect_vertices[2].color = {1, 0, 0, 1};
-    rect_vertices[3].color = {0, 1, 0, 1};
-
-    std::array<uint32_t, 6> rect_indices;
-
-    rect_indices[0] = 0;
-    rect_indices[1] = 1;
-    rect_indices[2] = 2;
-
-    rect_indices[3] = 2;
-    rect_indices[4] = 1;
-    rect_indices[5] = 3;
-
-    rectangle = uploadMesh(rect_indices, rect_vertices);
     testMeshes = load_gltf_meshes(this, "assets/meshes/basicmesh.glb").value();
-
-    _mainDeletionQueue.push_function([&]() {
-        destroy_buffer(rectangle.indexBuffer);
-        destroy_buffer(rectangle.vertexBuffer);
-    });
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -119,60 +91,7 @@ void Renderer::init_swap_chain(VkPhysicalDevice physicalDevice,
     });
 }
 
-void Renderer::init_pipelines() {
-    init_triangle_pipeline();
-    init_mesh_pipeline();
-}
-
-void Renderer::init_triangle_pipeline() {
-    VkShaderModule triangleFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", _device,
-                                    &triangleFragShader)) {
-        fmt::print("Error when building the triangle fragment shader module");
-    } else {
-        fmt::print("Triangle fragment shader succesfully loaded");
-    }
-
-    VkShaderModule triangleVertexShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.vert.spv", _device,
-                                    &triangleVertexShader)) {
-        fmt::print("Error when building the triangle vertex shader module");
-    } else {
-        fmt::print("Triangle vertex shader succesfully loaded");
-    }
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = nullptr;
-    VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
-                                    &_trianglePipelineLayout));
-
-    PipelineBuilder pipelineBuilder;
-    pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
-    pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
-    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_multisampling_none();
-    pipelineBuilder.disable_blending();
-    pipelineBuilder.disable_depthtest();
-    pipelineBuilder.set_color_attachment_format(_drawImage.format);
-    pipelineBuilder.set_depth_format(_depthImage.format);
-    // TODO: Vkguide uses 0 as far and 1 as near
-    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    _trianglePipeline = pipelineBuilder.build_pipeline(_device);
-
-    vkDestroyShaderModule(_device, triangleFragShader, nullptr);
-    vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
-
-    _mainDeletionQueue.push_function([&]() {
-        vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
-        vkDestroyPipeline(_device, _trianglePipeline, nullptr);
-    });
-}
+void Renderer::init_pipelines() { init_mesh_pipeline(); }
 
 void Renderer::init_mesh_pipeline() {
     VkShaderModule meshFragShader;
@@ -351,8 +270,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(buffer, &renderInfo);
-    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      _trianglePipeline);
+    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -368,18 +286,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
-
-    GPUDrawPushConstants pushConstants;
-    pushConstants.worldMatrix = glm::mat4{1.f};
-    pushConstants.vertexBuffer = rectangle.vertexBufferAddress;
-
-    vkCmdPushConstants(buffer, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                       0, sizeof(GPUDrawPushConstants), &pushConstants);
-    vkCmdBindIndexBuffer(buffer, rectangle.indexBuffer.buffer, 0,
-                         VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(buffer, 6, 1, 0, 0, 0);
-
     glm::mat4 view = glm::translate(glm::vec3{0, 0, -5});
     // camera projection
     glm::mat4 projection = glm::perspective(
@@ -389,6 +295,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     // invert Y direction
     projection[1][1] *= -1;
 
+    GPUDrawPushConstants pushConstants;
     pushConstants.worldMatrix = projection * view;
     pushConstants.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress;
 
