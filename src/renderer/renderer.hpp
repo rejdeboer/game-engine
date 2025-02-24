@@ -35,7 +35,7 @@ struct FrameData {
     VkSemaphore _swapchainSemaphore, _renderSemaphore;
     VkFence _renderFence;
 
-    // DescriptorAllocatorGrowable _frameDescriptors;
+    DescriptorAllocatorGrowable _frameDescriptors;
     DeletionQueue _deletionQueue;
 
     VkCommandPool _commandPool;
@@ -71,6 +71,9 @@ class Renderer {
     DescriptorAllocator _globalDescriptorAllocator;
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
+    VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
+
+    GPUSceneData sceneData;
 
     AllocatedImage _drawImage;
     AllocatedImage _depthImage;
