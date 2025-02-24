@@ -546,8 +546,105 @@ AllocatedBuffer Renderer::create_buffer(size_t allocSize,
     return newBuffer;
 }
 
+AllocatedImage Renderer::create_image(VkExtent3D size, VkFormat format,
+                                      VkImageUsageFlags usage, bool mipmapped) {
+    AllocatedImage newImage;
+    newImage.format = format;
+    newImage.extent = size;
+
+    VkImageCreateInfo imageCreateInfo = {};
+    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format = format;
+    imageCreateInfo.extent = size;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageCreateInfo.usage = usage;
+    imageCreateInfo.mipLevels =
+        mipmapped ? static_cast<uint32_t>(std::floor(
+                        std::log2(std::max(size.width, size.height)))) +
+                        1
+                  : 1;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
+        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VK_CHECK(vmaCreateImage(_allocator, &imageCreateInfo, &allocInfo,
+                            &newImage.image, &newImage.allocation, nullptr));
+
+    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (format == VK_FORMAT_D32_SFLOAT) {
+        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    VkImageViewCreateInfo imageViewCreateInfo = {};
+    imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCreateInfo.image = newImage.image;
+    imageViewCreateInfo.format = format;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.subresourceRange.aspectMask = aspectFlag;
+    VK_CHECK(vkCreateImageView(_device, &imageViewCreateInfo, nullptr,
+                               &newImage.imageView));
+
+    return newImage;
+}
+
+AllocatedImage Renderer::create_image(void *data, VkExtent3D size,
+                                      VkFormat format, VkImageUsageFlags usage,
+                                      bool mipmapped) {
+    size_t dataSize = size.depth * size.width * size.height * 4;
+    AllocatedBuffer uploadBuffer =
+        create_buffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                      VMA_MEMORY_USAGE_CPU_TO_GPU);
+    memcpy(uploadBuffer.info.pMappedData, data, dataSize);
+
+    AllocatedImage newImage =
+        create_image(size, format,
+                     usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                         VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                     mipmapped);
+
+    immediate_submit([&](VkCommandBuffer cmd) {
+        vkutil::transition_image(cmd, newImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        VkBufferImageCopy copyRegion = {};
+        copyRegion.bufferOffset = 0;
+        copyRegion.bufferRowLength = 0;
+        copyRegion.bufferImageHeight = 0;
+
+        copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyRegion.imageSubresource.mipLevel = 0;
+        copyRegion.imageSubresource.baseArrayLayer = 0;
+        copyRegion.imageSubresource.layerCount = 1;
+        copyRegion.imageExtent = size;
+
+        vkCmdCopyBufferToImage(cmd, uploadBuffer.buffer, newImage.image,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                               &copyRegion);
+
+        vkutil::transition_image(cmd, newImage.image,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    });
+
+    destroy_buffer(uploadBuffer);
+    return newImage;
+}
+
 void Renderer::destroy_buffer(const AllocatedBuffer &buffer) {
     vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
+}
+
+void Renderer::destroy_image(const AllocatedImage &img) {
+    vkDestroyImageView(_device, img.imageView, nullptr);
+    vmaDestroyImage(_allocator, img.image, img.allocation);
 }
 
 void Renderer::destroy_swap_chain() {

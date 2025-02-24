@@ -94,7 +94,14 @@ class Renderer {
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
                                   VmaMemoryUsage memoryUsage);
+    AllocatedImage create_image(VkExtent3D size, VkFormat format,
+                                VkImageUsageFlags usage,
+                                bool mipmapped = false);
+    AllocatedImage create_image(void *data, VkExtent3D size, VkFormat format,
+                                VkImageUsageFlags usage,
+                                bool mipmapped = false);
     void destroy_buffer(const AllocatedBuffer &buffer);
+    void destroy_image(const AllocatedImage &img);
 
     void init_default_data();
     void init_swap_chain();
