@@ -226,6 +226,7 @@ void Renderer::resize_swap_chain() {
     vkDeviceWaitIdle(_device);
     destroy_swap_chain();
     init_swap_chain();
+    _resizeRequested = false;
 }
 
 void Renderer::record_command_buffer(VkCommandBuffer buffer,
