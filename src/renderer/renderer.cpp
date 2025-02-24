@@ -51,6 +51,53 @@ Renderer::Renderer(SDL_Window *window) {
 
 void Renderer::init_default_data() {
     testMeshes = load_gltf_meshes(this, "assets/meshes/basicmesh.glb").value();
+
+    uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
+    _whiteImage =
+        create_image((void *)&white, VkExtent3D{1, 1, 1},
+                     VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    uint32_t grey = glm::packUnorm4x8(glm::vec4(0.66f, 0.66f, 0.66f, 1));
+    _greyImage =
+        create_image((void *)&grey, VkExtent3D{1, 1, 1},
+                     VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 0));
+    _blackImage =
+        create_image((void *)&black, VkExtent3D{1, 1, 1},
+                     VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+    std::array<uint32_t, 16 * 16> pixels;
+    for (int x = 0; x < 16; x++) {
+        for (int y = 0; y < 16; y++) {
+            pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+        }
+    }
+    _errorCheckerboardImage =
+        create_image(&pixels[0], VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
+                     VK_IMAGE_USAGE_SAMPLED_BIT);
+
+    VkSamplerCreateInfo samplerCreateInfo = {};
+    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+    samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
+    vkCreateSampler(_device, &samplerCreateInfo, nullptr,
+                    &_defaultSamplerNearest);
+    samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+    samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+    vkCreateSampler(_device, &samplerCreateInfo, nullptr,
+                    &_defaultSamplerLinear);
+
+    _mainDeletionQueue.push_function([&]() {
+        vkDestroySampler(_device, _defaultSamplerNearest, nullptr);
+        vkDestroySampler(_device, _defaultSamplerLinear, nullptr);
+
+        destroy_image(_whiteImage);
+        destroy_image(_blackImage);
+        destroy_image(_greyImage);
+        destroy_image(_errorCheckerboardImage);
+    });
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {

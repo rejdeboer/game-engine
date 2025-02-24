@@ -83,6 +83,14 @@ class Renderer {
 
     bool _resizeRequested;
 
+    AllocatedImage _whiteImage;
+    AllocatedImage _blackImage;
+    AllocatedImage _greyImage;
+    AllocatedImage _errorCheckerboardImage;
+
+    VkSampler _defaultSamplerLinear;
+    VkSampler _defaultSamplerNearest;
+
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
