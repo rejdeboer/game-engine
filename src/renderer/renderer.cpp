@@ -137,7 +137,6 @@ void Renderer::init_mesh_pipeline() {
     pipelineBuilder.enable_blending_additive();
     _meshPipeline = pipelineBuilder.build_pipeline(_device);
 
-    // clean structures
     vkDestroyShaderModule(_device, meshFragShader, nullptr);
     vkDestroyShaderModule(_device, meshVertexShader, nullptr);
 
@@ -163,18 +162,11 @@ void Renderer::init_descriptors() {
     _drawImageDescriptors = _globalDescriptorAllocator.allocate(
         _device, _drawImageDescriptorLayout);
 
-    VkDescriptorImageInfo imgInfo = {};
-    imgInfo.imageView = _drawImage.imageView;
-    imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkWriteDescriptorSet drawImageWrite = {};
-    drawImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    drawImageWrite.dstBinding = 0;
-    drawImageWrite.dstSet = _drawImageDescriptors;
-    drawImageWrite.descriptorCount = 1;
-    drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    drawImageWrite.pImageInfo = &imgInfo;
-    vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
+    DescriptorWriter writer;
+    writer.write_image(0, _drawImage.imageView, VK_NULL_HANDLE,
+                       VK_IMAGE_LAYOUT_GENERAL,
+                       VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    writer.update_set(_device, _drawImageDescriptors);
 
     _mainDeletionQueue.push_function([&]() {
         _globalDescriptorAllocator.destroy_pool(_device);
