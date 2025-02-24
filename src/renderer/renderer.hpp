@@ -42,12 +42,44 @@ struct FrameData {
     VkCommandBuffer _mainCommandBuffer;
 };
 
+struct GLTFMetallic_Roughness {
+    MaterialPipeline opaquePipeline;
+    MaterialPipeline transparentPipeline;
+
+    VkDescriptorSetLayout materialLayout;
+
+    struct MaterialConstants {
+        glm::vec4 colorFactors;
+        glm::vec4 metalRoughFactors;
+        // padding, we need it for uniform buffers
+        glm::vec4 extra[14];
+    };
+
+    struct MaterialResources {
+        AllocatedImage colorImage;
+        VkSampler colorSampler;
+        AllocatedImage metalRoughImage;
+        VkSampler metalRoughSampler;
+        VkBuffer dataBuffer;
+        uint32_t dataBufferOffset;
+    };
+
+    DescriptorWriter writer;
+
+    void build_pipelines(Renderer *renderer);
+    void clear_resources(VkDevice device);
+
+    MaterialInstance
+    write_material(VkDevice device, MaterialPass pass,
+                   const MaterialResources &resources,
+                   DescriptorAllocatorGrowable &descriptorAllocator);
+};
+
 class Renderer {
   private:
     SDL_Window *_window;
     VkInstance _instance;
     VkPhysicalDevice _physicalDevice;
-    VkDevice _device;
     VkSurfaceKHR _surface;
     FrameData _frames[FRAME_OVERLAP];
     uint32_t _frameNumber;
@@ -71,13 +103,10 @@ class Renderer {
     DescriptorAllocator _globalDescriptorAllocator;
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
-    VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
     VkDescriptorSetLayout _singleImageDescriptorLayout;
 
     GPUSceneData sceneData;
 
-    AllocatedImage _drawImage;
-    AllocatedImage _depthImage;
     VkExtent2D _drawExtent;
 
     VmaAllocator _allocator;
@@ -122,6 +151,11 @@ class Renderer {
     void destroy_swap_chain();
 
   public:
+    VkDevice _device;
+    AllocatedImage _drawImage;
+    AllocatedImage _depthImage;
+    VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
+
     Renderer(SDL_Window *window);
     void deinit();
     void draw_frame();

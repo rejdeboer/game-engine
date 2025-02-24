@@ -725,3 +725,68 @@ void Renderer::destroy_swap_chain() {
         vkDestroyImageView(_device, _swapChainImageViews[i], nullptr);
     }
 }
+
+void GLTFMetallic_Roughness::build_pipelines(Renderer *renderer) {
+    VkShaderModule meshFragShader;
+    if (!vkutil::load_shader_module("shaders/mesh.frag.spv", renderer->_device,
+                                    &meshFragShader)) {
+        fmt::println("Error when building the mesh fragment shader module");
+    }
+
+    VkShaderModule meshVertShader;
+    if (!vkutil::load_shader_module("shaders/mesh.vert.spv", renderer->_device,
+                                    &meshVertShader)) {
+        fmt::println("Error when building the mesh vertex shader module");
+    }
+
+    VkPushConstantRange matrixRange{};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(GPUDrawPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    DescriptorLayoutBuilder layoutBuilder;
+    layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    materialLayout = layoutBuilder.build(renderer->_device,
+                                         VK_SHADER_STAGE_VERTEX_BIT |
+                                             VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    VkDescriptorSetLayout layouts[] = {renderer->_gpuSceneDataDescriptorLayout,
+                                       materialLayout};
+
+    VkPipelineLayoutCreateInfo meshLayoutInfo = {};
+    meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    meshLayoutInfo.setLayoutCount = 2;
+    meshLayoutInfo.pSetLayouts = layouts;
+    meshLayoutInfo.pushConstantRangeCount = 1;
+    meshLayoutInfo.pPushConstantRanges = &matrixRange;
+
+    VkPipelineLayout newLayout;
+    VK_CHECK(vkCreatePipelineLayout(renderer->_device, &meshLayoutInfo, nullptr,
+                                    &newLayout));
+
+    opaquePipeline.layout = newLayout;
+    transparentPipeline.layout = newLayout;
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder.set_shaders(meshVertShader, meshFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.set_color_attachment_format(renderer->_drawImage.format);
+    pipelineBuilder.set_depth_format(renderer->_depthImage.format);
+    pipelineBuilder._pipelineLayout = newLayout;
+    opaquePipeline.pipeline = pipelineBuilder.build_pipeline(renderer->_device);
+
+    pipelineBuilder.enable_blending_additive();
+    pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
+    transparentPipeline.pipeline =
+        pipelineBuilder.build_pipeline(renderer->_device);
+
+    vkDestroyShaderModule(renderer->_device, meshVertShader, nullptr);
+    vkDestroyShaderModule(renderer->_device, meshFragShader, nullptr);
+}
