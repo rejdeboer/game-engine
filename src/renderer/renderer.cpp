@@ -35,6 +35,7 @@ Renderer::Renderer(SDL_Window *window) {
         vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
     });
 
+    init_descriptors();
     init_pipelines();
 
     _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
@@ -42,7 +43,6 @@ Renderer::Renderer(SDL_Window *window) {
 
     init_commands(graphicsIndex);
     init_sync_structures();
-    init_descriptors();
     init_default_data();
 
     _mainDeletionQueue.push_function(
@@ -75,8 +75,8 @@ void Renderer::init_default_data() {
         }
     }
     _errorCheckerboardImage =
-        create_image(&pixels[0], VkExtent3D{1, 1, 1}, VK_FORMAT_R8G8B8A8_UNORM,
-                     VK_IMAGE_USAGE_SAMPLED_BIT);
+        create_image(&pixels[0], VkExtent3D{16, 16, 1},
+                     VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     VkSamplerCreateInfo samplerCreateInfo = {};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -139,9 +139,9 @@ void Renderer::init_pipelines() { init_mesh_pipeline(); }
 
 void Renderer::init_mesh_pipeline() {
     VkShaderModule meshFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/shader.frag.spv", _device,
+    if (!vkutil::load_shader_module("shaders/spv/tex_image.frag.spv", _device,
                                     &meshFragShader)) {
-        fmt::print("Error when building the mesh fragment shader module");
+        fmt::print("Error when building the fragment shader module");
     } else {
         fmt::print("Mesh fragment shader succesfully loaded");
     }
@@ -149,7 +149,7 @@ void Renderer::init_mesh_pipeline() {
     VkShaderModule meshVertexShader;
     if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", _device,
                                     &meshVertexShader)) {
-        fmt::print("Error when building the mesh vertex shader module");
+        fmt::print("Error when building the vertex shader module");
     } else {
         fmt::print("Mesh vertex shader succesfully loaded");
     }
@@ -161,8 +161,8 @@ void Renderer::init_mesh_pipeline() {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &_singleImageDescriptorLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
     VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
@@ -235,6 +235,15 @@ void Renderer::init_descriptors() {
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         _gpuSceneDataDescriptorLayout = builder.build(
             _device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
+
+    {
+        DescriptorLayoutBuilder builder;
+        // TODO: Having separate descriptor layouts for samplers and images is
+        // more performant as there is less duplicate data
+        builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        _singleImageDescriptorLayout =
+            builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
     _mainDeletionQueue.push_function([&]() {
@@ -334,24 +343,26 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     vkCmdBeginRendering(buffer, &renderInfo);
     vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
-    AllocatedBuffer gpuSceneDataBuffer =
-        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                      VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-    get_current_frame()._deletionQueue.push_function(
-        [&, this]() { destroy_buffer(gpuSceneDataBuffer); });
-
-    GPUSceneData *sceneUniformData =
-        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
-    *sceneUniformData = sceneData;
-
-    VkDescriptorSet globalDescriptor =
-        get_current_frame()._frameDescriptors.allocate(
-            _device, _gpuSceneDataDescriptorLayout);
-    DescriptorWriter writer;
-    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
-                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.update_set(_device, globalDescriptor);
+    // AllocatedBuffer gpuSceneDataBuffer =
+    //     create_buffer(sizeof(GPUSceneData),
+    //     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    //                   VMA_MEMORY_USAGE_CPU_TO_GPU);
+    //
+    // get_current_frame()._deletionQueue.push_function(
+    //     [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
+    //
+    // GPUSceneData *sceneUniformData =
+    //     (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
+    // *sceneUniformData = sceneData;
+    //
+    // VkDescriptorSet globalDescriptor =
+    //     get_current_frame()._frameDescriptors.allocate(
+    //         _device, _gpuSceneDataDescriptorLayout);
+    // DescriptorWriter writer;
+    // writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData),
+    // 0,
+    //                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    // writer.update_set(_device, globalDescriptor);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -366,6 +377,20 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.offset = {0, 0};
     scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
+
+    VkDescriptorSet imageSet = get_current_frame()._frameDescriptors.allocate(
+        _device, _singleImageDescriptorLayout);
+    {
+        DescriptorWriter writer;
+        writer.write_image(0, _errorCheckerboardImage.imageView,
+                           _defaultSamplerNearest,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        writer.update_set(_device, imageSet);
+    }
+
+    vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
 
     glm::mat4 view = glm::translate(glm::vec3{0, 0, -5});
     // camera projection

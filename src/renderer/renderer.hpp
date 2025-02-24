@@ -72,6 +72,7 @@ class Renderer {
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
     VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
+    VkDescriptorSetLayout _singleImageDescriptorLayout;
 
     GPUSceneData sceneData;
 
