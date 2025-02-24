@@ -396,7 +396,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     // camera projection
     glm::mat4 projection = glm::perspective(
         glm::radians(35.0f),
-        (float)_drawExtent.width / (float)_drawExtent.height, 0.0f, 1.0f);
+        (float)_drawExtent.width / (float)_drawExtent.height, 0.1f, 10000.0f);
 
     // invert Y direction
     projection[1][1] *= -1;
