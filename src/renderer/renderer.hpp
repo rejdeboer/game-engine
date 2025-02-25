@@ -134,8 +134,11 @@ class Renderer {
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
     MaterialInstance defaultData;
     GLTFMetallic_Roughness metalRoughMaterial;
+    DrawContext mainDrawContext;
+    std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
+    void update_scene();
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };

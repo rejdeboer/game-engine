@@ -464,7 +464,28 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     VK_CHECK(vkEndCommandBuffer(buffer));
 }
 
+void Renderer::update_scene() {
+    mainDrawContext.opaqueSurfaces.clear();
+
+    loadedNodes["Suzanne"]->Draw(glm::mat4{1.f}, mainDrawContext);
+
+    sceneData.view = glm::translate(glm::vec3{0, 0, -5});
+    sceneData.proj = glm::perspective(glm::radians(70.f),
+                                      (float)_swapChainExtent.width /
+                                          (float)_swapChainExtent.height,
+                                      0.1f, 10000.f);
+
+    // invert Y direction
+    sceneData.proj[1][1] *= -1;
+    sceneData.viewproj = sceneData.proj * sceneData.view;
+
+    sceneData.ambientColor = glm::vec4(.1f);
+    sceneData.sunlightColor = glm::vec4(1.f);
+    sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
+}
+
 void Renderer::draw_frame() {
+    update_scene();
     FrameData *currentFrame = &get_current_frame();
     vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
                     UINT64_MAX);
