@@ -850,3 +850,20 @@ MaterialInstance GLTFMetallic_Roughness::write_material(
 
     return matData;
 }
+
+void MeshNode::Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
+    glm::mat4 nodeMatrix = topMatrix * worldTransform;
+
+    for (auto &s : mesh->surfaces) {
+        RenderObject def;
+        def.indexCount = s.count;
+        def.firstIndex = s.startIndex;
+        def.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
+        def.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
+        def.material = &s.material->data;
+        def.transform = nodeMatrix;
+        ctx.opaqueSurfaces.push_back(def);
+    }
+
+    Node::Draw(topMatrix, ctx);
+}

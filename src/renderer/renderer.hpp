@@ -75,6 +75,16 @@ struct GLTFMetallic_Roughness {
                    DescriptorAllocatorGrowable &descriptorAllocator);
 };
 
+struct DrawContext {
+    std::vector<RenderObject> opaqueSurfaces;
+};
+
+struct MeshNode : public Node {
+    std::shared_ptr<MeshAsset> mesh;
+
+    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) override;
+};
+
 class Renderer {
   private:
     SDL_Window *_window;
