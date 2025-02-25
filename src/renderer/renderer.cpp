@@ -124,6 +124,19 @@ void Renderer::init_default_data() {
     defaultData = metalRoughMaterial.write_material(
         _device, MaterialPass::MainColor, materialResources,
         _globalDescriptorAllocator);
+
+    for (auto &m : testMeshes) {
+        std::shared_ptr<MeshNode> newNode = std::make_shared<MeshNode>();
+        newNode->mesh = m;
+        newNode->localTransform = glm::mat4{1.f};
+        newNode->worldTransform = glm::mat4{1.f};
+
+        for (auto &s : newNode->mesh->surfaces) {
+            s.material = std::make_shared<GLTFMaterial>(defaultData);
+        }
+
+        loadedNodes[m->name] = std::move(newNode);
+    }
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -161,10 +174,7 @@ void Renderer::init_swap_chain() {
                                               _swapChainImageFormat.format);
 }
 
-void Renderer::init_pipelines() {
-    init_mesh_pipeline();
-    metalRoughMaterial.build_pipelines(this);
-}
+void Renderer::init_pipelines() { metalRoughMaterial.build_pipelines(this); }
 
 void Renderer::init_mesh_pipeline() {
     VkShaderModule meshFragShader;
@@ -370,28 +380,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(buffer, &renderInfo);
-    vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
-
-    // AllocatedBuffer gpuSceneDataBuffer =
-    //     create_buffer(sizeof(GPUSceneData),
-    //     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    //                   VMA_MEMORY_USAGE_CPU_TO_GPU);
-    //
-    // get_current_frame()._deletionQueue.push_function(
-    //     [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
-    //
-    // GPUSceneData *sceneUniformData =
-    //     (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
-    // *sceneUniformData = sceneData;
-    //
-    // VkDescriptorSet globalDescriptor =
-    //     get_current_frame()._frameDescriptors.allocate(
-    //         _device, _gpuSceneDataDescriptorLayout);
-    // DescriptorWriter writer;
-    // writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData),
-    // 0,
-    //                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    // writer.update_set(_device, globalDescriptor);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -407,39 +395,46 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     scissor.extent = _drawExtent;
     vkCmdSetScissor(buffer, 0, 1, &scissor);
 
-    VkDescriptorSet imageSet = get_current_frame()._frameDescriptors.allocate(
-        _device, _singleImageDescriptorLayout);
-    {
-        DescriptorWriter writer;
-        writer.write_image(0, _errorCheckerboardImage.imageView,
-                           _defaultSamplerNearest,
-                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        writer.update_set(_device, imageSet);
+    AllocatedBuffer gpuSceneDataBuffer =
+        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                      VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    get_current_frame()._deletionQueue.push_function(
+        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
+
+    GPUSceneData *sceneUniformData =
+        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
+    *sceneUniformData = sceneData;
+
+    VkDescriptorSet globalDescriptor =
+        get_current_frame()._frameDescriptors.allocate(
+            _device, _gpuSceneDataDescriptorLayout);
+    DescriptorWriter writer;
+    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.update_set(_device, globalDescriptor);
+
+    for (const RenderObject &draw : mainDrawContext.opaqueSurfaces) {
+        vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          draw.material->pipeline->pipeline);
+        vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                draw.material->pipeline->layout, 0, 1,
+                                &globalDescriptor, 0, nullptr);
+        vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                draw.material->pipeline->layout, 1, 1,
+                                &draw.material->materialSet, 0, nullptr);
+
+        vkCmdBindIndexBuffer(buffer, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        GPUDrawPushConstants pushConstants;
+        pushConstants.vertexBuffer = draw.vertexBufferAddress;
+        pushConstants.worldMatrix = draw.transform;
+        vkCmdPushConstants(buffer, draw.material->pipeline->layout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           sizeof(GPUDrawPushConstants), &pushConstants);
+
+        vkCmdDrawIndexed(buffer, draw.indexCount, 1, draw.firstIndex, 0, 0);
     }
-
-    vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            _meshPipelineLayout, 0, 1, &imageSet, 0, nullptr);
-
-    glm::mat4 view = glm::translate(glm::vec3{0, 0, -5});
-    // camera projection
-    glm::mat4 projection = glm::perspective(
-        glm::radians(70.0f),
-        (float)_drawExtent.width / (float)_drawExtent.height, 0.1f, 10000.0f);
-
-    // invert Y direction
-    projection[1][1] *= -1;
-
-    GPUDrawPushConstants pushConstants;
-    pushConstants.worldMatrix = projection * view;
-    pushConstants.vertexBuffer = testMeshes[2]->meshBuffers.vertexBufferAddress;
-
-    vkCmdPushConstants(buffer, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-                       0, sizeof(GPUDrawPushConstants), &pushConstants);
-    vkCmdBindIndexBuffer(buffer, testMeshes[2]->meshBuffers.indexBuffer.buffer,
-                         0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(buffer, testMeshes[2]->surfaces[0].count, 1,
-                     testMeshes[2]->surfaces[0].startIndex, 0, 0);
 
     vkCmdEndRendering(buffer);
 
@@ -778,14 +773,14 @@ void Renderer::destroy_swap_chain() {
 
 void GLTFMetallic_Roughness::build_pipelines(Renderer *renderer) {
     VkShaderModule meshFragShader;
-    if (!vkutil::load_shader_module("shaders/mesh.frag.spv", renderer->_device,
-                                    &meshFragShader)) {
+    if (!vkutil::load_shader_module("shaders/spv/mesh.frag.spv",
+                                    renderer->_device, &meshFragShader)) {
         fmt::println("Error when building the mesh fragment shader module");
     }
 
     VkShaderModule meshVertShader;
-    if (!vkutil::load_shader_module("shaders/mesh.vert.spv", renderer->_device,
-                                    &meshVertShader)) {
+    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv",
+                                    renderer->_device, &meshVertShader)) {
         fmt::println("Error when building the mesh vertex shader module");
     }
 
