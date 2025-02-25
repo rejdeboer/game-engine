@@ -282,6 +282,10 @@ void Renderer::resize_swap_chain() {
     _resizeRequested = false;
 }
 
+void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
+    _cameraViewMatrix = cameraViewMatrix;
+}
+
 void Renderer::record_command_buffer(VkCommandBuffer buffer,
                                      uint32_t image_index) {
     VkCommandBufferBeginInfo begin_info = {};
@@ -408,7 +412,7 @@ void Renderer::update_scene() {
 
     loadedNodes["Suzanne"]->Draw(glm::mat4{1.f}, mainDrawContext);
 
-    sceneData.view = glm::translate(glm::vec3{0, 0, -5});
+    sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
                                       (float)_swapChainExtent.width /
                                           (float)_swapChainExtent.height,

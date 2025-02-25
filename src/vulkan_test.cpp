@@ -25,6 +25,7 @@ int main(int argc, char *args[]) {
     }
 
     Renderer vk_renderer = Renderer(gWindow);
+    Camera camera;
 
     Uint64 next_game_step = SDL_GetTicks();
     SDL_Event e;
@@ -41,6 +42,10 @@ int main(int argc, char *args[]) {
                 if (e.type == SDL_EVENT_QUIT) {
                     quit = true;
                 }
+                // TODO: Clean this up
+                camera.processSDLEvent(e);
+                camera.update();
+                vk_renderer.set_camera_view(camera.get_view_matrix());
             }
 
             next_game_step += TIMESTEP_MS;

@@ -1,4 +1,5 @@
 #pragma once
+#include "../camera.h"
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
@@ -128,6 +129,8 @@ class Renderer {
     VkSampler _defaultSamplerLinear;
     VkSampler _defaultSamplerNearest;
 
+    glm::mat4 _cameraViewMatrix;
+
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
     MaterialInstance defaultData;
     GLTFMetallic_Roughness metalRoughMaterial;
@@ -175,4 +178,5 @@ class Renderer {
                               std::span<Vertex> vertices);
 
     void resize_swap_chain();
+    void set_camera_view(glm::mat4 cameraViewMatrix);
 };
