@@ -103,9 +103,6 @@ class Renderer {
     std::vector<VkImage> _swapChainImages;
     std::vector<VkImageView> _swapChainImageViews;
 
-    VkPipelineLayout _meshPipelineLayout;
-    VkPipeline _meshPipeline;
-
     VkFence _immFence;
     VkCommandBuffer _immCommandBuffer;
     VkCommandPool _immCommandPool;
@@ -159,7 +156,6 @@ class Renderer {
     void init_default_data();
     void init_swap_chain();
     void init_pipelines();
-    void init_mesh_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();

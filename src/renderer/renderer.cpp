@@ -176,62 +176,6 @@ void Renderer::init_swap_chain() {
 
 void Renderer::init_pipelines() { metalRoughMaterial.build_pipelines(this); }
 
-void Renderer::init_mesh_pipeline() {
-    VkShaderModule meshFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/tex_image.frag.spv", _device,
-                                    &meshFragShader)) {
-        fmt::print("Error when building the fragment shader module");
-    } else {
-        fmt::print("Mesh fragment shader succesfully loaded");
-    }
-
-    VkShaderModule meshVertexShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", _device,
-                                    &meshVertexShader)) {
-        fmt::print("Error when building the vertex shader module");
-    } else {
-        fmt::print("Mesh vertex shader succesfully loaded");
-    }
-
-    VkPushConstantRange bufferRange{};
-    bufferRange.offset = 0;
-    bufferRange.size = sizeof(GPUDrawPushConstants);
-    bufferRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &_singleImageDescriptorLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
-    VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
-                                    &_meshPipelineLayout));
-
-    PipelineBuilder pipelineBuilder;
-
-    pipelineBuilder._pipelineLayout = _meshPipelineLayout;
-    pipelineBuilder.set_shaders(meshVertexShader, meshFragShader);
-    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_multisampling_none();
-    pipelineBuilder.disable_depthtest();
-    pipelineBuilder.set_color_attachment_format(_drawImage.format);
-    pipelineBuilder.set_depth_format(_depthImage.format);
-    // TODO: Vkguide uses 0 as far and 1 as near
-    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    pipelineBuilder.enable_blending_additive();
-    _meshPipeline = pipelineBuilder.build_pipeline(_device);
-
-    vkDestroyShaderModule(_device, meshFragShader, nullptr);
-    vkDestroyShaderModule(_device, meshVertexShader, nullptr);
-
-    _mainDeletionQueue.push_function([&]() {
-        vkDestroyPipelineLayout(_device, _meshPipelineLayout, nullptr);
-        vkDestroyPipeline(_device, _meshPipeline, nullptr);
-    });
-}
-
 void Renderer::init_descriptors() {
     std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes = {
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
