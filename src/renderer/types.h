@@ -2,6 +2,8 @@
 #include "vk_mem_alloc.h"
 #include <fmt/core.h>
 #include <glm/glm.hpp>
+#include <memory>
+#include <vector>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
@@ -67,6 +69,33 @@ struct RenderObject {
 
     glm::mat4 transform;
     VkDeviceAddress vertexBufferAddress;
+};
+
+struct DrawContext;
+
+class IRenderable {
+    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) = 0;
+};
+
+struct Node : public IRenderable {
+    std::weak_ptr<Node> parent;
+    std::vector<std::shared_ptr<Node>> children;
+
+    glm::mat4 localTransform;
+    glm::mat4 worldTransform;
+
+    void refresh_transform(glm::mat4 &parentMatrix) {
+        worldTransform = parentMatrix * localTransform;
+        for (auto c : children) {
+            c->refresh_transform(worldTransform);
+        }
+    }
+
+    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
+        for (auto &c : children) {
+            c->Draw(topMatrix, ctx);
+        }
+    }
 };
 
 #define VK_CHECK(x)                                                            \
