@@ -98,6 +98,32 @@ void Renderer::init_default_data() {
         destroy_image(_greyImage);
         destroy_image(_errorCheckerboardImage);
     });
+
+    GLTFMetallic_Roughness::MaterialResources materialResources;
+    materialResources.colorImage = _whiteImage;
+    materialResources.colorSampler = _defaultSamplerLinear;
+    materialResources.metalRoughImage = _whiteImage;
+    materialResources.metalRoughSampler = _defaultSamplerLinear;
+
+    AllocatedBuffer materialConstants = create_buffer(
+        sizeof(GLTFMetallic_Roughness::MaterialConstants),
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    GLTFMetallic_Roughness::MaterialConstants *sceneUniformData =
+        (GLTFMetallic_Roughness::MaterialConstants *)
+            materialConstants.allocation->GetMappedData();
+    sceneUniformData->colorFactors = glm::vec4{1, 1, 1, 1};
+    sceneUniformData->metalRoughFactors = glm::vec4{1, 0.5, 0, 0};
+
+    _mainDeletionQueue.push_function(
+        [=, this]() { destroy_buffer(materialConstants); });
+
+    materialResources.dataBuffer = materialConstants.buffer;
+    materialResources.dataBufferOffset = 0;
+
+    defaultData = metalRoughMaterial.write_material(
+        _device, MaterialPass::MainColor, materialResources,
+        _globalDescriptorAllocator);
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -135,7 +161,10 @@ void Renderer::init_swap_chain() {
                                               _swapChainImageFormat.format);
 }
 
-void Renderer::init_pipelines() { init_mesh_pipeline(); }
+void Renderer::init_pipelines() {
+    init_mesh_pipeline();
+    metalRoughMaterial.build_pipelines(this);
+}
 
 void Renderer::init_mesh_pipeline() {
     VkShaderModule meshFragShader;

@@ -122,6 +122,8 @@ class Renderer {
     VkSampler _defaultSamplerNearest;
 
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
+    MaterialInstance defaultData;
+    GLTFMetallic_Roughness metalRoughMaterial;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     FrameData &get_current_frame() {
