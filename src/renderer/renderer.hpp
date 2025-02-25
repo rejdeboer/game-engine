@@ -110,7 +110,7 @@ class Renderer {
     VkCommandBuffer _immCommandBuffer;
     VkCommandPool _immCommandPool;
 
-    DescriptorAllocator _globalDescriptorAllocator;
+    DescriptorAllocatorGrowable _globalDescriptorAllocator;
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
     VkDescriptorSetLayout _singleImageDescriptorLayout;

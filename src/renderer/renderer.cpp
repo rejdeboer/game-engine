@@ -223,10 +223,10 @@ void Renderer::init_mesh_pipeline() {
 }
 
 void Renderer::init_descriptors() {
-    std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+    std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes = {
         {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
 
-    _globalDescriptorAllocator.init_pool(_device, 10, sizes);
+    _globalDescriptorAllocator.init(_device, 10, sizes);
 
     {
         DescriptorLayoutBuilder builder;
@@ -276,7 +276,7 @@ void Renderer::init_descriptors() {
     }
 
     _mainDeletionQueue.push_function([&]() {
-        _globalDescriptorAllocator.destroy_pool(_device);
+        _globalDescriptorAllocator.destroy_pools(_device);
         vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout,
                                      nullptr);
     });
