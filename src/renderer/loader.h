@@ -1,4 +1,5 @@
 #pragma once
+#include "descriptor.h"
 #include "types.h"
 #include <filesystem>
 #include <optional>
@@ -25,3 +26,27 @@ struct MeshAsset {
 
 std::optional<std::vector<std::shared_ptr<MeshAsset>>>
 load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath);
+
+struct LoadedGLTF : public IRenderable {
+    std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
+    std::unordered_map<std::string, std::shared_ptr<Node>> nodes;
+    std::unordered_map<std::string, AllocatedImage> images;
+    std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
+
+    std::vector<std::shared_ptr<Node>> topNodes;
+
+    std::vector<VkSampler> samplers;
+
+    DescriptorAllocatorGrowable descriptorPool;
+
+    AllocatedBuffer materialDataBuffer;
+
+    Renderer *creator;
+
+    ~LoadedGLTF() { clearAll(); };
+
+    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx);
+
+  private:
+    void clearAll();
+};
