@@ -123,7 +123,6 @@ class Renderer {
 
     glm::mat4 _cameraViewMatrix;
 
-    std::vector<std::shared_ptr<MeshAsset>> testMeshes;
     MaterialInstance defaultData;
     DrawContext mainDrawContext;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;

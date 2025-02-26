@@ -50,7 +50,6 @@ Renderer::Renderer(SDL_Window *window) {
 }
 
 void Renderer::init_default_data() {
-    testMeshes = load_gltf_meshes(this, "assets/meshes/basicmesh.glb").value();
 
     uint32_t white = glm::packUnorm4x8(glm::vec4(1, 1, 1, 1));
     _whiteImage =
@@ -125,20 +124,7 @@ void Renderer::init_default_data() {
         _device, MaterialPass::MainColor, materialResources,
         _globalDescriptorAllocator);
 
-    for (auto &m : testMeshes) {
-        std::shared_ptr<MeshNode> newNode = std::make_shared<MeshNode>();
-        newNode->mesh = m;
-        newNode->localTransform = glm::mat4{1.f};
-        newNode->worldTransform = glm::mat4{1.f};
-
-        for (auto &s : newNode->mesh->surfaces) {
-            s.material = std::make_shared<GLTFMaterial>(defaultData);
-        }
-
-        loadedNodes[m->name] = std::move(newNode);
-    }
-
-    std::string structurePath = {"assets/meshes/structure.glb"};
+    std::string structurePath = {"assets/scenes/structure.glb"};
     auto structureFile = loadGltf(this, structurePath);
 
     assert(structureFile.has_value());
@@ -270,10 +256,8 @@ void Renderer::init_sync_structures() {
 }
 
 void Renderer::deinit() {
-    for (auto &mesh : testMeshes) {
-        destroy_buffer(mesh->meshBuffers.indexBuffer);
-        destroy_buffer(mesh->meshBuffers.vertexBuffer);
-    }
+    vkDeviceWaitIdle(_device);
+    loadedScenes.clear();
     _mainDeletionQueue.flush();
     destroy_swap_chain();
     vkDestroyDevice(_device, nullptr);
@@ -416,8 +400,6 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
 
 void Renderer::update_scene() {
     mainDrawContext.opaqueSurfaces.clear();
-
-    loadedNodes["Suzanne"]->Draw(glm::mat4{1.f}, mainDrawContext);
 
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
