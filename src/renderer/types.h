@@ -84,7 +84,7 @@ struct Node : public IRenderable {
     glm::mat4 localTransform;
     glm::mat4 worldTransform;
 
-    void refresh_transform(glm::mat4 &parentMatrix) {
+    void refresh_transform(const glm::mat4 &parentMatrix) {
         worldTransform = parentMatrix * localTransform;
         for (auto c : children) {
             c->refresh_transform(worldTransform);

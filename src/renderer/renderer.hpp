@@ -121,19 +121,10 @@ class Renderer {
 
     bool _resizeRequested;
 
-    AllocatedImage _whiteImage;
-    AllocatedImage _blackImage;
-    AllocatedImage _greyImage;
-    AllocatedImage _errorCheckerboardImage;
-
-    VkSampler _defaultSamplerLinear;
-    VkSampler _defaultSamplerNearest;
-
     glm::mat4 _cameraViewMatrix;
 
     std::vector<std::shared_ptr<MeshAsset>> testMeshes;
     MaterialInstance defaultData;
-    GLTFMetallic_Roughness metalRoughMaterial;
     DrawContext mainDrawContext;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
 
@@ -145,14 +136,6 @@ class Renderer {
 
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
-    AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
-                                  VmaMemoryUsage memoryUsage);
-    AllocatedImage create_image(VkExtent3D size, VkFormat format,
-                                VkImageUsageFlags usage,
-                                bool mipmapped = false);
-    AllocatedImage create_image(void *data, VkExtent3D size, VkFormat format,
-                                VkImageUsageFlags usage,
-                                bool mipmapped = false);
     void destroy_buffer(const AllocatedBuffer &buffer);
     void destroy_image(const AllocatedImage &img);
 
@@ -170,6 +153,16 @@ class Renderer {
     AllocatedImage _depthImage;
     VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
 
+    AllocatedImage _whiteImage;
+    AllocatedImage _blackImage;
+    AllocatedImage _greyImage;
+    AllocatedImage _errorCheckerboardImage;
+
+    VkSampler _defaultSamplerLinear;
+    VkSampler _defaultSamplerNearest;
+
+    GLTFMetallic_Roughness metalRoughMaterial;
+
     Renderer(SDL_Window *window);
     void deinit();
     void draw_frame();
@@ -179,4 +172,13 @@ class Renderer {
 
     void resize_swap_chain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
+
+    AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
+                                  VmaMemoryUsage memoryUsage);
+    AllocatedImage create_image(VkExtent3D size, VkFormat format,
+                                VkImageUsageFlags usage,
+                                bool mipmapped = false);
+    AllocatedImage create_image(void *data, VkExtent3D size, VkFormat format,
+                                VkImageUsageFlags usage,
+                                bool mipmapped = false);
 };
