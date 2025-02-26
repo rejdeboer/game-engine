@@ -27,9 +27,6 @@ struct MeshAsset {
 std::optional<std::vector<std::shared_ptr<MeshAsset>>>
 load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath);
 
-std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
-                                                    std::string_view filePath);
-
 struct LoadedGLTF : public IRenderable {
     std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
     std::unordered_map<std::string, std::shared_ptr<Node>> nodes;
@@ -53,3 +50,6 @@ struct LoadedGLTF : public IRenderable {
   private:
     void clearAll();
 };
+
+std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
+                                                    std::string_view filePath);

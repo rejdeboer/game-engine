@@ -112,7 +112,7 @@ load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath) {
             auto colors = p.findAttribute("COLOR_0");
             if (colors != p.attributes.end()) {
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
-                    gltf, gltf.accessors[(*uv).accessorIndex],
+                    gltf, gltf.accessors[(*colors).accessorIndex],
                     [&](fastgltf::math::fvec4 v, size_t index) {
                         vertices[initialVtx + index].color.x = v.x();
                         vertices[initialVtx + index].color.y = v.y();
@@ -386,7 +386,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
             auto colors = p.findAttribute("COLOR_0");
             if (colors != p.attributes.end()) {
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
-                    gltf, gltf.accessors[(*uv).accessorIndex],
+                    gltf, gltf.accessors[(*colors).accessorIndex],
                     [&](fastgltf::math::fvec4 v, size_t index) {
                         vertices[initialVtx + index].color.x = v.x();
                         vertices[initialVtx + index].color.y = v.y();
@@ -474,3 +474,5 @@ void LoadedGLTF::Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
         n->Draw(topMatrix, ctx);
     }
 }
+
+void LoadedGLTF::clearAll() {}
