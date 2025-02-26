@@ -127,6 +127,7 @@ class Renderer {
     MaterialInstance defaultData;
     DrawContext mainDrawContext;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
+    std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     void update_scene();

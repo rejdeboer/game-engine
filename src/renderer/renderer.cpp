@@ -137,6 +137,13 @@ void Renderer::init_default_data() {
 
         loadedNodes[m->name] = std::move(newNode);
     }
+
+    std::string structurePath = {"assets/meshes/structure.glb"};
+    auto structureFile = loadGltf(this, structurePath);
+
+    assert(structureFile.has_value());
+
+    loadedScenes["structure"] = *structureFile;
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -425,6 +432,8 @@ void Renderer::update_scene() {
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
     sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
+
+    loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
 }
 
 void Renderer::draw_frame() {
