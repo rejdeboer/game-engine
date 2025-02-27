@@ -353,7 +353,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.update_set(_device, globalDescriptor);
 
-    for (const RenderObject &draw : mainDrawContext.opaqueSurfaces) {
+    auto draw = [&](const RenderObject &draw) {
         vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           draw.material->pipeline->pipeline);
         vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -373,6 +373,14 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                            sizeof(GPUDrawPushConstants), &pushConstants);
 
         vkCmdDrawIndexed(buffer, draw.indexCount, 1, draw.firstIndex, 0, 0);
+    };
+
+    for (const RenderObject &obj : mainDrawContext.opaqueSurfaces) {
+        draw(obj);
+    }
+
+    for (const RenderObject &obj : mainDrawContext.transparentSurfaces) {
+        draw(obj);
     }
 
     vkCmdEndRendering(buffer);
