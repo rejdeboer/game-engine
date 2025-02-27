@@ -136,9 +136,6 @@ class Renderer {
 
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
-    void destroy_buffer(const AllocatedBuffer &buffer);
-    void destroy_image(const AllocatedImage &img);
-
     void init_default_data();
     void init_swap_chain();
     void init_pipelines();
@@ -181,4 +178,7 @@ class Renderer {
     AllocatedImage create_image(void *data, VkExtent3D size, VkFormat format,
                                 VkImageUsageFlags usage,
                                 bool mipmapped = false);
+
+    void destroy_buffer(const AllocatedBuffer &buffer);
+    void destroy_image(const AllocatedImage &img);
 };
