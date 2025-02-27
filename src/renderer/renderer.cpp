@@ -408,6 +408,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
 
 void Renderer::update_scene() {
     mainDrawContext.opaqueSurfaces.clear();
+    mainDrawContext.transparentSurfaces.clear();
 
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
