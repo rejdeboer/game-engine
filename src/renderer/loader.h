@@ -1,7 +1,6 @@
 #pragma once
 #include "descriptor.h"
 #include "types.h"
-#include <filesystem>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -23,9 +22,6 @@ struct MeshAsset {
     std::vector<GeoSurface> surfaces;
     GPUMeshBuffers meshBuffers;
 };
-
-std::optional<std::vector<std::shared_ptr<MeshAsset>>>
-load_gltf_meshes(Renderer *renderer, std::filesystem::path filePath);
 
 struct LoadedGLTF : public IRenderable {
     std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
