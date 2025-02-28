@@ -44,7 +44,6 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/renderer/pipeline.cpp
                 src/renderer/renderer.cpp 
                 ${SHADERS})
-add_executable(test src/test.cpp)
 
 add_dependencies(vulkan_test shaders)
 
@@ -57,5 +56,4 @@ target_link_libraries(vulkan_test PRIVATE
                         GPUOpen::VulkanMemoryAllocator 
                         fmt::fmt
                         ${Stb_INCLUDE_DIR})
-target_link_libraries(test PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 
