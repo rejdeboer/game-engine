@@ -9,6 +9,7 @@ find_package(SDL3_image CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(VulkanUtilityLibraries CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 
@@ -54,6 +55,10 @@ target_link_libraries(vulkan_test PRIVATE
                         imgui::imgui
                         SDL3::SDL3 
                         Vulkan::Vulkan 
+                        # Vulkan::SafeStruct
+                        # Vulkan::LayerSettings
+                        # Vulkan::UtilityHeaders
+                        # Vulkan::CompilerConfiguration
                         glm::glm-header-only 
                         GPUOpen::VulkanMemoryAllocator 
                         fmt::fmt

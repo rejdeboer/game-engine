@@ -129,6 +129,8 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
+    void prepare_imgui();
+    void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];

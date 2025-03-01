@@ -454,6 +454,8 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
+    draw_imgui(buffer, _swapChainImageViews[image_index]);
+
     vkutil::transition_image(buffer, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
@@ -482,7 +484,33 @@ void Renderer::update_scene() {
     loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
 }
 
+void Renderer::prepare_imgui() {
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("Stats");
+    ImGui::Text("TESTING");
+    ImGui::End();
+    ImGui::Render();
+}
+
+void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView) {
+    VkRenderingAttachmentInfo colorAttachment =
+        create_color_attachment_info(_drawImage.imageView, nullptr,
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkRenderingInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &colorAttachment;
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapChainExtent};
+    renderInfo.layerCount = 1;
+    vkCmdBeginRendering(cmd, &renderInfo);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+    vkCmdEndRendering(cmd);
+}
+
 void Renderer::draw_frame() {
+    prepare_imgui();
     update_scene();
     FrameData *currentFrame = &get_current_frame();
     vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
