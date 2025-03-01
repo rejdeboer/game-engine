@@ -142,6 +142,7 @@ class Renderer {
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
+    void init_imgui();
     void destroy_swap_chain();
 
   public:

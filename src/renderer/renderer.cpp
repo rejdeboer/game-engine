@@ -1,6 +1,9 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
 #include "image.h"
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_vulkan.h"
 #include "pipeline.h"
 #include <algorithm>
 #include <glm/gtx/transform.hpp>
@@ -42,6 +45,7 @@ Renderer::Renderer(SDL_Window *window) {
     _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
     _presentationQueue = get_device_queue(_device, presentationIndex, 0);
 
+    init_imgui();
     init_commands(graphicsIndex);
     init_sync_structures();
     init_default_data();
@@ -246,6 +250,59 @@ void Renderer::init_sync_structures() {
     VK_CHECK(vkCreateFence(_device, &fence_create_info, nullptr, &_immFence));
     _mainDeletionQueue.push_function(
         [=, this]() { vkDestroyFence(_device, _immFence, nullptr); });
+}
+
+void Renderer::init_imgui() {
+    //  the size of the pool is very oversize, but it's copied from imgui demo
+    //  itself.
+    VkDescriptorPoolSize pool_sizes[] = {
+        {VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 1000;
+    pool_info.poolSizeCount = (uint32_t)std::size(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+
+    VkDescriptorPool imguiPool;
+    VK_CHECK(vkCreateDescriptorPool(_device, &pool_info, nullptr, &imguiPool));
+
+    ImGui::CreateContext();
+    ImGui_ImplSDL3_InitForVulkan(_window);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {};
+    initInfo.Instance = _instance;
+    initInfo.PhysicalDevice = _physicalDevice;
+    initInfo.Device = _device;
+    initInfo.Queue = _graphicsQueue;
+    initInfo.DescriptorPool = imguiPool;
+    initInfo.MinImageCount = 3;
+    initInfo.ImageCount = 3;
+    initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    initInfo.UseDynamicRendering = true;
+    initInfo.PipelineRenderingCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+    initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+    initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats =
+        &_swapChainImageFormat.format;
+    ImGui_ImplVulkan_Init(&initInfo);
+    ImGui_ImplVulkan_CreateFontsTexture();
+
+    _mainDeletionQueue.push_function([=, this]() {
+        ImGui_ImplVulkan_Shutdown();
+        vkDestroyDescriptorPool(_device, imguiPool, nullptr);
+    });
 }
 
 void Renderer::deinit() {

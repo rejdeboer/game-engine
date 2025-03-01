@@ -2,7 +2,11 @@
   "dependencies": [
     "fastgltf",
     "fmt",
-    "imgui",
+    {
+      "name": "imgui",
+      "version>=": "1.91.8#3",
+      "features": ["sdl3-binding", "vulkan-binding"]
+    },
     {
       "name": "sdl3",
       "version>=": "3.2.0",
