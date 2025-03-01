@@ -206,6 +206,8 @@ void Renderer::init_descriptors() {
             [&]() { _frames[i]._frameDescriptors.destroy_pools(_device); });
     }
 
+    // TODO: Having separate descriptor layouts for samplers and images is
+    // more performant as there is less duplicate data
     {
         DescriptorLayoutBuilder builder;
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -215,8 +217,6 @@ void Renderer::init_descriptors() {
 
     {
         DescriptorLayoutBuilder builder;
-        // TODO: Having separate descriptor layouts for samplers and images is
-        // more performant as there is less duplicate data
         builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         _singleImageDescriptorLayout =
             builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -258,8 +258,12 @@ void Renderer::init_sync_structures() {
 void Renderer::deinit() {
     vkDeviceWaitIdle(_device);
     loadedScenes.clear();
+    for (auto &frame : _frames) {
+        frame._deletionQueue.flush();
+    }
     _mainDeletionQueue.flush();
     destroy_swap_chain();
+    vmaDestroyAllocator(_allocator);
     vkDestroyDevice(_device, nullptr);
     SDL_Vulkan_DestroySurface(_instance, _surface, nullptr);
     vkDestroyInstance(_instance, nullptr);
