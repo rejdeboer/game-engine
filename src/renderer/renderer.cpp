@@ -215,16 +215,11 @@ void Renderer::init_descriptors() {
             _device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
-    {
-        DescriptorLayoutBuilder builder;
-        builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        _singleImageDescriptorLayout =
-            builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
-    }
-
     _mainDeletionQueue.push_function([&]() {
         _globalDescriptorAllocator.destroy_pools(_device);
         vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout,
+                                     nullptr);
+        vkDestroyDescriptorSetLayout(_device, _gpuSceneDataDescriptorLayout,
                                      nullptr);
     });
 }
