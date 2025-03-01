@@ -3,6 +3,7 @@ project(mygame)
 
 find_package(fastgltf CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
@@ -50,6 +51,7 @@ add_dependencies(vulkan_test shaders)
 target_link_libraries(mygame PRIVATE SDL3::SDL3 EnTT::EnTT SDL3_image::SDL3_image)
 target_link_libraries(vulkan_test PRIVATE 
                         fastgltf::fastgltf
+                        imgui::imgui
                         SDL3::SDL3 
                         Vulkan::Vulkan 
                         glm::glm-header-only 
