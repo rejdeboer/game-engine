@@ -90,6 +90,9 @@ create_semaphore_submit_info(VkPipelineStageFlags2 stageMask,
                              VkSemaphore semaphore);
 VmaAllocator create_allocator(VkInstance instance,
                               VkPhysicalDevice physicalDevice, VkDevice device);
+VkRenderingAttachmentInfo create_color_attachment_info(VkImageView view,
+                                                       VkClearValue *clear,
+                                                       VkImageLayout layout);
 
 #define RENDERER_CONFIG_H
 #endif
