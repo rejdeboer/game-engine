@@ -112,7 +112,6 @@ class Renderer {
     DescriptorAllocatorGrowable _globalDescriptorAllocator;
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
-    VkDescriptorSetLayout _singleImageDescriptorLayout;
 
     GPUSceneData sceneData;
 

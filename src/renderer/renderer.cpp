@@ -11,6 +11,7 @@
 
 Renderer::Renderer(SDL_Window *window) {
     _window = window;
+    _resizeRequested = false;
     _instance = create_vulkan_instance(window);
     _surface = create_surface(window, _instance);
     _physicalDevice = pick_physical_device(_instance, _surface);
