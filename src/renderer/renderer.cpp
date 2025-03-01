@@ -45,9 +45,6 @@ Renderer::Renderer(SDL_Window *window) {
     init_commands(graphicsIndex);
     init_sync_structures();
     init_default_data();
-
-    _mainDeletionQueue.push_function(
-        [&]() { vmaDestroyAllocator(_allocator); });
 }
 
 void Renderer::init_default_data() {
