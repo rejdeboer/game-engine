@@ -26,6 +26,7 @@ int main(int argc, char *args[]) {
 
     Renderer vk_renderer = Renderer(gWindow);
     Camera camera;
+    camera.position = glm::vec3(30.f, -00.f, -085.f);
 
     Uint64 next_game_step = SDL_GetTicks();
     SDL_Event e;
@@ -43,8 +44,8 @@ int main(int argc, char *args[]) {
                     quit = true;
                 }
                 // TODO: Clean this up
-                camera.processSDLEvent(e);
-                camera.update();
+                // camera.processSDLEvent(e);
+                // camera.update();
                 vk_renderer.set_camera_view(camera.get_view_matrix());
             }
 
