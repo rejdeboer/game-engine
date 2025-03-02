@@ -50,6 +50,18 @@ struct RenderStats {
     Uint64 meshDrawTime;
 };
 
+struct RenderObject {
+    uint32_t indexCount;
+    uint32_t firstIndex;
+    VkBuffer indexBuffer;
+
+    MaterialInstance *material;
+    Bounds bounds;
+
+    glm::mat4 transform;
+    VkDeviceAddress vertexBufferAddress;
+};
+
 struct GLTFMetallic_Roughness {
     MaterialPipeline opaquePipeline;
     MaterialPipeline transparentPipeline;

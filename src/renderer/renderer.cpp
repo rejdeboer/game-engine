@@ -12,6 +12,42 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
+bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
+    std::array<glm::vec3, 8> corners{
+        glm::vec3{1, 1, 1},   glm::vec3{1, 1, -1},   glm::vec3{1, -1, 1},
+        glm::vec3{1, -1, -1}, glm::vec3{-1, 1, 1},   glm::vec3{-1, 1, -1},
+        glm::vec3{-1, -1, 1}, glm::vec3{-1, -1, -1},
+    };
+
+    glm::mat4 matrix = viewproj * obj.transform;
+
+    glm::vec3 min = {1.5, 1.5, 1.5};
+    glm::vec3 max = {-1.5, -1.5, -1.5};
+
+    for (int c = 0; c < 8; c++) {
+        // project each corner into clip space
+        glm::vec4 v = matrix * glm::vec4(obj.bounds.origin +
+                                             (corners[c] * obj.bounds.extents),
+                                         1.f);
+
+        // perspective correction
+        v.x = v.x / v.w;
+        v.y = v.y / v.w;
+        v.z = v.z / v.w;
+
+        min = glm::min(glm::vec3{v.x, v.y, v.z}, min);
+        max = glm::max(glm::vec3{v.x, v.y, v.z}, max);
+    }
+
+    // check the clip space box is within the view
+    if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
+        min.y > 1.f || max.y < -1.f) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
 Renderer::Renderer(SDL_Window *window) {
     _window = window;
     _resizeRequested = false;
@@ -335,8 +371,10 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
     std::vector<uint32_t> opaqueDraws;
     opaqueDraws.reserve(mainDrawContext.opaqueSurfaces.size());
 
-    for (uint32_t i = 0; i < mainDrawContext.opaqueSurfaces.size(); i++) {
-        opaqueDraws.push_back(i);
+    for (int i = 0; i < mainDrawContext.opaqueSurfaces.size(); i++) {
+        if (is_visible(mainDrawContext.opaqueSurfaces[i], sceneData.viewproj)) {
+            opaqueDraws.push_back(i);
+        }
     }
 
     // sort the opaque surfaces by material and mesh
@@ -969,6 +1007,7 @@ void MeshNode::Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
         def.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
         def.material = &s.material->data;
         def.transform = nodeMatrix;
+        def.bounds = s.bounds;
 
         if (s.material->data.passType == MaterialPass::Transparent) {
             ctx.transparentSurfaces.push_back(def);

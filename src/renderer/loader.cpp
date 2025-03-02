@@ -377,6 +377,18 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
                 newSurface.material = materials[0];
             }
 
+            glm::vec3 minPos = vertices[initialVtx].pos;
+            glm::vec3 maxPos = vertices[initialVtx].pos;
+            for (int i = initialVtx; i < vertices.size(); i++) {
+                minPos = glm::min(minPos, vertices[i].pos);
+                maxPos = glm::max(maxPos, vertices[i].pos);
+            }
+
+            newSurface.bounds.origin = (maxPos + minPos) / 2.f;
+            newSurface.bounds.extents = (maxPos - minPos) / 2.f;
+            newSurface.bounds.sphereRadius =
+                glm::length(newSurface.bounds.extents);
+
             newmesh->surfaces.push_back(newSurface);
         }
 
