@@ -331,24 +331,7 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
-void Renderer::record_command_buffer(VkCommandBuffer buffer,
-                                     uint32_t image_index) {
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = 0;
-    begin_info.pInheritanceInfo = nullptr;
-    VK_CHECK(vkBeginCommandBuffer(buffer, &begin_info));
-
-    vkutil::transition_image(buffer, _drawImage.image,
-                             VK_IMAGE_LAYOUT_UNDEFINED,
-                             VK_IMAGE_LAYOUT_GENERAL);
-    vkutil::transition_image(buffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
-                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkutil::transition_image(buffer, _depthImage.image,
-                             VK_IMAGE_LAYOUT_UNDEFINED,
-                             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-    // NOTE: Begin a rendering pass connected to our draw image
+void Renderer::draw_game(VkCommandBuffer cmd) {
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     colorAttachment.imageView = _drawImage.imageView;
@@ -373,7 +356,7 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
     renderInfo.layerCount = 1;
 
-    vkCmdBeginRendering(buffer, &renderInfo);
+    vkCmdBeginRendering(cmd, &renderInfo);
 
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -382,12 +365,12 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     viewport.height = static_cast<float>(_drawExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(buffer, 0, 1, &viewport);
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = _drawExtent;
-    vkCmdSetScissor(buffer, 0, 1, &scissor);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     AllocatedBuffer gpuSceneDataBuffer =
         create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -409,25 +392,25 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
     writer.update_set(_device, globalDescriptor);
 
     auto draw = [&](const RenderObject &draw) {
-        vkCmdBindPipeline(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           draw.material->pipeline->pipeline);
-        vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 draw.material->pipeline->layout, 0, 1,
                                 &globalDescriptor, 0, nullptr);
-        vkCmdBindDescriptorSets(buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 draw.material->pipeline->layout, 1, 1,
                                 &draw.material->materialSet, 0, nullptr);
 
-        vkCmdBindIndexBuffer(buffer, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(cmd, draw.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         GPUDrawPushConstants pushConstants;
         pushConstants.vertexBuffer = draw.vertexBufferAddress;
         pushConstants.worldMatrix = draw.transform;
-        vkCmdPushConstants(buffer, draw.material->pipeline->layout,
+        vkCmdPushConstants(cmd, draw.material->pipeline->layout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(GPUDrawPushConstants), &pushConstants);
 
-        vkCmdDrawIndexed(buffer, draw.indexCount, 1, draw.firstIndex, 0, 0);
+        vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
     };
 
     for (const RenderObject &obj : mainDrawContext.opaqueSurfaces) {
@@ -438,29 +421,47 @@ void Renderer::record_command_buffer(VkCommandBuffer buffer,
         draw(obj);
     }
 
-    vkCmdEndRendering(buffer);
+    vkCmdEndRendering(cmd);
+}
 
-    vkutil::transition_image(buffer, _drawImage.image,
+void Renderer::record_command_buffer(VkCommandBuffer cmd,
+                                     uint32_t image_index) {
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = 0;
+    begin_info.pInheritanceInfo = nullptr;
+    VK_CHECK(vkBeginCommandBuffer(cmd, &begin_info));
+
+    vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                             VK_IMAGE_LAYOUT_GENERAL);
+    vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
+                             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    vkutil::transition_image(cmd, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    draw_game(cmd);
+
+    vkutil::transition_image(cmd, _drawImage.image,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    vkutil::transition_image(buffer, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    vkutil::copy_image_to_image(buffer, _drawImage.image,
+    vkutil::copy_image_to_image(cmd, _drawImage.image,
                                 _swapChainImages[image_index], _drawExtent,
                                 _swapChainExtent);
 
-    vkutil::transition_image(buffer, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    draw_imgui(buffer, _swapChainImageViews[image_index]);
+    draw_imgui(cmd, _swapChainImageViews[image_index]);
 
-    vkutil::transition_image(buffer, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[image_index],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    VK_CHECK(vkEndCommandBuffer(buffer));
+    VK_CHECK(vkEndCommandBuffer(cmd));
 }
 
 void Renderer::update_scene() {
