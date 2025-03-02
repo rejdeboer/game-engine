@@ -332,6 +332,25 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
 }
 
 void Renderer::draw_game(VkCommandBuffer cmd) {
+    std::vector<uint32_t> opaqueDraws;
+    opaqueDraws.reserve(mainDrawContext.opaqueSurfaces.size());
+
+    for (uint32_t i = 0; i < mainDrawContext.opaqueSurfaces.size(); i++) {
+        opaqueDraws.push_back(i);
+    }
+
+    // sort the opaque surfaces by material and mesh
+    std::sort(opaqueDraws.begin(), opaqueDraws.end(),
+              [&](const auto &iA, const auto &iB) {
+                  const RenderObject &A = mainDrawContext.opaqueSurfaces[iA];
+                  const RenderObject &B = mainDrawContext.opaqueSurfaces[iB];
+                  if (A.material == B.material) {
+                      return A.indexBuffer < B.indexBuffer;
+                  } else {
+                      return A.material < B.material;
+                  }
+              });
+
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     colorAttachment.imageView = _drawImage.imageView;
@@ -448,8 +467,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
     _stats.drawcallCount = 0;
     _stats.triangleCount = 0;
 
-    for (const RenderObject &obj : mainDrawContext.opaqueSurfaces) {
-        draw(obj);
+    for (auto &r : opaqueDraws) {
+        draw(mainDrawContext.opaqueSurfaces[r]);
     }
 
     for (const RenderObject &obj : mainDrawContext.transparentSurfaces) {
