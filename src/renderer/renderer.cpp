@@ -410,8 +410,13 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
                            VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(GPUDrawPushConstants), &pushConstants);
 
+        _stats.drawcallCount++;
+        _stats.triangleCount += draw.indexCount / 3;
         vkCmdDrawIndexed(cmd, draw.indexCount, 1, draw.firstIndex, 0, 0);
     };
+
+    _stats.drawcallCount = 0;
+    _stats.triangleCount = 0;
 
     for (const RenderObject &obj : mainDrawContext.opaqueSurfaces) {
         draw(obj);
@@ -439,7 +444,9 @@ void Renderer::record_command_buffer(VkCommandBuffer cmd,
     vkutil::transition_image(cmd, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
+    Uint64 start = SDL_GetTicks();
     draw_game(cmd);
+    _stats.meshDrawTime = SDL_GetTicks() - start;
 
     vkutil::transition_image(cmd, _drawImage.image,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
