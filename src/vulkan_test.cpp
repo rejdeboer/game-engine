@@ -30,10 +30,13 @@ int main(int argc, char *args[]) {
     camera.position = glm::vec3(30.f, -00.f, -085.f);
 
     Uint64 next_game_step = SDL_GetTicks();
+    Uint64 last = next_game_step;
+    Uint64 now = last;
     SDL_Event e;
     bool quit = false;
     while (quit == false) {
-        Uint64 now = SDL_GetTicks();
+        last = now;
+        now = SDL_GetTicks();
         if (next_game_step >= now) {
             SDL_Delay(next_game_step - now);
             continue;
@@ -54,9 +57,7 @@ int main(int argc, char *args[]) {
             next_game_step += TIMESTEP_MS;
         }
 
-        vk_renderer.draw_frame(&state);
-        state.stats.frameTime = SDL_GetTicks() - now;
-        state.stats.fps = 1000.f / (float)state.stats.frameTime;
+        vk_renderer.draw_frame(&state, now - last);
     }
     vk_renderer.deinit();
     SDL_DestroyWindow(gWindow);

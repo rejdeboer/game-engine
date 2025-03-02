@@ -12,18 +12,9 @@
 #define PLAYER_WIDTH (0.70 * PLAYER_HEIGHT)
 #define PLAYER_SPEED 5.0f
 
-struct EngineStats {
-    Uint64 frameTime;
-    float fps;
-    int triangleCount;
-    int drawcallCount;
-    Uint64 meshDrawTime;
-};
-
 struct GameState {
     Arena arena;
     WorldPosition player_position;
-    EngineStats stats;
 };
 
 #define MAIN_H

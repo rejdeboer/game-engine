@@ -44,6 +44,12 @@ struct FrameData {
     VkCommandBuffer _mainCommandBuffer;
 };
 
+struct RenderStats {
+    int triangleCount;
+    int drawcallCount;
+    Uint64 meshDrawTime;
+};
+
 struct GLTFMetallic_Roughness {
     MaterialPipeline opaquePipeline;
     MaterialPipeline transparentPipeline;
@@ -99,6 +105,7 @@ class Renderer {
     VkQueue _graphicsQueue;
     VkQueue _presentationQueue;
     DeletionQueue _mainDeletionQueue;
+    RenderStats _stats;
 
     VkSwapchainKHR _swapChain;
     VkExtent2D _swapChainExtent;
@@ -130,7 +137,7 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
-    void prepare_imgui(EngineStats stats);
+    void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
     FrameData &get_current_frame() {
@@ -166,7 +173,7 @@ class Renderer {
 
     Renderer(SDL_Window *window);
     void deinit();
-    void draw_frame(GameState *state);
+    void draw_frame(GameState *state, Uint64 dt);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);
