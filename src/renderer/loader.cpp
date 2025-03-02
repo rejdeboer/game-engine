@@ -87,7 +87,7 @@ load_image(Renderer *renderer, fastgltf::Asset &asset, fastgltf::Image &image) {
 
                     newImage = renderer->create_image(
                         data, imagesize, VK_FORMAT_R8G8B8A8_UNORM,
-                        VK_IMAGE_USAGE_SAMPLED_BIT, false);
+                        VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
                     stbi_image_free(data);
                 }
