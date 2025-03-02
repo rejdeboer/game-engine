@@ -1,6 +1,6 @@
+#include "imgui_impl_sdl3.h"
 #include "main.h"
 #include "renderer/renderer.hpp"
-#include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
 #include <cassert>
 #include <cstdio>
@@ -24,6 +24,7 @@ int main(int argc, char *args[]) {
         return 1;
     }
 
+    GameState state;
     Renderer vk_renderer = Renderer(gWindow);
     Camera camera;
     camera.position = glm::vec3(30.f, -00.f, -085.f);
@@ -43,6 +44,7 @@ int main(int argc, char *args[]) {
                 if (e.type == SDL_EVENT_QUIT) {
                     quit = true;
                 }
+                ImGui_ImplSDL3_ProcessEvent(&e);
                 // TODO: Clean this up
                 // camera.processSDLEvent(e);
                 // camera.update();
@@ -52,8 +54,9 @@ int main(int argc, char *args[]) {
             next_game_step += TIMESTEP_MS;
         }
 
-        // TODO: Render here!!!
-        vk_renderer.draw_frame();
+        vk_renderer.draw_frame(&state);
+        state.stats.frameTime = SDL_GetTicks() - now;
+        state.stats.fps = 1000.f / (float)state.stats.frameTime;
     }
     vk_renderer.deinit();
     SDL_DestroyWindow(gWindow);

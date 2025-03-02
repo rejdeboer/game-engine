@@ -1,5 +1,6 @@
 #pragma once
 #include "../camera.h"
+#include "../main.h"
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
@@ -129,7 +130,7 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
-    void prepare_imgui();
+    void prepare_imgui(EngineStats stats);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
     FrameData &get_current_frame() {
@@ -165,7 +166,7 @@ class Renderer {
 
     Renderer(SDL_Window *window);
     void deinit();
-    void draw_frame();
+    void draw_frame(GameState *state);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);

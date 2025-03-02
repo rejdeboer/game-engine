@@ -484,12 +484,16 @@ void Renderer::update_scene() {
     loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
 }
 
-void Renderer::prepare_imgui() {
+void Renderer::prepare_imgui(EngineStats stats) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
     ImGui::Begin("Stats");
-    ImGui::Text("TESTING");
+    ImGui::Text("frametime %lu ms", stats.frameTime);
+    ImGui::Text("fps %f ms", stats.fps);
+    ImGui::Text("drawtime %lu ms", stats.meshDrawTime);
+    ImGui::Text("triangles %i", stats.triangleCount);
+    ImGui::Text("draws %i", stats.drawcallCount);
     ImGui::End();
     ImGui::Render();
 }
@@ -508,8 +512,8 @@ void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView) {
     vkCmdEndRendering(cmd);
 }
 
-void Renderer::draw_frame() {
-    prepare_imgui();
+void Renderer::draw_frame(GameState *state) {
+    prepare_imgui(state->stats);
     update_scene();
     FrameData *currentFrame = &get_current_frame();
     vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
