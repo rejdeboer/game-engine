@@ -2,7 +2,6 @@
 .cache
 build
 Build
-assets
 
 vcpkg_installed
 vcpkg-manifest-install.log
