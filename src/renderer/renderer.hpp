@@ -143,7 +143,6 @@ class Renderer {
 
     glm::mat4 _cameraViewMatrix;
 
-    MaterialInstance defaultData;
     DrawContext mainDrawContext;
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
