@@ -57,7 +57,9 @@ int main(int argc, char *args[]) {
             next_game_step += TIMESTEP_MS;
         }
 
-        vk_renderer.draw_frame(&state, now - last);
+        auto cmd = vk_renderer.begin_frame();
+        vk_renderer.draw_game(cmd);
+        vk_renderer.end_frame(cmd, now - last);
     }
     vk_renderer.deinit();
     SDL_DestroyWindow(gWindow);

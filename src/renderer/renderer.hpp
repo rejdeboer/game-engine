@@ -148,7 +148,6 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
     void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
-    void draw_game(VkCommandBuffer cmd);
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
@@ -185,7 +184,9 @@ class Renderer {
 
     Renderer(SDL_Window *window);
     void deinit();
-    void draw_frame(GameState *state, Uint64 dt);
+    VkCommandBuffer begin_frame();
+    void draw_game(VkCommandBuffer cmd);
+    void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);
