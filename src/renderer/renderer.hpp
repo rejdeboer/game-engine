@@ -147,7 +147,6 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
-    void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
