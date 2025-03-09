@@ -179,7 +179,59 @@ void Renderer::init_swap_chain() {
                                               _swapChainImageFormat.format);
 }
 
-void Renderer::init_pipelines() { metalRoughMaterial.build_pipelines(this); }
+void Renderer::init_pipelines() {
+    metalRoughMaterial.build_pipelines(this);
+    init_tile_pipeline();
+}
+
+void Renderer::init_tile_pipeline() {
+    VkShaderModule tileFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/tile.frag.spv", _device,
+                                    &tileFragShader)) {
+        fmt::println("Error when building the tile fragment shader module");
+    }
+
+    VkShaderModule tileVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/tile.vert.spv", _device,
+                                    &tileVertShader)) {
+        fmt::println("Error when building the tile vertex shader module");
+    }
+
+    VkPushConstantRange matrixRange{};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(GPUDrawPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
+    VkPipelineLayoutCreateInfo tileLayoutInfo = {};
+    tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    tileLayoutInfo.setLayoutCount = 2;
+    tileLayoutInfo.pSetLayouts = layouts;
+    tileLayoutInfo.pushConstantRangeCount = 1;
+    tileLayoutInfo.pPushConstantRanges = &matrixRange;
+
+    VkPipelineLayout newLayout;
+    VK_CHECK(
+        vkCreatePipelineLayout(_device, &tileLayoutInfo, nullptr, &newLayout));
+
+    _tilePipeline.layout = newLayout;
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder.set_shaders(tileVertShader, tileFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.set_color_attachment_format(_drawImage.format);
+    pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder._pipelineLayout = newLayout;
+    _tilePipeline.pipeline = pipelineBuilder.build_pipeline(_device);
+
+    vkDestroyShaderModule(_device, tileVertShader, nullptr);
+    vkDestroyShaderModule(_device, tileFragShader, nullptr);
+}
 
 void Renderer::init_descriptors() {
     std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes = {

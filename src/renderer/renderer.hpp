@@ -133,6 +133,8 @@ class Renderer {
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
+    MaterialPipeline _tilePipeline;
+
     GPUSceneData sceneData;
 
     VkExtent2D _drawExtent;
@@ -159,6 +161,7 @@ class Renderer {
     void init_default_data();
     void init_swap_chain();
     void init_pipelines();
+    void init_tile_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
