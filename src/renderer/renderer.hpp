@@ -188,6 +188,7 @@ class Renderer {
     void deinit();
     VkCommandBuffer begin_frame();
     void draw_game(VkCommandBuffer cmd);
+    void draw_world(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,

@@ -393,9 +393,10 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
+void Renderer::draw_world(VkCommandBuffer cmd) {}
+
 void Renderer::draw_game(VkCommandBuffer cmd) {
     Uint64 start = SDL_GetTicks();
-    update_scene();
     std::vector<uint32_t> opaqueDraws;
     opaqueDraws.reserve(mainDrawContext.opaqueSurfaces.size());
 
@@ -574,6 +575,7 @@ VkCommandBuffer Renderer::begin_frame() {
     vkutil::transition_image(cmd, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
+    update_scene();
     return cmd;
 }
 
