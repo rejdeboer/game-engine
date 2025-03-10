@@ -133,6 +133,8 @@ class Renderer {
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
+    MaterialPipeline _tilePipeline;
+
     GPUSceneData sceneData;
 
     VkExtent2D _drawExtent;
@@ -147,8 +149,6 @@ class Renderer {
     std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
     std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
 
-    void record_command_buffer(VkCommandBuffer buffer, uint32_t image_index);
-    void draw_game(VkCommandBuffer cmd);
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
@@ -161,6 +161,7 @@ class Renderer {
     void init_default_data();
     void init_swap_chain();
     void init_pipelines();
+    void init_tile_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
@@ -185,7 +186,10 @@ class Renderer {
 
     Renderer(SDL_Window *window);
     void deinit();
-    void draw_frame(GameState *state, Uint64 dt);
+    VkCommandBuffer begin_frame();
+    void draw_game(VkCommandBuffer cmd);
+    void draw_world(VkCommandBuffer cmd);
+    void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);

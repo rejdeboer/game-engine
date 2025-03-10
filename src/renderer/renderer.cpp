@@ -179,7 +179,59 @@ void Renderer::init_swap_chain() {
                                               _swapChainImageFormat.format);
 }
 
-void Renderer::init_pipelines() { metalRoughMaterial.build_pipelines(this); }
+void Renderer::init_pipelines() {
+    metalRoughMaterial.build_pipelines(this);
+    init_tile_pipeline();
+}
+
+void Renderer::init_tile_pipeline() {
+    VkShaderModule tileFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/tile.frag.spv", _device,
+                                    &tileFragShader)) {
+        fmt::println("Error when building the tile fragment shader module");
+    }
+
+    VkShaderModule tileVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/tile.vert.spv", _device,
+                                    &tileVertShader)) {
+        fmt::println("Error when building the tile vertex shader module");
+    }
+
+    VkPushConstantRange matrixRange{};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(GPUDrawPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
+    VkPipelineLayoutCreateInfo tileLayoutInfo = {};
+    tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    tileLayoutInfo.setLayoutCount = 2;
+    tileLayoutInfo.pSetLayouts = layouts;
+    tileLayoutInfo.pushConstantRangeCount = 1;
+    tileLayoutInfo.pPushConstantRanges = &matrixRange;
+
+    VkPipelineLayout newLayout;
+    VK_CHECK(
+        vkCreatePipelineLayout(_device, &tileLayoutInfo, nullptr, &newLayout));
+
+    _tilePipeline.layout = newLayout;
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder.set_shaders(tileVertShader, tileFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.set_color_attachment_format(_drawImage.format);
+    pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder._pipelineLayout = newLayout;
+    _tilePipeline.pipeline = pipelineBuilder.build_pipeline(_device);
+
+    vkDestroyShaderModule(_device, tileVertShader, nullptr);
+    vkDestroyShaderModule(_device, tileFragShader, nullptr);
+}
 
 void Renderer::init_descriptors() {
     std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes = {
@@ -341,7 +393,54 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
+void Renderer::draw_world(VkCommandBuffer cmd) {
+    VkRenderingAttachmentInfo colorAttachment = {};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = _drawImage.imageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingAttachmentInfo depthAttachment = {};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = _depthImage.imageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    // TODO: Vkguide uses 0.f as the far value here, do we need that?
+    depthAttachment.clearValue.depthStencil.depth = 1.f;
+
+    VkRenderingInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &colorAttachment;
+    renderInfo.pDepthAttachment = &depthAttachment;
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
+    renderInfo.layerCount = 1;
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    VkViewport viewport = {};
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = (float)_swapChainExtent.width;
+    viewport.height = (float)_swapChainExtent.height;
+    viewport.minDepth = 0.f;
+    viewport.maxDepth = 1.f;
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor = {};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = _swapChainExtent.width;
+    scissor.extent.height = _swapChainExtent.height;
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    vkCmdEndRendering(cmd);
+}
+
 void Renderer::draw_game(VkCommandBuffer cmd) {
+    Uint64 start = SDL_GetTicks();
     std::vector<uint32_t> opaqueDraws;
     opaqueDraws.reserve(mainDrawContext.opaqueSurfaces.size());
 
@@ -388,20 +487,6 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(cmd, &renderInfo);
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = static_cast<float>(_drawExtent.width);
-    viewport.height = static_cast<float>(_drawExtent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = _drawExtent;
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     AllocatedBuffer gpuSceneDataBuffer =
         create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -488,10 +573,25 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
     }
 
     vkCmdEndRendering(cmd);
+    _stats.meshDrawTime = SDL_GetTicks() - start;
 }
 
-void Renderer::record_command_buffer(VkCommandBuffer cmd,
-                                     uint32_t image_index) {
+VkCommandBuffer Renderer::begin_frame() {
+    FrameData *currentFrame = &get_current_frame();
+    vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
+                    UINT64_MAX);
+    currentFrame->_deletionQueue.flush();
+    currentFrame->_frameDescriptors.clear_pools(_device);
+    vkResetFences(_device, 1, &currentFrame->_renderFence);
+
+    _drawExtent.width =
+        std::min(_swapChainExtent.width, _drawImage.extent.width);
+    _drawExtent.height =
+        std::min(_swapChainExtent.height, _drawImage.extent.height);
+
+    VkCommandBuffer cmd = currentFrame->_mainCommandBuffer;
+    vkResetCommandBuffer(cmd, 0);
+
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.flags = 0;
@@ -505,31 +605,84 @@ void Renderer::record_command_buffer(VkCommandBuffer cmd,
     vkutil::transition_image(cmd, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    Uint64 start = SDL_GetTicks();
-    draw_game(cmd);
-    _stats.meshDrawTime = SDL_GetTicks() - start;
+    update_scene();
+    return cmd;
+}
+
+void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
+    FrameData *currentFrame = &get_current_frame();
+    uint32_t imageIndex;
+    VkResult acquireResult = vkAcquireNextImageKHR(
+        _device, _swapChain, UINT64_MAX, currentFrame->_swapchainSemaphore,
+        VK_NULL_HANDLE, &imageIndex);
+    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        _resizeRequested = true;
+        return;
+    }
 
     vkutil::transition_image(cmd, _drawImage.image,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    vkutil::transition_image(cmd, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
                              VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     vkutil::copy_image_to_image(cmd, _drawImage.image,
-                                _swapChainImages[image_index], _drawExtent,
+                                _swapChainImages[imageIndex], _drawExtent,
                                 _swapChainExtent);
 
-    vkutil::transition_image(cmd, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    draw_imgui(cmd, _swapChainImageViews[image_index]);
+    prepare_imgui(dt);
+    draw_imgui(cmd, _swapChainImageViews[imageIndex]);
 
-    vkutil::transition_image(cmd, _swapChainImages[image_index],
+    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
+
+    VkCommandBufferSubmitInfo cmdSubmitInfo = {};
+    cmdSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    cmdSubmitInfo.commandBuffer = currentFrame->_mainCommandBuffer;
+    cmdSubmitInfo.deviceMask = 0;
+
+    VkSemaphoreSubmitInfo waitInfo = create_semaphore_submit_info(
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+        currentFrame->_swapchainSemaphore);
+    VkSemaphoreSubmitInfo signalInfo = create_semaphore_submit_info(
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currentFrame->_renderSemaphore);
+
+    VkSubmitInfo2 submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfo.waitSemaphoreInfoCount = 1;
+    submitInfo.pWaitSemaphoreInfos = &waitInfo;
+    submitInfo.signalSemaphoreInfoCount = 1;
+    submitInfo.pSignalSemaphoreInfos = &signalInfo;
+    submitInfo.commandBufferInfoCount = 1;
+    submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
+
+    VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo,
+                            currentFrame->_renderFence));
+
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = &currentFrame->_renderSemaphore;
+    VkSwapchainKHR swap_chains[] = {_swapChain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &imageIndex;
+    present_info.pResults = nullptr;
+
+    VkResult presentResult =
+        vkQueuePresentKHR(_presentationQueue, &present_info);
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
+        _resizeRequested = true;
+        return;
+    }
+    _frameNumber++;
 }
 
 void Renderer::update_scene() {
@@ -579,75 +732,6 @@ void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView) {
     vkCmdBeginRendering(cmd, &renderInfo);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRendering(cmd);
-}
-
-void Renderer::draw_frame(GameState *state, Uint64 dt) {
-    prepare_imgui(dt);
-    update_scene();
-    FrameData *currentFrame = &get_current_frame();
-    vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
-                    UINT64_MAX);
-    currentFrame->_deletionQueue.flush();
-    currentFrame->_frameDescriptors.clear_pools(_device);
-    vkResetFences(_device, 1, &currentFrame->_renderFence);
-
-    uint32_t image_index;
-    VkResult acquireResult = vkAcquireNextImageKHR(
-        _device, _swapChain, UINT64_MAX, currentFrame->_swapchainSemaphore,
-        VK_NULL_HANDLE, &image_index);
-    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
-        _resizeRequested = true;
-        return;
-    }
-
-    _drawExtent.width =
-        std::min(_swapChainExtent.width, _drawImage.extent.width);
-    _drawExtent.height =
-        std::min(_swapChainExtent.height, _drawImage.extent.height);
-
-    vkResetCommandBuffer(currentFrame->_mainCommandBuffer, 0);
-    record_command_buffer(currentFrame->_mainCommandBuffer, image_index);
-
-    VkCommandBufferSubmitInfo cmdSubmitInfo = {};
-    cmdSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-    cmdSubmitInfo.commandBuffer = currentFrame->_mainCommandBuffer;
-    cmdSubmitInfo.deviceMask = 0;
-
-    VkSemaphoreSubmitInfo waitInfo = create_semaphore_submit_info(
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-        currentFrame->_swapchainSemaphore);
-    VkSemaphoreSubmitInfo signalInfo = create_semaphore_submit_info(
-        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, currentFrame->_renderSemaphore);
-
-    VkSubmitInfo2 submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-    submitInfo.waitSemaphoreInfoCount = 1;
-    submitInfo.pWaitSemaphoreInfos = &waitInfo;
-    submitInfo.signalSemaphoreInfoCount = 1;
-    submitInfo.pSignalSemaphoreInfos = &signalInfo;
-    submitInfo.commandBufferInfoCount = 1;
-    submitInfo.pCommandBufferInfos = &cmdSubmitInfo;
-
-    VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo,
-                            currentFrame->_renderFence));
-
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.waitSemaphoreCount = 1;
-    present_info.pWaitSemaphores = &currentFrame->_renderSemaphore;
-    VkSwapchainKHR swap_chains[] = {_swapChain};
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = swap_chains;
-    present_info.pImageIndices = &image_index;
-    present_info.pResults = nullptr;
-
-    VkResult presentResult =
-        vkQueuePresentKHR(_presentationQueue, &present_info);
-    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
-        _resizeRequested = true;
-        return;
-    }
-    _frameNumber++;
 }
 
 void Renderer::immediate_submit(

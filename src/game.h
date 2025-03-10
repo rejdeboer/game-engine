@@ -1,0 +1,36 @@
+#pragma once
+#include "camera.h"
+#include "memory.h"
+#include "renderer/renderer.hpp"
+#include "tile.h"
+#include <SDL3/SDL.h>
+
+// TODO: This value is completely arbitrary
+#define GAME_MEMORY 1024 * 1024 * 64
+
+#define SCREEN_WIDTH 960.
+#define SCREEN_HEIGHT 540.
+#define PLAYER_HEIGHT 1.80
+#define PLAYER_WIDTH (0.70 * PLAYER_HEIGHT)
+#define PLAYER_SPEED 5.0f
+
+class Game {
+  public:
+    struct State {
+        Arena arena;
+        WorldPosition player_position;
+        Camera camera;
+    };
+
+    Game();
+    void init();
+    void deinit();
+    void run();
+
+  private:
+    bool _isRunning{false};
+    State _state;
+
+    SDL_Window *_window;
+    Renderer _renderer;
+};
