@@ -208,7 +208,7 @@ void Renderer::init_tile_pipeline() {
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
     tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    tileLayoutInfo.setLayoutCount = 2;
+    tileLayoutInfo.setLayoutCount = 1;
     tileLayoutInfo.pSetLayouts = layouts;
     tileLayoutInfo.pushConstantRangeCount = 1;
     tileLayoutInfo.pPushConstantRanges = &matrixRange;
