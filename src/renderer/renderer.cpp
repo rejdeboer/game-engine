@@ -46,9 +46,8 @@ bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
         min.y > 1.f || max.y < -1.f) {
         return false;
-    } else {
-        return true;
     }
+    return true;
 }
 
 void Renderer::init(SDL_Window *window) {
@@ -67,9 +66,9 @@ void Renderer::init(SDL_Window *window) {
     _device = create_device(_physicalDevice, graphicsIndex, presentationIndex);
     _allocator = create_allocator(_instance, _physicalDevice, _device);
 
-    init_swap_chain();
-    _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
-    _depthImage = create_depth_image(_device, _allocator, _swapChainExtent);
+    init_swapchain();
+    _drawImage = create_draw_image(_device, _allocator, _swapchainExtent);
+    _depthImage = create_depth_image(_device, _allocator, _swapchainExtent);
 
     _mainDeletionQueue.push_function([&]() {
         vkDestroyImageView(_device, _drawImage.imageView, nullptr);
@@ -166,20 +165,20 @@ void Renderer::init_commands(uint32_t queueFamilyIndex) {
     });
 }
 
-void Renderer::init_swap_chain() {
-    SwapChainSupportDetails swapChainSupportDetails =
+void Renderer::init_swapchain() {
+    SwapChainSupportDetails swapchainSupportDetails =
         query_swap_chain_support(_physicalDevice, _surface);
-    _swapChainExtent =
-        choose_swap_extent(_window, swapChainSupportDetails.capabilities);
-    _swapChainImageFormat =
-        choose_swap_surface_format(swapChainSupportDetails.formats);
+    _swapchainExtent =
+        choose_swap_extent(_window, swapchainSupportDetails.capabilities);
+    _swapchainImageFormat =
+        choose_swap_surface_format(swapchainSupportDetails.formats);
 
-    _swapChain = create_swap_chain(_window, swapChainSupportDetails, _device,
-                                   _surface, _swapChainExtent,
-                                   _swapChainImageFormat, _physicalDevice);
-    _swapChainImages = get_swap_chain_images(_device, _swapChain);
-    _swapChainImageViews = create_image_views(_device, _swapChainImages,
-                                              _swapChainImageFormat.format);
+    _swapchain = create_swap_chain(_window, swapchainSupportDetails, _device,
+                                   _surface, _swapchainExtent,
+                                   _swapchainImageFormat, _physicalDevice);
+    _swapchainImages = get_swap_chain_images(_device, _swapchain);
+    _swapchainImageViews = create_image_views(_device, _swapchainImages,
+                                              _swapchainImageFormat.format);
 }
 
 void Renderer::init_pipelines() {
@@ -360,7 +359,7 @@ void Renderer::init_imgui() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
     initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
     initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats =
-        &_swapChainImageFormat.format;
+        &_swapchainImageFormat.format;
     ImGui_ImplVulkan_Init(&initInfo);
     ImGui_ImplVulkan_CreateFontsTexture();
 
@@ -377,7 +376,7 @@ void Renderer::deinit() {
         frame._deletionQueue.flush();
     }
     _mainDeletionQueue.flush();
-    destroy_swap_chain();
+    destroy_swapchain();
     vmaDestroyAllocator(_allocator);
     vkDestroyDevice(_device, nullptr);
     SDL_Vulkan_DestroySurface(_instance, _surface, nullptr);
@@ -385,10 +384,10 @@ void Renderer::deinit() {
     SDL_Vulkan_UnloadLibrary();
 }
 
-void Renderer::resize_swap_chain() {
+void Renderer::resize_swapchain() {
     vkDeviceWaitIdle(_device);
-    destroy_swap_chain();
-    init_swap_chain();
+    destroy_swapchain();
+    init_swapchain();
     _resizeRequested = false;
 }
 
@@ -426,8 +425,8 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     VkViewport viewport = {};
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = (float)_swapChainExtent.width;
-    viewport.height = (float)_swapChainExtent.height;
+    viewport.width = (float)_swapchainExtent.width;
+    viewport.height = (float)_swapchainExtent.height;
     viewport.minDepth = 0.f;
     viewport.maxDepth = 1.f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -435,8 +434,8 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     VkRect2D scissor = {};
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = _swapChainExtent.width;
-    scissor.extent.height = _swapChainExtent.height;
+    scissor.extent.width = _swapchainExtent.width;
+    scissor.extent.height = _swapchainExtent.height;
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     vkCmdEndRendering(cmd);
@@ -528,8 +527,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
                 VkViewport viewport = {};
                 viewport.x = 0;
                 viewport.y = 0;
-                viewport.width = (float)_swapChainExtent.width;
-                viewport.height = (float)_swapChainExtent.height;
+                viewport.width = (float)_swapchainExtent.width;
+                viewport.height = (float)_swapchainExtent.height;
                 viewport.minDepth = 0.f;
                 viewport.maxDepth = 1.f;
                 vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -537,8 +536,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
                 VkRect2D scissor = {};
                 scissor.offset.x = 0;
                 scissor.offset.y = 0;
-                scissor.extent.width = _swapChainExtent.width;
-                scissor.extent.height = _swapChainExtent.height;
+                scissor.extent.width = _swapchainExtent.width;
+                scissor.extent.height = _swapchainExtent.height;
                 vkCmdSetScissor(cmd, 0, 1, &scissor);
             }
 
@@ -588,9 +587,9 @@ VkCommandBuffer Renderer::begin_frame() {
     vkResetFences(_device, 1, &currentFrame->_renderFence);
 
     _drawExtent.width =
-        std::min(_swapChainExtent.width, _drawImage.extent.width);
+        std::min(_swapchainExtent.width, _drawImage.extent.width);
     _drawExtent.height =
-        std::min(_swapChainExtent.height, _drawImage.extent.height);
+        std::min(_swapchainExtent.height, _drawImage.extent.height);
 
     VkCommandBuffer cmd = currentFrame->_mainCommandBuffer;
     vkResetCommandBuffer(cmd, 0);
@@ -616,7 +615,7 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     FrameData *currentFrame = &get_current_frame();
     uint32_t imageIndex;
     VkResult acquireResult = vkAcquireNextImageKHR(
-        _device, _swapChain, UINT64_MAX, currentFrame->_swapchainSemaphore,
+        _device, _swapchain, UINT64_MAX, currentFrame->_swapchainSemaphore,
         VK_NULL_HANDLE, &imageIndex);
     if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         _resizeRequested = true;
@@ -626,21 +625,21 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     vkutil::transition_image(cmd, _drawImage.image,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     vkutil::copy_image_to_image(cmd, _drawImage.image,
-                                _swapChainImages[imageIndex], _drawExtent,
-                                _swapChainExtent);
+                                _swapchainImages[imageIndex], _drawExtent,
+                                _swapchainExtent);
 
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     prepare_imgui(dt);
-    draw_imgui(cmd, _swapChainImageViews[imageIndex]);
+    draw_imgui(cmd, _swapchainImageViews[imageIndex]);
 
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
@@ -673,7 +672,7 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = &currentFrame->_renderSemaphore;
-    VkSwapchainKHR swap_chains[] = {_swapChain};
+    VkSwapchainKHR swap_chains[] = {_swapchain};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = swap_chains;
     present_info.pImageIndices = &imageIndex;
@@ -694,8 +693,8 @@ void Renderer::update_scene() {
 
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
-                                      (float)_swapChainExtent.width /
-                                          (float)_swapChainExtent.height,
+                                      (float)_swapchainExtent.width /
+                                          (float)_swapchainExtent.height,
                                       0.1f, 10000.f);
 
     // invert Y direction
@@ -730,7 +729,7 @@ void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView) {
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapChainExtent};
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapchainExtent};
     renderInfo.layerCount = 1;
     vkCmdBeginRendering(cmd, &renderInfo);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -960,10 +959,10 @@ void Renderer::destroy_image(const AllocatedImage &img) {
     vmaDestroyImage(_allocator, img.image, img.allocation);
 }
 
-void Renderer::destroy_swap_chain() {
-    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
-    for (int i = 0; i < _swapChainImageViews.size(); i++) {
-        vkDestroyImageView(_device, _swapChainImageViews[i], nullptr);
+void Renderer::destroy_swapchain() {
+    vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+    for (int i = 0; i < _swapchainImageViews.size(); i++) {
+        vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
     }
 }
 
