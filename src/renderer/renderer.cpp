@@ -12,6 +12,9 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
+Renderer *loadedRenderer = nullptr;
+Renderer &Renderer::Get() { return *loadedRenderer; }
+
 bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     std::array<glm::vec3, 8> corners{
         glm::vec3{1, 1, 1},   glm::vec3{1, 1, -1},   glm::vec3{1, -1, 1},
@@ -48,7 +51,7 @@ bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     }
 }
 
-Renderer::Renderer(SDL_Window *window) {
+void Renderer::init(SDL_Window *window) {
     _window = window;
     _resizeRequested = false;
     _instance = create_vulkan_instance(window);
@@ -205,7 +208,7 @@ void Renderer::init_tile_pipeline() {
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
     tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    tileLayoutInfo.setLayoutCount = 2;
+    tileLayoutInfo.setLayoutCount = 1;
     tileLayoutInfo.pSetLayouts = layouts;
     tileLayoutInfo.pushConstantRangeCount = 1;
     tileLayoutInfo.pPushConstantRanges = &matrixRange;

@@ -41,12 +41,14 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/file.cpp 
                 src/game.cpp
                 src/math/transform.cpp
+                src/memory.cpp
                 src/renderer/descriptor.cpp
                 src/renderer/image.cpp
                 src/renderer/init.cpp 
                 src/renderer/loader.cpp
                 src/renderer/pipeline.cpp
                 src/renderer/renderer.cpp 
+                src/tile.cpp
                 ${SHADERS})
 
 add_dependencies(vulkan_test shaders)
