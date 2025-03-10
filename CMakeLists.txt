@@ -39,6 +39,7 @@ add_executable(mygame src/main.cpp src/tile.cpp src/memory.cpp)
 add_executable(vulkan_test src/vulkan_test.cpp 
                 src/camera.cpp
                 src/file.cpp 
+                src/game.cpp
                 src/math/transform.cpp
                 src/renderer/descriptor.cpp
                 src/renderer/image.cpp
