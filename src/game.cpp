@@ -17,6 +17,8 @@ void Game::init() {
         abort();
     }
 
+    _renderer.init(_window);
+
     _state.camera.position = glm::vec3(30.f, -00.f, -085.f);
     _state.player_position = WorldPosition{3, 3, 0.0f, 0.0f};
 
@@ -61,7 +63,7 @@ void Game::run() {
         while (nextGameStep <= now) {
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_EVENT_QUIT) {
-                    _isRunning = true;
+                    _isRunning = false;
                 } else if (e.type == SDL_EVENT_KEY_DOWN) {
                     switch (e.key.key) {
                     case SDLK_W:

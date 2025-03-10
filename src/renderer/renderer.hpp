@@ -169,7 +169,10 @@ class Renderer {
     void destroy_swap_chain();
 
   public:
+    static Renderer &Get();
+
     VkDevice _device;
+
     AllocatedImage _drawImage;
     AllocatedImage _depthImage;
     VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
@@ -184,7 +187,7 @@ class Renderer {
 
     GLTFMetallic_Roughness metalRoughMaterial;
 
-    Renderer(SDL_Window *window);
+    void init(SDL_Window *window);
     void deinit();
     VkCommandBuffer begin_frame();
     void draw_game(VkCommandBuffer cmd);

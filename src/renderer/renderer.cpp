@@ -12,6 +12,9 @@
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
+Renderer *loadedRenderer = nullptr;
+Renderer &Renderer::Get() { return *loadedRenderer; }
+
 bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     std::array<glm::vec3, 8> corners{
         glm::vec3{1, 1, 1},   glm::vec3{1, 1, -1},   glm::vec3{1, -1, 1},
@@ -48,7 +51,7 @@ bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     }
 }
 
-Renderer::Renderer(SDL_Window *window) {
+void Renderer::init(SDL_Window *window) {
     _window = window;
     _resizeRequested = false;
     _instance = create_vulkan_instance(window);

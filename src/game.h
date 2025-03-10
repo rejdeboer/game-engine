@@ -21,7 +21,6 @@ class Game {
         Camera camera;
     };
 
-    Game();
     void init();
     void deinit();
     void run();
