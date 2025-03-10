@@ -17,7 +17,6 @@
 class Game {
   public:
     struct State {
-        Arena arena;
         WorldPosition player_position;
         Camera camera;
     };
@@ -30,7 +29,11 @@ class Game {
   private:
     bool _isRunning{false};
     State _state;
+    Arena _arena;
+    World *_world;
 
     SDL_Window *_window;
     Renderer _renderer;
+
+    void draw_world();
 };
