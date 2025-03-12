@@ -4,6 +4,7 @@
 #include "renderer/renderer.hpp"
 #include "tile.h"
 #include <SDL3/SDL.h>
+#include <entt/entt.hpp>
 
 // TODO: This value is completely arbitrary
 #define GAME_MEMORY 1024 * 1024 * 64
@@ -30,6 +31,7 @@ class Game {
     State _state;
     Arena _arena;
     World *_world;
+    entt::registry _registry;
 
     SDL_Window *_window;
     Renderer _renderer;
