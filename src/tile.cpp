@@ -1,4 +1,7 @@
 #include "tile.h"
+#include "renderer/vertex.h"
+#include <utility>
+#include <vector>
 
 static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,
                                       uint32_t tile_x, uint32_t tile_y) {
@@ -69,4 +72,38 @@ World *generate_world(Arena *arena) {
     }
 
     return world;
+}
+
+std::pair<std::vector<Vertex>, std::vector<uint32_t>>
+create_tile_chunk_mesh(TileChunk *chunk, uint32_t chunkDim,
+                       uint32_t tileWidth) {
+    std::vector<Vertex> vertices =
+        std::vector<Vertex>(std::pow(chunkDim + 1, 2));
+    std::vector<uint32_t> indices =
+        std::vector<uint32_t>(chunkDim * chunkDim * 6);
+
+    for (uint32_t row = 0; row < chunkDim + 1; row++) {
+        for (uint32_t col = 0; col < chunkDim + 1; col++) {
+            Vertex vertex;
+            vertex.pos.x = col * tileWidth;
+            vertex.pos.y = row * tileWidth;
+            vertex.pos.z = 0;
+            vertex.color = glm::vec4(1, 1, 1, 1);
+            vertex.normal = glm::vec3(0, 1, 0);
+            vertices.push_back(vertex);
+
+            if (row == chunkDim || col == chunkDim) {
+                continue;
+            }
+
+            indices.push_back(row * chunkDim + col);
+            indices.push_back(row * chunkDim + col + 1);
+            indices.push_back((row + 1) * chunkDim + col);
+            indices.push_back(row * chunkDim + col + 1);
+            indices.push_back((row + 1) * chunkDim + col);
+            indices.push_back((row + 1) * chunkDim + col + 1);
+        }
+    }
+
+    return std::pair(vertices, indices);
 }
