@@ -84,6 +84,11 @@ void Renderer::init(SDL_Window *window) {
     _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
     _presentationQueue = get_device_queue(_device, presentationIndex, 0);
 
+    // TODO: Cleanup
+    // _tileBuffers = uploadMesh(
+    //     std::span{kTileIndices.cbegin(), kTileIndices.cend()},
+    //     kTileVertices);
+
     init_imgui();
     init_commands(graphicsIndex);
     init_sync_structures();
@@ -444,6 +449,63 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     scissor.extent.width = _swapchainExtent.width;
     scissor.extent.height = _swapchainExtent.height;
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    AllocatedBuffer gpuSceneDataBuffer =
+        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                      VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    // Example instance data for 2 tiles
+    std::vector<TileInstance> instanceData = {
+        {glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)),
+         glm::vec3(1.f, 1.f, 1.f)}, // Tile 1 at origin
+        {glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)),
+         glm::vec3(1.f, 1.f, 1.f)}, // Tile 2 offset by 1 unit
+    };
+
+    AllocatedBuffer instanceBuffer = create_buffer(
+        sizeof(TileInstance) * instanceData.size(),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
+
+    get_current_frame()._deletionQueue.push_function([=, this]() {
+        destroy_buffer(gpuSceneDataBuffer);
+        destroy_buffer(instanceBuffer);
+    });
+
+    GPUSceneData *sceneUniformData =
+        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
+    *sceneUniformData = sceneData;
+
+    VkDescriptorSet globalDescriptor =
+        get_current_frame()._frameDescriptors.allocate(
+            _device, _gpuSceneDataDescriptorLayout);
+    DescriptorWriter writer;
+    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.update_set(_device, globalDescriptor);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _tilePipeline.pipeline);
+
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(cmd, 0, 1, &_tileBuffers.vertexBuffer.buffer,
+                           offsets);
+    vkCmdBindIndexBuffer(cmd, _tileBuffers.indexBuffer.buffer, 0,
+                         VK_INDEX_TYPE_UINT16);
+
+    void *data = instanceBuffer.allocation->GetMappedData();
+    size_t instanceBufferSize = sizeof(TileInstance) * instanceData.size();
+    memcpy(data, instanceData.data(), instanceBufferSize);
+
+    VkBufferDeviceAddressInfo deviceAdressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = instanceBuffer.buffer};
+    VkDeviceAddress instanceBufferAddress =
+        vkGetBufferDeviceAddress(_device, &deviceAdressInfo);
+
+    vkCmdPushConstants(cmd, _tilePipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                       sizeof(VkDeviceAddress), &instanceBufferAddress);
 
     vkCmdEndRendering(cmd);
 }

@@ -134,6 +134,7 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     MaterialPipeline _tilePipeline;
+    GPUMeshBuffers _tileBuffers;
 
     GPUSceneData sceneData;
 
