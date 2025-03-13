@@ -29,6 +29,6 @@ void main() {
 	gl_Position = sceneData.viewproj * instance.modelMatrix * vec4(inPosition, 1.0);
 
 	outNormal = inNormal;
-	outColor = v.color.xyz;
+	outColor = instance.color.xyz;
 }
 
