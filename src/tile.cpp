@@ -96,6 +96,7 @@ create_tile_chunk_mesh(TileChunk *chunk, uint32_t chunkDim,
                 continue;
             }
 
+            // TODO: This indices vector could be a constant
             indices.push_back(row * chunkDim + col);
             indices.push_back(row * chunkDim + col + 1);
             indices.push_back((row + 1) * chunkDim + col);
