@@ -5,6 +5,7 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
 #include "pipeline.h"
+#include "tile.h"
 #include <algorithm>
 #include <glm/gtx/transform.hpp>
 #include <vulkan/vulkan_core.h>
@@ -199,10 +200,12 @@ void Renderer::init_tile_pipeline() {
         fmt::println("Error when building the tile vertex shader module");
     }
 
-    VkPushConstantRange matrixRange{};
-    matrixRange.offset = 0;
-    matrixRange.size = sizeof(GPUDrawPushConstants);
-    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    // TODO: If the instance buffer is not updated often, using descriptor sets
+    // would be better
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(VkDeviceAddress);
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
@@ -210,13 +213,14 @@ void Renderer::init_tile_pipeline() {
     tileLayoutInfo.setLayoutCount = 1;
     tileLayoutInfo.pSetLayouts = layouts;
     tileLayoutInfo.pushConstantRangeCount = 1;
-    tileLayoutInfo.pPushConstantRanges = &matrixRange;
+    tileLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkPipelineLayout newLayout;
     VK_CHECK(
         vkCreatePipelineLayout(_device, &tileLayoutInfo, nullptr, &newLayout));
-
     _tilePipeline.layout = newLayout;
+
+    auto attributeDescriptions = TileVertex::get_attribute_descriptions();
 
     PipelineBuilder pipelineBuilder;
     pipelineBuilder.set_shaders(tileVertShader, tileFragShader);
@@ -228,6 +232,9 @@ void Renderer::init_tile_pipeline() {
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder.set_vertex_input(TileVertex::get_binding_description(),
+                                     &attributeDescriptions[0],
+                                     attributeDescriptions.size());
     pipelineBuilder._pipelineLayout = newLayout;
     _tilePipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
