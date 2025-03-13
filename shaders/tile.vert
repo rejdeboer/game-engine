@@ -4,39 +4,31 @@
 
 #include "tile_structures.glsl"
 
+layout (location = 0) in vec3 inPosition;
+layout (location = 1) in vec3 inNormal;
+
 layout (location = 0) out vec3 outNormal;
 layout (location = 1) out vec3 outColor;
-layout (location = 2) out vec2 outUV;
 
-struct Vertex {
-	vec3 position;
-	float uv_x;
-	vec3 normal;
-	float uv_y;
-	vec4 color;
+struct InstanceData {
+	mat4 modelMatrix;
+	vec3 color;
 }; 
 
-layout(buffer_reference, std430) readonly buffer VertexBuffer{ 
-	Vertex vertices[];
+layout(buffer_reference, std430) readonly buffer InstanceDataBuffer{ 
+	InstanceData instances[];
 };
 
-layout( push_constant ) uniform constants
-{	
-	mat4 render_matrix;
-	VertexBuffer vertexBuffer;
+layout( push_constant ) uniform constants {	
+	InstanceDataBuffer instanceBuffer;
 } PushConstants;
 
-void main() 
-{	
-	Vertex v = PushConstants.vertexBuffer.vertices[gl_VertexIndex];
+void main() {	
+	InstanceData instance = PushConstants.instanceBuffer.instances[gl_InstanceIndex];
 
-	vec4 position = vec4(v.position, 1.0f);
+	gl_Position = sceneData.viewproj * instance.modelMatrix * vec4(inPosition, 1.0);
 
-	gl_Position = sceneData.viewproj * PushConstants.render_matrix * position;
-
-	outNormal = (PushConstants.render_matrix * vec4(v.normal, 0.f)).xyz;
+	outNormal = inNormal;
 	outColor = v.color.xyz;
-	outUV.x = v.uv_x;
-	outUV.y = v.uv_y;
 }
 
