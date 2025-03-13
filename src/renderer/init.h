@@ -33,11 +33,6 @@ struct QueueFamilyIndices {
     }
 };
 
-struct PipelineContext {
-    VkPipelineLayout layout;
-    VkPipeline pipeline;
-};
-
 VkInstance create_vulkan_instance(SDL_Window *window);
 VkSurfaceKHR create_surface(SDL_Window *window, VkInstance instance);
 VkPhysicalDevice pick_physical_device(VkInstance instance,
@@ -78,11 +73,8 @@ VkRenderPass create_render_pass(VkDevice device,
 VkCommandPool create_command_pool(VkDevice device, uint32_t queue_family_index);
 VkCommandBuffer create_command_buffer(VkDevice device,
                                       VkCommandPool command_pool);
-VkBuffer create_vertex_buffer(VkDevice device);
 VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                          uint32_t queue_index);
-VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
-                                      VkDevice device, VkBuffer buffer);
 VkSemaphoreSubmitInfo
 create_semaphore_submit_info(VkPipelineStageFlags2 stageMask,
                              VkSemaphore semaphore);

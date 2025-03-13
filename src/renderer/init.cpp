@@ -576,19 +576,6 @@ VkCommandBuffer create_command_buffer(VkDevice device,
     return buffer;
 }
 
-VkBuffer create_vertex_buffer(VkDevice device) {
-    VkBufferCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    // TODO: This is a mess
-    create_info.size = sizeof(Vertex) * 3;
-    create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VkBuffer buffer;
-    VK_CHECK(vkCreateBuffer(device, &create_info, nullptr, &buffer));
-    return buffer;
-}
-
 VkQueue get_device_queue(VkDevice device, uint32_t family_index,
                          uint32_t queue_index) {
     VkQueue queue;
@@ -609,25 +596,6 @@ static uint32_t find_memory_type(VkPhysicalDevice physical_device,
         }
     }
     throw std::runtime_error("failed to find suitable memory type");
-}
-
-VkDeviceMemory allocate_vertex_buffer(VkPhysicalDevice physical_device,
-                                      VkDevice device, VkBuffer buffer) {
-    VkMemoryRequirements mem_requirements;
-    vkGetBufferMemoryRequirements(device, buffer, &mem_requirements);
-
-    VkMemoryAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocate_info.allocationSize = mem_requirements.size;
-    allocate_info.memoryTypeIndex =
-        find_memory_type(physical_device, mem_requirements.memoryTypeBits,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    VkDeviceMemory memory;
-    VK_CHECK(vkAllocateMemory(device, &allocate_info, nullptr, &memory));
-    vkBindBufferMemory(device, buffer, memory, 0);
-    return memory;
 }
 
 VkSemaphoreSubmitInfo
