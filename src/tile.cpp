@@ -1,6 +1,5 @@
 #include "tile.h"
-#include "renderer/vertex.h"
-#include <utility>
+#include "renderer/tile.h"
 #include <vector>
 
 static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,
@@ -74,37 +73,40 @@ World *generate_world(Arena *arena) {
     return world;
 }
 
-std::pair<std::vector<Vertex>, std::vector<uint32_t>>
-create_tile_chunk_mesh(TileChunk *chunk, uint32_t chunkDim,
-                       uint32_t tileWidth) {
-    std::vector<Vertex> vertices =
-        std::vector<Vertex>(std::pow(chunkDim + 1, 2));
-    std::vector<uint32_t> indices =
-        std::vector<uint32_t>(chunkDim * chunkDim * 6);
+static std::vector<TileInstance> create_tile_chunk_mesh(TileChunk *chunk,
+                                                        uint32_t chunkDim,
+                                                        uint32_t tileWidth) {
+    std::vector<TileInstance> instances(chunkDim * chunkDim);
 
-    for (uint32_t row = 0; row < chunkDim + 1; row++) {
-        for (uint32_t col = 0; col < chunkDim + 1; col++) {
-            Vertex vertex;
-            vertex.pos.x = col * tileWidth;
-            vertex.pos.y = row * tileWidth;
-            vertex.pos.z = 0;
-            vertex.color = glm::vec4(1, 1, 1, 1);
-            vertex.normal = glm::vec3(0, 1, 0);
-            vertices.push_back(vertex);
-
-            if (row == chunkDim || col == chunkDim) {
-                continue;
-            }
-
-            // TODO: This indices vector could be a constant
-            indices.push_back(row * chunkDim + col);
-            indices.push_back(row * chunkDim + col + 1);
-            indices.push_back((row + 1) * chunkDim + col);
-            indices.push_back(row * chunkDim + col + 1);
-            indices.push_back((row + 1) * chunkDim + col);
-            indices.push_back((row + 1) * chunkDim + col + 1);
+    for (uint32_t row = 0; row < chunkDim; row++) {
+        for (uint32_t col = 0; col < chunkDim; col++) {
+            TileInstance instance;
+            instance.pos.x = (float)col;
+            instance.pos.y = (float)row;
+            instance.color.x = (float)(col % 2);
+            instance.color.y = (float)(row % 2);
+            instance.color.z = 1;
+            instances.push_back(instance);
         }
     }
 
-    return std::pair(vertices, indices);
+    return instances;
+}
+
+std::vector<TileRenderingInput> create_tile_map_mesh(TileMap *tm) {
+    std::vector<TileRenderingInput> chunks(tm->n_tile_chunk_x *
+                                           tm->n_tile_chunk_y);
+
+    for (uint32_t row = 0; row < tm->n_tile_chunk_y; row++) {
+        for (uint32_t col = 0; col < tm->n_tile_chunk_x; col++) {
+            TileRenderingInput chunk;
+            chunk.instances = create_tile_chunk_mesh(
+                tm->tile_chunks[row * tm->n_tile_chunk_x + col], tm->chunk_dim,
+                tm->tile_side_in_pixels);
+            chunk.chunkPosition = glm::vec3(col, row, 0.f);
+            chunks.push_back(chunk);
+        }
+    }
+
+    return chunks;
 }

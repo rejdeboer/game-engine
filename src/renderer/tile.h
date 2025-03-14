@@ -1,4 +1,5 @@
 #pragma once
+#include "types.h"
 #include <array>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
@@ -32,7 +33,7 @@ struct TileVertex {
 };
 
 struct TileInstance {
-    glm::mat4 modelMatrix;
+    glm::vec3 pos;
     glm::vec3 color;
 };
 
@@ -43,4 +44,14 @@ constexpr std::array<TileVertex, 4> kTileVertices = {{
     {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
 }};
 
-constexpr std::array<uint32_t, 6> kTileIndices = {{0, 1, 2, 1, 2, 3}};
+const std::array<uint32_t, 6> kTileIndices = {0, 1, 2, 1, 2, 3};
+
+struct RenderTileChunk {
+    AllocatedBuffer instanceBuffer;
+    uint32_t instanceCount;
+};
+
+struct TileRenderingInput {
+    std::vector<TileInstance> instances;
+    glm::vec3 chunkPosition;
+};

@@ -7,7 +7,10 @@
 #include "pipeline.h"
 #include "tile.h"
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <glm/gtx/transform.hpp>
+#include <span>
 #include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
@@ -84,15 +87,11 @@ void Renderer::init(SDL_Window *window) {
     _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
     _presentationQueue = get_device_queue(_device, presentationIndex, 0);
 
-    // TODO: Cleanup
-    // _tileBuffers = uploadMesh(
-    //     std::span{kTileIndices.cbegin(), kTileIndices.cend()},
-    //     kTileVertices);
-
     init_imgui();
     init_commands(graphicsIndex);
     init_sync_structures();
     init_default_data();
+    init_tile_buffers();
 }
 
 void Renderer::init_default_data() {
@@ -245,6 +244,51 @@ void Renderer::init_tile_pipeline() {
 
     vkDestroyShaderModule(_device, tileVertShader, nullptr);
     vkDestroyShaderModule(_device, tileFragShader, nullptr);
+}
+
+void Renderer::init_tile_buffers() {
+    const size_t vertexBufferSize = kTileVertices.size() * sizeof(TileVertex);
+    const size_t indexBufferSize = kTileIndices.size() * sizeof(uint32_t);
+
+    _tileVertices = create_buffer(vertexBufferSize,
+                                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                  VMA_MEMORY_USAGE_GPU_ONLY);
+
+    _tileIndices = create_buffer(indexBufferSize,
+                                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                 VMA_MEMORY_USAGE_GPU_ONLY);
+
+    AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize,
+                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                            VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void *data = staging.allocation->GetMappedData();
+
+    memcpy(data, kTileVertices.data(), vertexBufferSize);
+    memcpy((char *)data + vertexBufferSize, kTileIndices.data(),
+           indexBufferSize);
+
+    immediate_submit([&](VkCommandBuffer cmd) {
+        VkBufferCopy vertexCopy{0};
+        vertexCopy.dstOffset = 0;
+        vertexCopy.srcOffset = 0;
+        vertexCopy.size = vertexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, _tileVertices.buffer, 1,
+                        &vertexCopy);
+
+        VkBufferCopy indexCopy{0};
+        indexCopy.dstOffset = 0;
+        indexCopy.srcOffset = vertexBufferSize;
+        indexCopy.size = indexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, _tileIndices.buffer, 1,
+                        &indexCopy);
+    });
+
+    destroy_buffer(staging);
 }
 
 void Renderer::init_descriptors() {
@@ -462,11 +506,12 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
          glm::vec3(1.f, 1.f, 1.f)}, // Tile 2 offset by 1 unit
     };
 
+    size_t instanceBufferSize = sizeof(TileInstance) * instanceData.size();
     AllocatedBuffer instanceBuffer = create_buffer(
-        sizeof(TileInstance) * instanceData.size(),
+        instanceBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
 
     get_current_frame()._deletionQueue.push_function([=, this]() {
         destroy_buffer(gpuSceneDataBuffer);
@@ -489,13 +534,10 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
                       _tilePipeline.pipeline);
 
     VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(cmd, 0, 1, &_tileBuffers.vertexBuffer.buffer,
-                           offsets);
-    vkCmdBindIndexBuffer(cmd, _tileBuffers.indexBuffer.buffer, 0,
-                         VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &_tileVertices.buffer, offsets);
+    vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT16);
 
     void *data = instanceBuffer.allocation->GetMappedData();
-    size_t instanceBufferSize = sizeof(TileInstance) * instanceData.size();
     memcpy(data, instanceData.data(), instanceBufferSize);
 
     VkBufferDeviceAddressInfo deviceAdressInfo{

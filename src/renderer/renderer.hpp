@@ -134,7 +134,8 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     MaterialPipeline _tilePipeline;
-    GPUMeshBuffers _tileBuffers;
+    AllocatedBuffer _tileVertices;
+    AllocatedBuffer _tileIndices;
 
     GPUSceneData sceneData;
 
@@ -167,6 +168,7 @@ class Renderer {
     void init_sync_structures();
     void init_descriptors();
     void init_imgui();
+    void init_tile_buffers();
     void destroy_swapchain();
 
   public:
