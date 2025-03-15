@@ -14,6 +14,7 @@ class PipelineBuilder {
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
     VkPipelineRenderingCreateInfo _renderInfo;
     VkFormat _colorAttachmentformat;
+    VkPipelineVertexInputStateCreateInfo _vertexInput;
 
     PipelineBuilder() { clear(); }
 
@@ -35,6 +36,11 @@ class PipelineBuilder {
     void set_depth_format(VkFormat format);
     void disable_depthtest();
     void enable_depthtest(bool depthWriteEnable, VkCompareOp op);
+    void
+    set_vertex_input(VkVertexInputBindingDescription *bindingDescriptions,
+                     uint32_t bindingDescriptionsCount,
+                     VkVertexInputAttributeDescription *attributeDescriptions,
+                     uint32_t attributeDescriptionsCount);
 };
 
 namespace vkutil {

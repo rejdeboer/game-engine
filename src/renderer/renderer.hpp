@@ -4,6 +4,7 @@
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
+#include "tile.h"
 #include "types.h"
 #include "vertex.h"
 #include <SDL3/SDL.h>
@@ -119,11 +120,11 @@ class Renderer {
     DeletionQueue _mainDeletionQueue;
     RenderStats _stats;
 
-    VkSwapchainKHR _swapChain;
-    VkExtent2D _swapChainExtent;
-    VkSurfaceFormatKHR _swapChainImageFormat;
-    std::vector<VkImage> _swapChainImages;
-    std::vector<VkImageView> _swapChainImageViews;
+    VkSwapchainKHR _swapchain;
+    VkExtent2D _swapchainExtent;
+    VkSurfaceFormatKHR _swapchainImageFormat;
+    std::vector<VkImage> _swapchainImages;
+    std::vector<VkImageView> _swapchainImageViews;
 
     VkFence _immFence;
     VkCommandBuffer _immCommandBuffer;
@@ -134,6 +135,9 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     MaterialPipeline _tilePipeline;
+    AllocatedBuffer _tileVertices;
+    AllocatedBuffer _tileIndices;
+    std::vector<TileRenderChunk> _tileRenderChunks;
 
     GPUSceneData sceneData;
 
@@ -159,14 +163,15 @@ class Renderer {
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     void init_default_data();
-    void init_swap_chain();
+    void init_swapchain();
     void init_pipelines();
     void init_tile_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
     void init_imgui();
-    void destroy_swap_chain();
+    void init_tile_buffers();
+    void destroy_swapchain();
 
   public:
     static Renderer &Get();
@@ -197,8 +202,9 @@ class Renderer {
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);
 
-    void resize_swap_chain();
+    void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
+    void create_tile_chunks(std::vector<TileRenderingInput> inputs);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
                                   VmaMemoryUsage memoryUsage);

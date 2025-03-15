@@ -1,4 +1,5 @@
 #include "tile.h"
+#include <vector>
 
 static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,
                                       uint32_t tile_x, uint32_t tile_y) {
@@ -69,4 +70,43 @@ World *generate_world(Arena *arena) {
     }
 
     return world;
+}
+
+static std::vector<TileInstance> create_tile_chunk_mesh(TileChunk *chunk,
+                                                        uint32_t chunkDim,
+                                                        uint32_t tileWidth) {
+    std::vector<TileInstance> instances(chunkDim * chunkDim);
+
+    for (uint32_t row = 0; row < chunkDim; row++) {
+        for (uint32_t col = 0; col < chunkDim; col++) {
+            TileInstance instance;
+            instance.pos.x = (float)col;
+            instance.pos.y = (float)row;
+            instance.color.x = (float)(col % 2);
+            instance.color.y = (float)(row % 2);
+            instance.color.z = 1;
+            instances[row * chunkDim + col] = instance;
+        }
+    }
+
+    return instances;
+}
+
+std::vector<TileRenderingInput> create_tile_map_mesh(TileMap *tm) {
+    std::vector<TileRenderingInput> chunks(tm->n_tile_chunk_x *
+                                           tm->n_tile_chunk_y);
+
+    for (uint32_t row = 0; row < tm->n_tile_chunk_y; row++) {
+        for (uint32_t col = 0; col < tm->n_tile_chunk_x; col++) {
+            TileRenderingInput chunk;
+            chunk.instances = create_tile_chunk_mesh(
+                &tm->tile_chunks[row * tm->n_tile_chunk_x + col], tm->chunk_dim,
+                tm->tile_side_in_pixels);
+            chunk.chunkPosition =
+                glm::vec3(col * tm->chunk_dim, row * tm->chunk_dim, 0.f);
+            chunks[row * tm->n_tile_chunk_x + col] = chunk;
+        }
+    }
+
+    return chunks;
 }

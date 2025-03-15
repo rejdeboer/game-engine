@@ -6,7 +6,10 @@
 #include "imgui_impl_vulkan.h"
 #include "pipeline.h"
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <glm/gtx/transform.hpp>
+#include <span>
 #include <vulkan/vulkan_core.h>
 
 #define VMA_IMPLEMENTATION
@@ -46,9 +49,8 @@ bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
     if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
         min.y > 1.f || max.y < -1.f) {
         return false;
-    } else {
-        return true;
     }
+    return true;
 }
 
 void Renderer::init(SDL_Window *window) {
@@ -67,9 +69,9 @@ void Renderer::init(SDL_Window *window) {
     _device = create_device(_physicalDevice, graphicsIndex, presentationIndex);
     _allocator = create_allocator(_instance, _physicalDevice, _device);
 
-    init_swap_chain();
-    _drawImage = create_draw_image(_device, _allocator, _swapChainExtent);
-    _depthImage = create_depth_image(_device, _allocator, _swapChainExtent);
+    init_swapchain();
+    _drawImage = create_draw_image(_device, _allocator, _swapchainExtent);
+    _depthImage = create_depth_image(_device, _allocator, _swapchainExtent);
 
     _mainDeletionQueue.push_function([&]() {
         vkDestroyImageView(_device, _drawImage.imageView, nullptr);
@@ -88,6 +90,8 @@ void Renderer::init(SDL_Window *window) {
     init_commands(graphicsIndex);
     init_sync_structures();
     init_default_data();
+    init_tile_buffers();
+    _tileRenderChunks = std::vector<TileRenderChunk>();
 }
 
 void Renderer::init_default_data() {
@@ -166,20 +170,20 @@ void Renderer::init_commands(uint32_t queueFamilyIndex) {
     });
 }
 
-void Renderer::init_swap_chain() {
-    SwapChainSupportDetails swapChainSupportDetails =
+void Renderer::init_swapchain() {
+    SwapChainSupportDetails swapchainSupportDetails =
         query_swap_chain_support(_physicalDevice, _surface);
-    _swapChainExtent =
-        choose_swap_extent(_window, swapChainSupportDetails.capabilities);
-    _swapChainImageFormat =
-        choose_swap_surface_format(swapChainSupportDetails.formats);
+    _swapchainExtent =
+        choose_swap_extent(_window, swapchainSupportDetails.capabilities);
+    _swapchainImageFormat =
+        choose_swap_surface_format(swapchainSupportDetails.formats);
 
-    _swapChain = create_swap_chain(_window, swapChainSupportDetails, _device,
-                                   _surface, _swapChainExtent,
-                                   _swapChainImageFormat, _physicalDevice);
-    _swapChainImages = get_swap_chain_images(_device, _swapChain);
-    _swapChainImageViews = create_image_views(_device, _swapChainImages,
-                                              _swapChainImageFormat.format);
+    _swapchain = create_swap_chain(_window, swapchainSupportDetails, _device,
+                                   _surface, _swapchainExtent,
+                                   _swapchainImageFormat, _physicalDevice);
+    _swapchainImages = get_swap_chain_images(_device, _swapchain);
+    _swapchainImageViews = create_image_views(_device, _swapchainImages,
+                                              _swapchainImageFormat.format);
 }
 
 void Renderer::init_pipelines() {
@@ -200,10 +204,12 @@ void Renderer::init_tile_pipeline() {
         fmt::println("Error when building the tile vertex shader module");
     }
 
-    VkPushConstantRange matrixRange{};
-    matrixRange.offset = 0;
-    matrixRange.size = sizeof(GPUDrawPushConstants);
-    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    // TODO: If the instance buffer is not updated often, using descriptor sets
+    // would be better
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(glm::mat4);
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
@@ -211,13 +217,15 @@ void Renderer::init_tile_pipeline() {
     tileLayoutInfo.setLayoutCount = 1;
     tileLayoutInfo.pSetLayouts = layouts;
     tileLayoutInfo.pushConstantRangeCount = 1;
-    tileLayoutInfo.pPushConstantRanges = &matrixRange;
+    tileLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkPipelineLayout newLayout;
     VK_CHECK(
         vkCreatePipelineLayout(_device, &tileLayoutInfo, nullptr, &newLayout));
-
     _tilePipeline.layout = newLayout;
+
+    auto bindingDescriptions = TileVertex::get_binding_descriptions();
+    auto attributeDescriptions = TileVertex::get_attribute_descriptions();
 
     PipelineBuilder pipelineBuilder;
     pipelineBuilder.set_shaders(tileVertShader, tileFragShader);
@@ -229,11 +237,59 @@ void Renderer::init_tile_pipeline() {
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder.set_vertex_input(
+        &bindingDescriptions[0], bindingDescriptions.size(),
+        &attributeDescriptions[0], attributeDescriptions.size());
     pipelineBuilder._pipelineLayout = newLayout;
     _tilePipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
     vkDestroyShaderModule(_device, tileVertShader, nullptr);
     vkDestroyShaderModule(_device, tileFragShader, nullptr);
+}
+
+void Renderer::init_tile_buffers() {
+    const size_t vertexBufferSize = kTileVertices.size() * sizeof(TileVertex);
+    const size_t indexBufferSize = kTileIndices.size() * sizeof(uint32_t);
+
+    _tileVertices = create_buffer(vertexBufferSize,
+                                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                  VMA_MEMORY_USAGE_GPU_ONLY);
+
+    _tileIndices = create_buffer(indexBufferSize,
+                                 VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                 VMA_MEMORY_USAGE_GPU_ONLY);
+
+    AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize,
+                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                            VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void *data = staging.allocation->GetMappedData();
+
+    memcpy(data, kTileVertices.data(), vertexBufferSize);
+    memcpy((char *)data + vertexBufferSize, kTileIndices.data(),
+           indexBufferSize);
+
+    immediate_submit([&](VkCommandBuffer cmd) {
+        VkBufferCopy vertexCopy{0};
+        vertexCopy.dstOffset = 0;
+        vertexCopy.srcOffset = 0;
+        vertexCopy.size = vertexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, _tileVertices.buffer, 1,
+                        &vertexCopy);
+
+        VkBufferCopy indexCopy{0};
+        indexCopy.dstOffset = 0;
+        indexCopy.srcOffset = vertexBufferSize;
+        indexCopy.size = indexBufferSize;
+
+        vkCmdCopyBuffer(cmd, staging.buffer, _tileIndices.buffer, 1,
+                        &indexCopy);
+    });
+
+    destroy_buffer(staging);
 }
 
 void Renderer::init_descriptors() {
@@ -360,7 +416,7 @@ void Renderer::init_imgui() {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
     initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
     initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats =
-        &_swapChainImageFormat.format;
+        &_swapchainImageFormat.format;
     ImGui_ImplVulkan_Init(&initInfo);
     ImGui_ImplVulkan_CreateFontsTexture();
 
@@ -377,7 +433,7 @@ void Renderer::deinit() {
         frame._deletionQueue.flush();
     }
     _mainDeletionQueue.flush();
-    destroy_swap_chain();
+    destroy_swapchain();
     vmaDestroyAllocator(_allocator);
     vkDestroyDevice(_device, nullptr);
     SDL_Vulkan_DestroySurface(_instance, _surface, nullptr);
@@ -385,15 +441,41 @@ void Renderer::deinit() {
     SDL_Vulkan_UnloadLibrary();
 }
 
-void Renderer::resize_swap_chain() {
+void Renderer::resize_swapchain() {
     vkDeviceWaitIdle(_device);
-    destroy_swap_chain();
-    init_swap_chain();
+    destroy_swapchain();
+    init_swapchain();
     _resizeRequested = false;
 }
 
 void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
+}
+
+void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
+    for (auto chunk : _tileRenderChunks) {
+        destroy_buffer(chunk.instanceBuffer);
+    }
+
+    _tileRenderChunks.clear();
+    _tileRenderChunks.resize(inputs.size());
+
+    for (int i = 0; i < inputs.size(); i++) {
+        TileRenderChunk chunk;
+        chunk.position = inputs[i].chunkPosition;
+        chunk.instanceCount = inputs[i].instances.size();
+
+        size_t bufferSize = sizeof(TileInstance) * chunk.instanceCount;
+        // TODO: This should probably be a GPU buffer
+        chunk.instanceBuffer =
+            create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        void *data = chunk.instanceBuffer.allocation->GetMappedData();
+        memcpy(data, inputs[i].instances.data(), bufferSize);
+
+        _tileRenderChunks[i] = chunk;
+    }
 }
 
 void Renderer::draw_world(VkCommandBuffer cmd) {
@@ -426,8 +508,8 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     VkViewport viewport = {};
     viewport.x = 0;
     viewport.y = 0;
-    viewport.width = (float)_swapChainExtent.width;
-    viewport.height = (float)_swapChainExtent.height;
+    viewport.width = (float)_swapchainExtent.width;
+    viewport.height = (float)_swapchainExtent.height;
     viewport.minDepth = 0.f;
     viewport.maxDepth = 1.f;
     vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -435,9 +517,53 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     VkRect2D scissor = {};
     scissor.offset.x = 0;
     scissor.offset.y = 0;
-    scissor.extent.width = _swapChainExtent.width;
-    scissor.extent.height = _swapChainExtent.height;
+    scissor.extent.width = _swapchainExtent.width;
+    scissor.extent.height = _swapchainExtent.height;
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    AllocatedBuffer gpuSceneDataBuffer =
+        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                      VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    get_current_frame()._deletionQueue.push_function(
+        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
+
+    GPUSceneData *sceneUniformData =
+        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
+    *sceneUniformData = sceneData;
+
+    VkDescriptorSet globalDescriptor =
+        get_current_frame()._frameDescriptors.allocate(
+            _device, _gpuSceneDataDescriptorLayout);
+    DescriptorWriter writer;
+    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.update_set(_device, globalDescriptor);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _tilePipeline.pipeline);
+
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(cmd, 0, 1, &_tileVertices.buffer, offsets);
+    vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _tilePipeline.layout, 0, 1, &globalDescriptor, 0,
+                            nullptr);
+
+    for (auto chunk : _tileRenderChunks) {
+        vkCmdBindVertexBuffers(cmd, 1, 1, &chunk.instanceBuffer.buffer,
+                               offsets);
+
+        glm::mat4 chunkModel = glm::translate(glm::mat4(1.0f), chunk.position);
+
+        vkCmdPushConstants(cmd, _tilePipeline.layout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
+                           &chunkModel);
+
+        vkCmdDrawIndexed(cmd, kTileIndices.size(), chunk.instanceCount, 0, 0,
+                         0);
+    }
 
     vkCmdEndRendering(cmd);
 }
@@ -528,8 +654,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
                 VkViewport viewport = {};
                 viewport.x = 0;
                 viewport.y = 0;
-                viewport.width = (float)_swapChainExtent.width;
-                viewport.height = (float)_swapChainExtent.height;
+                viewport.width = (float)_swapchainExtent.width;
+                viewport.height = (float)_swapchainExtent.height;
                 viewport.minDepth = 0.f;
                 viewport.maxDepth = 1.f;
                 vkCmdSetViewport(cmd, 0, 1, &viewport);
@@ -537,8 +663,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
                 VkRect2D scissor = {};
                 scissor.offset.x = 0;
                 scissor.offset.y = 0;
-                scissor.extent.width = _swapChainExtent.width;
-                scissor.extent.height = _swapChainExtent.height;
+                scissor.extent.width = _swapchainExtent.width;
+                scissor.extent.height = _swapchainExtent.height;
                 vkCmdSetScissor(cmd, 0, 1, &scissor);
             }
 
@@ -588,9 +714,9 @@ VkCommandBuffer Renderer::begin_frame() {
     vkResetFences(_device, 1, &currentFrame->_renderFence);
 
     _drawExtent.width =
-        std::min(_swapChainExtent.width, _drawImage.extent.width);
+        std::min(_swapchainExtent.width, _drawImage.extent.width);
     _drawExtent.height =
-        std::min(_swapChainExtent.height, _drawImage.extent.height);
+        std::min(_swapchainExtent.height, _drawImage.extent.height);
 
     VkCommandBuffer cmd = currentFrame->_mainCommandBuffer;
     vkResetCommandBuffer(cmd, 0);
@@ -616,7 +742,7 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     FrameData *currentFrame = &get_current_frame();
     uint32_t imageIndex;
     VkResult acquireResult = vkAcquireNextImageKHR(
-        _device, _swapChain, UINT64_MAX, currentFrame->_swapchainSemaphore,
+        _device, _swapchain, UINT64_MAX, currentFrame->_swapchainSemaphore,
         VK_NULL_HANDLE, &imageIndex);
     if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) {
         _resizeRequested = true;
@@ -626,21 +752,21 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     vkutil::transition_image(cmd, _drawImage.image,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     vkutil::copy_image_to_image(cmd, _drawImage.image,
-                                _swapChainImages[imageIndex], _drawExtent,
-                                _swapChainExtent);
+                                _swapchainImages[imageIndex], _drawExtent,
+                                _swapchainExtent);
 
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     prepare_imgui(dt);
-    draw_imgui(cmd, _swapChainImageViews[imageIndex]);
+    draw_imgui(cmd, _swapchainImageViews[imageIndex]);
 
-    vkutil::transition_image(cmd, _swapChainImages[imageIndex],
+    vkutil::transition_image(cmd, _swapchainImages[imageIndex],
                              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
@@ -673,7 +799,7 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = &currentFrame->_renderSemaphore;
-    VkSwapchainKHR swap_chains[] = {_swapChain};
+    VkSwapchainKHR swap_chains[] = {_swapchain};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = swap_chains;
     present_info.pImageIndices = &imageIndex;
@@ -694,8 +820,8 @@ void Renderer::update_scene() {
 
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
-                                      (float)_swapChainExtent.width /
-                                          (float)_swapChainExtent.height,
+                                      (float)_swapchainExtent.width /
+                                          (float)_swapchainExtent.height,
                                       0.1f, 10000.f);
 
     // invert Y direction
@@ -730,7 +856,7 @@ void Renderer::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView) {
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapChainExtent};
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapchainExtent};
     renderInfo.layerCount = 1;
     vkCmdBeginRendering(cmd, &renderInfo);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -960,10 +1086,10 @@ void Renderer::destroy_image(const AllocatedImage &img) {
     vmaDestroyImage(_allocator, img.image, img.allocation);
 }
 
-void Renderer::destroy_swap_chain() {
-    vkDestroySwapchainKHR(_device, _swapChain, nullptr);
-    for (int i = 0; i < _swapChainImageViews.size(); i++) {
-        vkDestroyImageView(_device, _swapChainImageViews[i], nullptr);
+void Renderer::destroy_swapchain() {
+    vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+    for (int i = 0; i < _swapchainImageViews.size(); i++) {
+        vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
     }
 }
 

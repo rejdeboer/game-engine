@@ -1,6 +1,5 @@
 #include "pipeline.h"
 #include "../file.h"
-#include "vertex.h"
 
 void PipelineBuilder::clear() {
     _inputAssembly = {
@@ -14,6 +13,8 @@ void PipelineBuilder::clear() {
     _depthStencil = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
     _renderInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+    _vertexInput = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     _shaderStages.clear();
 }
 
@@ -39,19 +40,6 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device) {
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments = &_colorBlendAttachment;
 
-    auto binding_description = Vertex::get_binding_description();
-    auto attribute_descriptions = Vertex::get_attribute_descriptions();
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-    // TODO: Do we need this?
-    // vertexInputInfo.vertexBindingDescriptionCount = 1;
-    // vertexInputInfo.pVertexBindingDescriptions = &binding_description;
-    // vertexInputInfo.vertexAttributeDescriptionCount =
-    //     static_cast<uint32_t>(attribute_descriptions.size());
-    // vertexInputInfo.pVertexAttributeDescriptions =
-    //     attribute_descriptions.data();
-
     // build the actual pipeline
     // we now use all of the info structs we have been writing into into this
     // one to create the pipeline
@@ -62,7 +50,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device) {
 
     pipelineInfo.stageCount = (uint32_t)_shaderStages.size();
     pipelineInfo.pStages = _shaderStages.data();
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pVertexInputState = &_vertexInput;
     pipelineInfo.pInputAssemblyState = &_inputAssembly;
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &_rasterizer;
@@ -214,6 +202,17 @@ void PipelineBuilder::enable_depthtest(bool depthWriteEnable, VkCompareOp op) {
     _depthStencil.back = {};
     _depthStencil.minDepthBounds = 0.f;
     _depthStencil.maxDepthBounds = 1.f;
+}
+
+void PipelineBuilder::set_vertex_input(
+    VkVertexInputBindingDescription *bindingDescriptions,
+    uint32_t bindingDescriptionsCount,
+    VkVertexInputAttributeDescription *attributeDescriptions,
+    uint32_t attributeDescriptionsCount) {
+    _vertexInput.vertexBindingDescriptionCount = bindingDescriptionsCount;
+    _vertexInput.pVertexBindingDescriptions = bindingDescriptions;
+    _vertexInput.vertexAttributeDescriptionCount = attributeDescriptionsCount;
+    _vertexInput.pVertexAttributeDescriptions = attributeDescriptions;
 }
 
 bool vkutil::load_shader_module(const char *filePath, VkDevice device,
