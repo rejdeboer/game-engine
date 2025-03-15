@@ -4,6 +4,7 @@
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
+#include "tile.h"
 #include "types.h"
 #include "vertex.h"
 #include <SDL3/SDL.h>
@@ -136,6 +137,7 @@ class Renderer {
     MaterialPipeline _tilePipeline;
     AllocatedBuffer _tileVertices;
     AllocatedBuffer _tileIndices;
+    std::vector<TileRenderChunk> _tileRenderChunks;
 
     GPUSceneData sceneData;
 
@@ -202,6 +204,7 @@ class Renderer {
 
     void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
+    void create_tile_chunks(std::vector<TileRenderingInput> inputs);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
                                   VmaMemoryUsage memoryUsage);

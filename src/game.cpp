@@ -19,13 +19,14 @@ void Game::init() {
 
     _renderer.init(_window);
 
-    _state.camera.position = glm::vec3(30.f, -00.f, -085.f);
+    _state.camera.position = glm::vec3(0.f, 0.f, 1.f);
     _state.player_position = WorldPosition{3, 3, 0.0f, 0.0f};
 
     void *memory = malloc(GAME_MEMORY);
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
 
     _world = generate_world(&_arena);
+    _renderer.create_tile_chunks(create_tile_map_mesh(_world->tile_map));
 }
 
 void Game::deinit() {

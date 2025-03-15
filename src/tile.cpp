@@ -1,5 +1,4 @@
 #include "tile.h"
-#include "renderer/tile.h"
 #include <vector>
 
 static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,
@@ -86,7 +85,7 @@ static std::vector<TileInstance> create_tile_chunk_mesh(TileChunk *chunk,
             instance.color.x = (float)(col % 2);
             instance.color.y = (float)(row % 2);
             instance.color.z = 1;
-            instances.push_back(instance);
+            instances[row * chunkDim + col] = instance;
         }
     }
 
@@ -101,10 +100,10 @@ std::vector<TileRenderingInput> create_tile_map_mesh(TileMap *tm) {
         for (uint32_t col = 0; col < tm->n_tile_chunk_x; col++) {
             TileRenderingInput chunk;
             chunk.instances = create_tile_chunk_mesh(
-                tm->tile_chunks[row * tm->n_tile_chunk_x + col], tm->chunk_dim,
+                &tm->tile_chunks[row * tm->n_tile_chunk_x + col], tm->chunk_dim,
                 tm->tile_side_in_pixels);
             chunk.chunkPosition = glm::vec3(col, row, 0.f);
-            chunks.push_back(chunk);
+            chunks[row * tm->n_tile_chunk_x + col] = chunk;
         }
     }
 

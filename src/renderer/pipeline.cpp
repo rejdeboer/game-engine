@@ -205,12 +205,12 @@ void PipelineBuilder::enable_depthtest(bool depthWriteEnable, VkCompareOp op) {
 }
 
 void PipelineBuilder::set_vertex_input(
-    VkVertexInputBindingDescription bindingDescription,
+    VkVertexInputBindingDescription *bindingDescriptions,
+    uint32_t bindingDescriptionsCount,
     VkVertexInputAttributeDescription *attributeDescriptions,
     uint32_t attributeDescriptionsCount) {
-    _vertexInputBindingDescription = bindingDescription;
-    _vertexInput.vertexBindingDescriptionCount = 1;
-    _vertexInput.pVertexBindingDescriptions = &_vertexInputBindingDescription;
+    _vertexInput.vertexBindingDescriptionCount = bindingDescriptionsCount;
+    _vertexInput.pVertexBindingDescriptions = bindingDescriptions;
     _vertexInput.vertexAttributeDescriptionCount = attributeDescriptionsCount;
     _vertexInput.pVertexAttributeDescriptions = attributeDescriptions;
 }

@@ -5,7 +5,6 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
 #include "pipeline.h"
-#include "tile.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -92,6 +91,7 @@ void Renderer::init(SDL_Window *window) {
     init_sync_structures();
     init_default_data();
     init_tile_buffers();
+    _tileRenderChunks = std::vector<TileRenderChunk>();
 }
 
 void Renderer::init_default_data() {
@@ -208,7 +208,7 @@ void Renderer::init_tile_pipeline() {
     // would be better
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(VkDeviceAddress);
+    pushConstantRange.size = sizeof(glm::mat4);
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout};
@@ -224,6 +224,7 @@ void Renderer::init_tile_pipeline() {
         vkCreatePipelineLayout(_device, &tileLayoutInfo, nullptr, &newLayout));
     _tilePipeline.layout = newLayout;
 
+    auto bindingDescriptions = TileVertex::get_binding_descriptions();
     auto attributeDescriptions = TileVertex::get_attribute_descriptions();
 
     PipelineBuilder pipelineBuilder;
@@ -236,9 +237,9 @@ void Renderer::init_tile_pipeline() {
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_color_attachment_format(_drawImage.format);
     pipelineBuilder.set_depth_format(_depthImage.format);
-    pipelineBuilder.set_vertex_input(TileVertex::get_binding_description(),
-                                     &attributeDescriptions[0],
-                                     attributeDescriptions.size());
+    pipelineBuilder.set_vertex_input(
+        &bindingDescriptions[0], bindingDescriptions.size(),
+        &attributeDescriptions[0], attributeDescriptions.size());
     pipelineBuilder._pipelineLayout = newLayout;
     _tilePipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
@@ -451,6 +452,32 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
+void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
+    for (auto chunk : _tileRenderChunks) {
+        destroy_buffer(chunk.instanceBuffer);
+    }
+
+    _tileRenderChunks.clear();
+    _tileRenderChunks.resize(inputs.size());
+
+    for (int i = 0; i < inputs.size(); i++) {
+        TileRenderChunk chunk;
+        chunk.position = inputs[i].chunkPosition;
+        chunk.instanceCount = inputs[i].instances.size();
+
+        size_t bufferSize = sizeof(TileInstance) * chunk.instanceCount;
+        // TODO: This should probably be a GPU buffer
+        chunk.instanceBuffer =
+            create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        void *data = chunk.instanceBuffer.allocation->GetMappedData();
+        memcpy(data, inputs[i].instances.data(), bufferSize);
+
+        _tileRenderChunks[i] = chunk;
+    }
+}
+
 void Renderer::draw_world(VkCommandBuffer cmd) {
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -498,25 +525,8 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
         create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                       VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-    // Example instance data for 2 tiles
-    std::vector<TileInstance> instanceData = {
-        {glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)),
-         glm::vec3(1.f, 1.f, 1.f)}, // Tile 1 at origin
-        {glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)),
-         glm::vec3(1.f, 1.f, 1.f)}, // Tile 2 offset by 1 unit
-    };
-
-    size_t instanceBufferSize = sizeof(TileInstance) * instanceData.size();
-    AllocatedBuffer instanceBuffer = create_buffer(
-        instanceBufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-    get_current_frame()._deletionQueue.push_function([=, this]() {
-        destroy_buffer(gpuSceneDataBuffer);
-        destroy_buffer(instanceBuffer);
-    });
+    get_current_frame()._deletionQueue.push_function(
+        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
 
     GPUSceneData *sceneUniformData =
         (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
@@ -537,17 +547,23 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     vkCmdBindVertexBuffers(cmd, 0, 1, &_tileVertices.buffer, offsets);
     vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT16);
 
-    void *data = instanceBuffer.allocation->GetMappedData();
-    memcpy(data, instanceData.data(), instanceBufferSize);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _tilePipeline.layout, 0, 1, &globalDescriptor, 0,
+                            nullptr);
 
-    VkBufferDeviceAddressInfo deviceAdressInfo{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = instanceBuffer.buffer};
-    VkDeviceAddress instanceBufferAddress =
-        vkGetBufferDeviceAddress(_device, &deviceAdressInfo);
+    for (auto chunk : _tileRenderChunks) {
+        vkCmdBindVertexBuffers(cmd, 1, 1, &chunk.instanceBuffer.buffer,
+                               offsets);
 
-    vkCmdPushConstants(cmd, _tilePipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-                       sizeof(VkDeviceAddress), &instanceBufferAddress);
+        glm::mat4 chunkModel = glm::translate(glm::mat4(1.0f), chunk.position);
+
+        vkCmdPushConstants(cmd, _tilePipeline.layout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
+                           &chunkModel);
+
+        vkCmdDrawIndexed(cmd, kTileIndices.size(), chunk.instanceCount, 0, 0,
+                         0);
+    }
 
     vkCmdEndRendering(cmd);
 }

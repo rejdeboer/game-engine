@@ -1,6 +1,7 @@
 #if !defined(TILE_H)
 
 #include "memory.h"
+#include "renderer/tile.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -45,6 +46,7 @@ struct World {
 
 bool is_world_point_traversible(TileMap *tm, WorldPosition world_pos);
 World *generate_world(Arena *arena);
+std::vector<TileRenderingInput> create_tile_map_mesh(TileMap *tm);
 
 inline void normalize_world_coord(TileMap *tm, uint32_t *tile,
                                   float *tile_rel) {
