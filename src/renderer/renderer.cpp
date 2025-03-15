@@ -545,7 +545,7 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
 
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(cmd, 0, 1, &_tileVertices.buffer, offsets);
-    vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             _tilePipeline.layout, 0, 1, &globalDescriptor, 0,

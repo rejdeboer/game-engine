@@ -19,7 +19,7 @@ void Game::init() {
 
     _renderer.init(_window);
 
-    _state.camera.position = glm::vec3(0.f, 0.f, 1.f);
+    _state.camera.position = glm::vec3(5.f, 5.f, 10.f);
     _state.player_position = WorldPosition{3, 3, 0.0f, 0.0f};
 
     void *memory = malloc(GAME_MEMORY);

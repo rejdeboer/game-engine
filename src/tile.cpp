@@ -102,7 +102,8 @@ std::vector<TileRenderingInput> create_tile_map_mesh(TileMap *tm) {
             chunk.instances = create_tile_chunk_mesh(
                 &tm->tile_chunks[row * tm->n_tile_chunk_x + col], tm->chunk_dim,
                 tm->tile_side_in_pixels);
-            chunk.chunkPosition = glm::vec3(col, row, 0.f);
+            chunk.chunkPosition =
+                glm::vec3(col * tm->chunk_dim, row * tm->chunk_dim, 0.f);
             chunks[row * tm->n_tile_chunk_x + col] = chunk;
         }
     }
