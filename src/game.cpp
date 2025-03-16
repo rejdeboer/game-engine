@@ -42,13 +42,12 @@ void Game::run() {
     bool playerLeft = false;
     bool playerRight = false;
 
-    Uint64 next_game_step = SDL_GetTicks();
-
     const uint32_t n_tile_rows = 9;
     const uint32_t n_tile_columns = 17;
 
     float lower_left_x = 0.0f;
     float lower_left_y = SCREEN_HEIGHT;
+
     Uint64 nextGameStep = SDL_GetTicks();
     Uint64 last = nextGameStep;
     Uint64 now = last;
@@ -168,8 +167,6 @@ void Game::run() {
                             _world->tile_map, _state.player_position);
                     }
                 }
-
-                next_game_step += TIMESTEP_MS;
             }
 
             nextGameStep += TIMESTEP_MS;
