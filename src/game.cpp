@@ -17,10 +17,11 @@ void Game::init() {
         abort();
     }
 
-    _renderer.init(_window);
-
     _state.camera.position = glm::vec3(5.f, 5.f, 10.f);
     _state.player_position = WorldPosition{3, 3, 0.0f, 0.0f};
+
+    _renderer.init(_window);
+    _renderer.set_camera_view(_state.camera.get_view_matrix());
 
     void *memory = malloc(GAME_MEMORY);
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
@@ -121,7 +122,7 @@ void Game::run() {
                 // TODO: Clean this up
                 // camera.processSDLEvent(e);
                 // camera.update();
-                _renderer.set_camera_view(_state.camera.get_view_matrix());
+                // _renderer.set_camera_view(_state.camera.get_view_matrix());
 
                 float dx = PLAYER_SPEED * TIMESTEP_S;
                 float dy = PLAYER_SPEED * TIMESTEP_S;

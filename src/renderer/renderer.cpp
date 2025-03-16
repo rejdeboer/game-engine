@@ -143,12 +143,12 @@ void Renderer::init_default_data() {
         destroy_image(_errorCheckerboardImage);
     });
 
-    std::string structurePath = {"assets/scenes/structure.glb"};
-    auto structureFile = loadGltf(this, structurePath);
-
-    assert(structureFile.has_value());
-
-    loadedScenes["structure"] = *structureFile;
+    // std::string structurePath = {"assets/scenes/structure.glb"};
+    // auto structureFile = loadGltf(this, structurePath);
+    //
+    // assert(structureFile.has_value());
+    //
+    // loadedScenes["structure"] = *structureFile;
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -815,8 +815,8 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
 }
 
 void Renderer::update_scene() {
-    mainDrawContext.opaqueSurfaces.clear();
-    mainDrawContext.transparentSurfaces.clear();
+    // mainDrawContext.opaqueSurfaces.clear();
+    // mainDrawContext.transparentSurfaces.clear();
 
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(glm::radians(70.f),
@@ -832,7 +832,7 @@ void Renderer::update_scene() {
     sceneData.sunlightColor = glm::vec4(1.f);
     sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
 
-    loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
+    // loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
 }
 
 void Renderer::prepare_imgui(Uint64 dt) {
