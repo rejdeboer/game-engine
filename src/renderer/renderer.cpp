@@ -187,7 +187,7 @@ void Renderer::init_swapchain() {
 }
 
 void Renderer::init_pipelines() {
-    metalRoughMaterial.build_pipelines(this);
+    // metalRoughMaterial.build_pipelines(this);
     init_tile_pipeline();
 }
 
@@ -707,8 +707,8 @@ void Renderer::draw_game(VkCommandBuffer cmd) {
 
 VkCommandBuffer Renderer::begin_frame() {
     FrameData *currentFrame = &get_current_frame();
-    vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
-                    UINT64_MAX);
+    VK_CHECK(vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
+                             UINT64_MAX));
     currentFrame->_deletionQueue.flush();
     currentFrame->_frameDescriptors.clear_pools(_device);
     vkResetFences(_device, 1, &currentFrame->_renderFence);
@@ -822,7 +822,7 @@ void Renderer::update_scene() {
     sceneData.proj = glm::perspective(glm::radians(70.f),
                                       (float)_swapchainExtent.width /
                                           (float)_swapchainExtent.height,
-                                      0.1f, 10000.f);
+                                      0.1f, 1000.f);
 
     // invert Y direction
     sceneData.proj[1][1] *= -1;
