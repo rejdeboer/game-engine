@@ -82,6 +82,7 @@ static std::vector<TileInstance> create_tile_chunk_mesh(TileChunk *chunk,
             TileInstance instance;
             instance.pos.x = (float)col;
             instance.pos.y = (float)row;
+            instance.pos.z = 0.f;
             instance.color.x = (float)(col % 2);
             instance.color.y = (float)(row % 2);
             instance.color.z = 1;
