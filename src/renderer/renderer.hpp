@@ -160,8 +160,6 @@ class Renderer {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };
 
-    void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
-
     void init_default_data();
     void init_swapchain();
     void init_pipelines();
@@ -198,6 +196,8 @@ class Renderer {
     void draw_game(VkCommandBuffer cmd);
     void draw_world(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
+
+    void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
                               std::span<Vertex> vertices);

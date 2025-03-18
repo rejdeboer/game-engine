@@ -78,10 +78,10 @@ class TileRenderer {
     void init(Renderer *renderer);
     void deinit();
     void render(VkCommandBuffer cmd);
-    void create_tile_chunks(std::vector<TileRenderingInput> inputs);
+    void update_chunks(std::vector<TileRenderingInput> inputs);
 
   private:
-    Renderer *renderer;
+    Renderer *_renderer;
     MaterialPipeline _pipeline;
     AllocatedBuffer _vertexBuffer;
     AllocatedBuffer _indexBuffer;
