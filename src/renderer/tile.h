@@ -77,7 +77,7 @@ class TileRenderer {
   public:
     void init(Renderer *renderer);
     void deinit();
-    void render(VkCommandBuffer cmd);
+    void render(RenderContext ctx);
     void update_chunks(std::vector<TileRenderingInput> inputs);
 
   private:

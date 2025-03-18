@@ -134,6 +134,7 @@ class Renderer {
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
+    TileRenderer _tileRenderer;
     MaterialPipeline _tilePipeline;
     AllocatedBuffer _tileVertices;
     AllocatedBuffer _tileIndices;
@@ -195,6 +196,7 @@ class Renderer {
     VkCommandBuffer begin_frame();
     void draw_game(VkCommandBuffer cmd);
     void draw_world(VkCommandBuffer cmd);
+    void draw(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);

@@ -62,6 +62,14 @@ struct MaterialInstance {
 
 struct DrawContext;
 
+struct RenderContext {
+    VkCommandBuffer cmd;
+    VkImageView drawImageView;
+    VkImageView depthImageView;
+    VkExtent2D drawExtent;
+    VkDescriptorSet *globalDescriptorSet;
+};
+
 class IRenderable {
     virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) = 0;
 };

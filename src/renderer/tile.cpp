@@ -1,6 +1,7 @@
 #include "tile.h"
 #include "pipeline.h"
 #include "renderer.hpp"
+#include <glm/ext/matrix_transform.hpp>
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -9,6 +10,7 @@ void TileRenderer::init(Renderer *renderer) {
     _renderer = renderer;
     init_buffers();
     init_pipeline();
+    _renderChunks = std::vector<TileRenderChunk>();
 }
 
 void TileRenderer::deinit() {
@@ -16,97 +18,75 @@ void TileRenderer::deinit() {
     _renderer->destroy_buffer(_indexBuffer);
 }
 
-void TileRenderer::render(VkCommandBuffer cmd) {
-    // VkRenderingAttachmentInfo colorAttachment = {};
-    // colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    // colorAttachment.imageView = _renderer->_drawImage.imageView;
-    // colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    // colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    // colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    //
-    // VkRenderingAttachmentInfo depthAttachment = {};
-    // depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    // depthAttachment.imageView = _renderer->_depthImage.imageView;
-    // depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    // depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    // depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    // // TODO: Vkguide uses 0.f as the far value here, do we need that?
-    // depthAttachment.clearValue.depthStencil.depth = 1.f;
-    //
-    // VkRenderingInfo renderInfo = {};
-    // renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    // renderInfo.colorAttachmentCount = 1;
-    // renderInfo.pColorAttachments = &colorAttachment;
-    // renderInfo.pDepthAttachment = &depthAttachment;
-    // renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
-    // renderInfo.layerCount = 1;
-    //
-    // vkCmdBeginRendering(cmd, &renderInfo);
-    //
-    // VkViewport viewport = {};
-    // viewport.x = 0;
-    // viewport.y = 0;
-    // viewport.width = (float)_swapchainExtent.width;
-    // viewport.height = (float)_swapchainExtent.height;
-    // viewport.minDepth = 0.f;
-    // viewport.maxDepth = 1.f;
-    // vkCmdSetViewport(cmd, 0, 1, &viewport);
-    //
-    // VkRect2D scissor = {};
-    // scissor.offset.x = 0;
-    // scissor.offset.y = 0;
-    // scissor.extent.width = _swapchainExtent.width;
-    // scissor.extent.height = _swapchainExtent.height;
-    // vkCmdSetScissor(cmd, 0, 1, &scissor);
-    //
-    // AllocatedBuffer gpuSceneDataBuffer =
-    //     create_buffer(sizeof(GPUSceneData),
-    //     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    //                   VMA_MEMORY_USAGE_CPU_TO_GPU);
-    //
-    // get_current_frame()._deletionQueue.push_function(
-    //     [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
-    //
-    // GPUSceneData *sceneUniformData =
-    //     (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
-    // *sceneUniformData = sceneData;
-    //
-    // VkDescriptorSet globalDescriptor =
-    //     get_current_frame()._frameDescriptors.allocate(
-    //         _device, _gpuSceneDataDescriptorLayout);
-    // DescriptorWriter writer;
-    // writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData),
-    // 0,
-    //                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    // writer.update_set(_device, globalDescriptor);
-    //
-    // vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //                   _tilePipeline.pipeline);
-    //
-    // VkDeviceSize offsets[] = {0};
-    // vkCmdBindVertexBuffers(cmd, 0, 1, &_tileVertices.buffer, offsets);
-    // vkCmdBindIndexBuffer(cmd, _tileIndices.buffer, 0, VK_INDEX_TYPE_UINT32);
-    //
-    // vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    //                         _tilePipeline.layout, 0, 1, &globalDescriptor, 0,
-    //                         nullptr);
-    //
-    // for (auto chunk : _tileRenderChunks) {
-    //     vkCmdBindVertexBuffers(cmd, 1, 1, &chunk.instanceBuffer.buffer,
-    //                            offsets);
-    //
-    //     glm::mat4 chunkModel = glm::translate(glm::mat4(1.0f),
-    //     chunk.position);
-    //
-    //     vkCmdPushConstants(cmd, _tilePipeline.layout,
-    //                        VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
-    //                        &chunkModel);
-    //
-    //     vkCmdDrawIndexed(cmd, kTileIndices.size(), chunk.instanceCount, 0, 0,
-    //                      0);
-    // }
-    //
-    // vkCmdEndRendering(cmd);
+void TileRenderer::render(RenderContext ctx) {
+    VkRenderingAttachmentInfo colorAttachment = {};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = ctx.drawImageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingAttachmentInfo depthAttachment = {};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = ctx.depthImageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    // TODO: Vkguide uses 0.f as the far value here, do we need that?
+    depthAttachment.clearValue.depthStencil.depth = 1.f;
+
+    VkRenderingInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &colorAttachment;
+    renderInfo.pDepthAttachment = &depthAttachment;
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, ctx.drawExtent};
+    renderInfo.layerCount = 1;
+
+    vkCmdBeginRendering(ctx.cmd, &renderInfo);
+
+    VkViewport viewport = {};
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = (float)ctx.drawExtent.width;
+    viewport.height = (float)ctx.drawExtent.height;
+    viewport.minDepth = 0.f;
+    viewport.maxDepth = 1.f;
+    vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
+
+    VkRect2D scissor = {};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = ctx.drawExtent.width;
+    scissor.extent.height = ctx.drawExtent.height;
+    vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
+
+    vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _pipeline.pipeline);
+
+    vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _pipeline.layout, 0, 1, ctx.globalDescriptorSet, 0,
+                            nullptr);
+
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(ctx.cmd, 0, 1, &_vertexBuffer.buffer, offsets);
+    vkCmdBindIndexBuffer(ctx.cmd, _indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    for (auto chunk : _renderChunks) {
+        vkCmdBindVertexBuffers(ctx.cmd, 1, 1, &chunk.instanceBuffer.buffer,
+                               offsets);
+
+        glm::mat4 chunkModel = glm::translate(glm::mat4(1.0f), chunk.position);
+
+        vkCmdPushConstants(ctx.cmd, _pipeline.layout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
+                           &chunkModel);
+
+        vkCmdDrawIndexed(ctx.cmd, kTileIndices.size(), chunk.instanceCount, 0,
+                         0, 0);
+    }
+
+    vkCmdEndRendering(ctx.cmd);
 }
 
 void TileRenderer::init_pipeline() {

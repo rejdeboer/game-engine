@@ -91,7 +91,7 @@ void Renderer::init(SDL_Window *window) {
     init_sync_structures();
     init_default_data();
     init_tile_buffers();
-    _tileRenderChunks = std::vector<TileRenderChunk>();
+    _tileRenderer.init(this);
 }
 
 void Renderer::init_default_data() {
@@ -476,6 +476,38 @@ void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
 
         _tileRenderChunks[i] = chunk;
     }
+}
+
+void Renderer::draw(VkCommandBuffer cmd) {
+    AllocatedBuffer gpuSceneDataBuffer =
+        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                      VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    get_current_frame()._deletionQueue.push_function(
+        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
+
+    GPUSceneData *sceneUniformData =
+        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
+    *sceneUniformData = sceneData;
+
+    VkDescriptorSet globalDescriptor =
+        get_current_frame()._frameDescriptors.allocate(
+            _device, _gpuSceneDataDescriptorLayout);
+
+    DescriptorWriter writer;
+    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writer.update_set(_device, globalDescriptor);
+
+    RenderContext ctx = RenderContext{
+        .cmd = cmd,
+        .drawImageView = _drawImage.imageView,
+        .depthImageView = _depthImage.imageView,
+        .drawExtent = _drawExtent,
+        .globalDescriptorSet = &globalDescriptor,
+    };
+
+    _tileRenderer->render(ctx);
 }
 
 void Renderer::draw_world(VkCommandBuffer cmd) {
