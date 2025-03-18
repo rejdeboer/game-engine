@@ -1,4 +1,5 @@
 #include "image.h"
+#include <algorithm>
 #include <cmath>
 
 VkImageSubresourceRange

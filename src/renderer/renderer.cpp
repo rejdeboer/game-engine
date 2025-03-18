@@ -12,9 +12,6 @@
 #include <span>
 #include <vulkan/vulkan_core.h>
 
-#define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
-
 Renderer *loadedRenderer = nullptr;
 Renderer &Renderer::Get() { return *loadedRenderer; }
 
@@ -90,7 +87,6 @@ void Renderer::init(SDL_Window *window) {
     init_commands(graphicsIndex);
     init_sync_structures();
     init_default_data();
-    init_tile_buffers();
     _tileRenderer.init(this);
 }
 
@@ -188,7 +184,6 @@ void Renderer::init_swapchain() {
 
 void Renderer::init_pipelines() {
     // metalRoughMaterial.build_pipelines(this);
-    init_tile_pipeline();
 }
 
 void Renderer::init_tile_pipeline() {

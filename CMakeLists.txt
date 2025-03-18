@@ -35,7 +35,6 @@ endForeach()
 
 add_custom_target(shaders ALL DEPENDS ${SPV_SHADERS})
 
-add_executable(mygame src/main.cpp src/tile.cpp src/memory.cpp)
 add_executable(vulkan_test src/vulkan_test.cpp 
                 src/camera.cpp
                 src/file.cpp 
@@ -48,12 +47,12 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/renderer/loader.cpp
                 src/renderer/pipeline.cpp
                 src/renderer/renderer.cpp 
+                src/renderer/tile.cpp 
                 src/tile.cpp
                 ${SHADERS})
 
 add_dependencies(vulkan_test shaders)
 
-target_link_libraries(mygame PRIVATE SDL3::SDL3 EnTT::EnTT SDL3_image::SDL3_image)
 target_link_libraries(vulkan_test PRIVATE 
                         fastgltf::fastgltf
                         imgui::imgui

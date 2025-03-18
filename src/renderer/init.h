@@ -1,7 +1,6 @@
 #ifndef RENDERER_CONFIG_H
 
 #include "types.h"
-#include "vk_mem_alloc.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <cassert>

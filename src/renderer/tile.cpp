@@ -3,9 +3,6 @@
 #include "renderer.hpp"
 #include <glm/ext/matrix_transform.hpp>
 
-#define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
-
 void TileRenderer::init(Renderer *renderer) {
     _renderer = renderer;
     init_buffers();
