@@ -5,11 +5,13 @@
 #include <vulkan/vulkan.h>
 
 struct TileInstance {
+    /// Position within chunk
     glm::vec3 pos;
     glm::vec3 color;
 };
 
 struct TileVertex {
+    /// Position within quad
     glm::vec3 pos;
     glm::vec3 normal;
 
@@ -56,7 +58,7 @@ constexpr std::array<TileVertex, 4> kTileVertices = {{
     {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
 }};
 
-const std::array<uint32_t, 6> kTileIndices = {0, 1, 2, 0, 2, 3};
+constexpr std::array<uint32_t, 6> kTileIndices = {0, 1, 2, 0, 2, 3};
 
 struct TileRenderChunk {
     AllocatedBuffer instanceBuffer;
@@ -67,4 +69,24 @@ struct TileRenderChunk {
 struct TileRenderingInput {
     std::vector<TileInstance> instances;
     glm::vec3 chunkPosition;
+};
+
+class Renderer;
+
+class TileRenderer {
+  public:
+    void init(Renderer *renderer);
+    void deinit();
+    void render(VkCommandBuffer cmd);
+    void create_tile_chunks(std::vector<TileRenderingInput> inputs);
+
+  private:
+    Renderer *renderer;
+    MaterialPipeline _pipeline;
+    AllocatedBuffer _vertexBuffer;
+    AllocatedBuffer _indexBuffer;
+    std::vector<TileRenderChunk> _renderChunks;
+
+    void init_pipeline();
+    void init_buffers();
 };
