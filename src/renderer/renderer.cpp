@@ -433,6 +433,7 @@ void Renderer::deinit() {
         frame._deletionQueue.flush();
     }
     _mainDeletionQueue.flush();
+    _tileRenderer.deinit();
     destroy_swapchain();
     vmaDestroyAllocator(_allocator);
     vkDestroyDevice(_device, nullptr);
@@ -507,7 +508,7 @@ void Renderer::draw(VkCommandBuffer cmd) {
         .globalDescriptorSet = &globalDescriptor,
     };
 
-    _tileRenderer->render(ctx);
+    _tileRenderer.render(ctx);
 }
 
 void Renderer::draw_world(VkCommandBuffer cmd) {
@@ -995,18 +996,16 @@ AllocatedBuffer Renderer::create_buffer(size_t allocSize,
                                          VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.pNext = nullptr;
     bufferInfo.size = allocSize;
-
     bufferInfo.usage = usage;
 
-    VmaAllocationCreateInfo vmaallocInfo = {};
-    vmaallocInfo.usage = memoryUsage;
-    vmaallocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-    AllocatedBuffer newBuffer;
+    VmaAllocationCreateInfo vmaAllocInfo = {};
+    vmaAllocInfo.usage = memoryUsage;
+    vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
-    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+    AllocatedBuffer newBuffer;
+    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaAllocInfo,
                              &newBuffer.buffer, &newBuffer.allocation,
                              &newBuffer.info));
-
     return newBuffer;
 }
 
