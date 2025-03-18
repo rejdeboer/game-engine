@@ -500,7 +500,7 @@ void Renderer::draw_world(VkCommandBuffer cmd) {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
     renderInfo.pDepthAttachment = &depthAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _swapchainExtent};
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(cmd, &renderInfo);
@@ -819,10 +819,9 @@ void Renderer::update_scene() {
     // mainDrawContext.transparentSurfaces.clear();
 
     sceneData.view = _cameraViewMatrix;
-    sceneData.proj = glm::perspective(glm::radians(70.f),
-                                      (float)_swapchainExtent.width /
-                                          (float)_swapchainExtent.height,
-                                      0.1f, 1000.f);
+    sceneData.proj = glm::perspective(
+        glm::radians(70.f),
+        (float)_drawExtent.width / (float)_drawExtent.height, 0.1f, 1000.f);
 
     // invert Y direction
     sceneData.proj[1][1] *= -1;
