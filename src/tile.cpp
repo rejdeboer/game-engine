@@ -1,4 +1,5 @@
 #include "tile.h"
+#include "vk_mem_alloc.h"
 #include <vector>
 
 static inline uint32_t get_tile_value(TileMap *tm, TileChunk *tc,

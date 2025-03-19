@@ -1,4 +1,5 @@
 #pragma once
+#include "vk_mem_alloc.h"
 #include <fmt/core.h>
 #include <glm/glm.hpp>
 #include <memory>
@@ -7,9 +8,6 @@
 #include <vulkan/vulkan.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
-
-#define VMA_IMPLEMENTATION
-#include "vk_mem_alloc.h"
 
 struct AllocatedImage {
     VkImage image;

@@ -1,6 +1,7 @@
 #include "tile.h"
 #include "pipeline.h"
 #include "renderer.hpp"
+#include "vk_mem_alloc.h"
 #include <glm/ext/matrix_transform.hpp>
 
 void TileRenderer::init(Renderer *renderer) {
@@ -161,7 +162,9 @@ void TileRenderer::init_buffers() {
         vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VMA_MEMORY_USAGE_CPU_ONLY);
 
-    void *data = staging.allocation->GetMappedData();
+    VmaAllocationInfo allocInfo;
+    vmaGetAllocationInfo(_renderer->_allocator, staging.allocation, &allocInfo);
+    void *data = allocInfo.pMappedData;
 
     memcpy(data, kTileVertices.data(), vertexBufferSize);
     memcpy((char *)data + vertexBufferSize, kTileIndices.data(),
@@ -207,7 +210,10 @@ void TileRenderer::update_chunks(std::vector<TileRenderingInput> inputs) {
             bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        void *data = chunk.instanceBuffer.allocation->GetMappedData();
+        VmaAllocationInfo allocInfo;
+        vmaGetAllocationInfo(_renderer->_allocator,
+                             chunk.instanceBuffer.allocation, &allocInfo);
+        void *data = allocInfo.pMappedData;
         memcpy(data, inputs[i].instances.data(), bufferSize);
 
         _renderChunks[i] = chunk;

@@ -12,6 +12,9 @@
 #include <span>
 #include <vulkan/vulkan_core.h>
 
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 Renderer *loadedRenderer = nullptr;
 Renderer &Renderer::Get() { return *loadedRenderer; }
 
@@ -86,8 +89,8 @@ void Renderer::init(SDL_Window *window) {
     init_imgui();
     init_commands(graphicsIndex);
     init_sync_structures();
-    init_default_data();
     _tileRenderer.init(this);
+    init_default_data();
 }
 
 void Renderer::init_default_data() {
@@ -424,11 +427,11 @@ void Renderer::init_imgui() {
 void Renderer::deinit() {
     vkDeviceWaitIdle(_device);
     loadedScenes.clear();
+    _tileRenderer.deinit();
     for (auto &frame : _frames) {
         frame._deletionQueue.flush();
     }
     _mainDeletionQueue.flush();
-    _tileRenderer.deinit();
     destroy_swapchain();
     vmaDestroyAllocator(_allocator);
     vkDestroyDevice(_device, nullptr);
@@ -448,30 +451,9 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
+// TODO: Refactor this, this feels dumb
 void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
-    for (auto chunk : _tileRenderChunks) {
-        destroy_buffer(chunk.instanceBuffer);
-    }
-
-    _tileRenderChunks.clear();
-    _tileRenderChunks.resize(inputs.size());
-
-    for (int i = 0; i < inputs.size(); i++) {
-        TileRenderChunk chunk;
-        chunk.position = inputs[i].chunkPosition;
-        chunk.instanceCount = inputs[i].instances.size();
-
-        size_t bufferSize = sizeof(TileInstance) * chunk.instanceCount;
-        // TODO: This should probably be a GPU buffer
-        chunk.instanceBuffer =
-            create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                          VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-        void *data = chunk.instanceBuffer.allocation->GetMappedData();
-        memcpy(data, inputs[i].instances.data(), bufferSize);
-
-        _tileRenderChunks[i] = chunk;
-    }
+    _tileRenderer.update_chunks(inputs);
 }
 
 void Renderer::draw(VkCommandBuffer cmd) {

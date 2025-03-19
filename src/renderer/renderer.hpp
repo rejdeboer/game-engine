@@ -11,7 +11,6 @@
 #include <deque>
 #include <functional>
 #include <vector>
-#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -144,8 +143,6 @@ class Renderer {
 
     VkExtent2D _drawExtent;
 
-    VmaAllocator _allocator;
-
     bool _resizeRequested;
 
     glm::mat4 _cameraViewMatrix;
@@ -176,6 +173,7 @@ class Renderer {
     static Renderer &Get();
 
     VkDevice _device;
+    VmaAllocator _allocator;
 
     AllocatedImage _drawImage;
     AllocatedImage _depthImage;
