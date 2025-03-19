@@ -134,10 +134,6 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     TileRenderer _tileRenderer;
-    MaterialPipeline _tilePipeline;
-    AllocatedBuffer _tileVertices;
-    AllocatedBuffer _tileIndices;
-    std::vector<TileRenderChunk> _tileRenderChunks;
 
     GPUSceneData sceneData;
 
@@ -161,12 +157,10 @@ class Renderer {
     void init_default_data();
     void init_swapchain();
     void init_pipelines();
-    void init_tile_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
     void init_imgui();
-    void init_tile_buffers();
     void destroy_swapchain();
 
   public:
