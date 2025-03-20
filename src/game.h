@@ -36,5 +36,13 @@ class Game {
     SDL_Window *_window;
     Renderer _renderer;
 
-    void draw_world();
+    void init_test_entities();
+};
+
+struct UnitData {
+    std::string name;
+};
+
+enum UnitType {
+    kCube,
 };

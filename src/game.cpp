@@ -179,3 +179,9 @@ void Game::run() {
         _renderer.end_frame(cmd, now - last);
     }
 }
+
+void Game::init_test_entities() {
+    const auto entity = _registry.create();
+    _registry.emplace<WorldPosition>(entity, 5, 5, 5.f, 5.f);
+    _registry.emplace<UnitType>(entity, kCube);
+}

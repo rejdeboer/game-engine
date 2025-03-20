@@ -279,8 +279,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
     }
 
     // use the same vectors for all meshes so that the memory doesnt reallocate
-    // as
-    // often
+    // as often
     std::vector<uint32_t> indices;
     std::vector<Vertex> vertices;
 
