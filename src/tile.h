@@ -1,5 +1,5 @@
-#if !defined(TILE_H)
-
+#pragma once
+#include "math/transform.h"
 #include "memory.h"
 #include "renderer/tile.h"
 #include <cassert>
@@ -11,6 +11,14 @@ struct WorldPosition {
     uint32_t abs_tile_y;
     float tile_rel_x;
     float tile_rel_y;
+
+    Transform to_world_transform() {
+        Transform transform;
+        transform.set_position(
+            // TODO: This only works if the tile side is 1.0f
+            glm::vec3(abs_tile_x + tile_rel_x, abs_tile_y + tile_rel_y, 0.f));
+        return transform;
+    }
 };
 
 struct TileChunk {
@@ -87,6 +95,3 @@ inline TileChunk *get_tile_chunk(TileMap *tm, uint32_t tile_chunk_x,
 
     return tile_chunk;
 }
-
-#define TILE_H
-#endif
