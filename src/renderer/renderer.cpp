@@ -386,7 +386,7 @@ void Renderer::draw(VkCommandBuffer cmd) {
 }
 
 void Renderer::draw_objects(VkCommandBuffer cmd,
-                            std::vector<RenderObject> objects) {
+                            const std::vector<RenderObject> &objects) {
     Uint64 start = SDL_GetTicks();
     std::vector<uint32_t> objectIndices;
     objectIndices.reserve(objects.size());

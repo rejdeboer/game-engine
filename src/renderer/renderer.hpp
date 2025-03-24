@@ -188,7 +188,8 @@ class Renderer {
     VkCommandBuffer begin_frame();
     void draw_game(VkCommandBuffer cmd);
     void draw_world(VkCommandBuffer cmd);
-    void draw_objects(VkCommandBuffer cmd, std::vector<RenderObject> objects);
+    void draw_objects(VkCommandBuffer cmd,
+                      const std::vector<RenderObject> &objects);
     void draw(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
 

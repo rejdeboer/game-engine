@@ -39,7 +39,7 @@ class Game {
     std::vector<RenderObject> _renderObjects;
     std::shared_ptr<LoadedGLTF> _assets;
 
-    void render_entities();
+    void render_entities(VkCommandBuffer cmd);
     void init_test_entities();
 };
 

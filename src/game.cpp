@@ -187,13 +187,12 @@ void Game::run() {
         // _renderer.draw_game(cmd);
         // _renderer.draw_world(cmd);
         _renderer.draw(cmd);
-        render_entities();
-        _renderer.draw_objects(cmd, _renderObjects);
+        render_entities(cmd);
         _renderer.end_frame(cmd, now - last);
     }
 }
 
-void Game::render_entities() {
+void Game::render_entities(VkCommandBuffer cmd) {
     _renderObjects.clear();
     auto view = _registry.view<UnitType, WorldPosition>();
     view.each([this](auto &t, auto &p) {
@@ -212,10 +211,11 @@ void Game::render_entities() {
             _renderObjects.push_back(obj);
         }
     });
+    _renderer.draw_objects(cmd, _renderObjects);
 }
 
 void Game::init_test_entities() {
     const auto entity = _registry.create();
-    _registry.emplace<WorldPosition>(entity, 5, 5, 5.f, 5.f);
+    _registry.emplace<WorldPosition>(entity, 1, 1, 0.f, 0.f);
     _registry.emplace<UnitType>(entity, kCube);
 }
