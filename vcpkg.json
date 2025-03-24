@@ -9,7 +9,7 @@
     },
     {
       "name": "sdl3",
-      "version>=": "3.2.0",
+      "version>=": "3.2.8",
       "features": ["vulkan"]
     },
     {

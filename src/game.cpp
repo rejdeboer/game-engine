@@ -4,6 +4,10 @@
 Uint64 TIMESTEP_MS = 1000 / 60;
 float TIMESTEP_S = (float)TIMESTEP_MS / 1000;
 
+const std::unordered_map<UnitType, UnitData> UnitData::registry = {
+    {UnitType::kCube, {"Cube"}},
+};
+
 void Game::init() {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "could not initialize sdl3: %s\n", SDL_GetError());
@@ -22,12 +26,19 @@ void Game::init() {
 
     _renderer.init(_window);
     _renderer.set_camera_view(_state.camera.get_view_matrix());
+    _renderObjects.reserve(200);
 
     void *memory = malloc(GAME_MEMORY);
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
 
     _world = generate_world(&_arena);
     _renderer.create_tile_chunks(create_tile_map_mesh(_world->tile_map));
+
+    auto meshFile = loadGltf(&_renderer, "assets/meshes/basicmesh.glb");
+    assert(meshFile.has_value());
+    _assets = *meshFile;
+
+    init_test_entities();
 }
 
 void Game::deinit() {
@@ -176,8 +187,31 @@ void Game::run() {
         // _renderer.draw_game(cmd);
         // _renderer.draw_world(cmd);
         _renderer.draw(cmd);
+        render_entities();
+        _renderer.draw_objects(cmd, _renderObjects);
         _renderer.end_frame(cmd, now - last);
     }
+}
+
+void Game::render_entities() {
+    _renderObjects.clear();
+    auto view = _registry.view<UnitType, WorldPosition>();
+    view.each([this](auto &t, auto &p) {
+        UnitData unitData = UnitData::registry.at(t);
+        std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
+        glm::mat4 worldTransform = p.to_world_transform().as_matrix();
+        for (auto s : mesh->surfaces) {
+            RenderObject obj;
+            obj.bounds = s.bounds;
+            obj.material = &s.material->data;
+            obj.transform = worldTransform;
+            obj.firstIndex = s.startIndex;
+            obj.indexCount = s.count;
+            obj.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
+            obj.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
+            _renderObjects.push_back(obj);
+        }
+    });
 }
 
 void Game::init_test_entities() {

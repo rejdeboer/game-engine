@@ -5,6 +5,7 @@
 #include "tile.h"
 #include <SDL3/SDL.h>
 #include <entt/entt.hpp>
+#include <unordered_map>
 
 // TODO: This value is completely arbitrary
 #define GAME_MEMORY 1024 * 1024 * 64
@@ -35,14 +36,19 @@ class Game {
 
     SDL_Window *_window;
     Renderer _renderer;
+    std::vector<RenderObject> _renderObjects;
+    std::shared_ptr<LoadedGLTF> _assets;
 
+    void render_entities();
     void init_test_entities();
-};
-
-struct UnitData {
-    std::string name;
 };
 
 enum UnitType {
     kCube,
+};
+
+struct UnitData {
+    std::string name;
+
+    static const std::unordered_map<UnitType, UnitData> registry;
 };
