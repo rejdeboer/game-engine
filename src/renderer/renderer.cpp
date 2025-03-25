@@ -141,13 +141,6 @@ void Renderer::init_default_data() {
         destroy_image(_greyImage);
         destroy_image(_errorCheckerboardImage);
     });
-
-    // std::string structurePath = {"assets/scenes/structure.glb"};
-    // auto structureFile = loadGltf(this, structurePath);
-    //
-    // assert(structureFile.has_value());
-    //
-    // loadedScenes["structure"] = *structureFile;
 }
 
 void Renderer::init_commands(uint32_t queueFamilyIndex) {
@@ -323,7 +316,6 @@ void Renderer::init_imgui() {
 
 void Renderer::deinit() {
     vkDeviceWaitIdle(_device);
-    loadedScenes.clear();
     _tileRenderer.deinit();
     for (auto &frame : _frames) {
         frame._deletionQueue.flush();
@@ -519,143 +511,6 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     _stats.meshDrawTime = SDL_GetTicks() - start;
 }
 
-void Renderer::draw_game(VkCommandBuffer cmd) {
-    Uint64 start = SDL_GetTicks();
-    std::vector<uint32_t> opaqueDraws;
-    opaqueDraws.reserve(mainDrawContext.opaqueSurfaces.size());
-
-    for (int i = 0; i < mainDrawContext.opaqueSurfaces.size(); i++) {
-        if (is_visible(mainDrawContext.opaqueSurfaces[i], sceneData.viewproj)) {
-            opaqueDraws.push_back(i);
-        }
-    }
-
-    // sort the opaque surfaces by material and mesh
-    std::sort(opaqueDraws.begin(), opaqueDraws.end(),
-              [&](const auto &iA, const auto &iB) {
-                  const RenderObject &A = mainDrawContext.opaqueSurfaces[iA];
-                  const RenderObject &B = mainDrawContext.opaqueSurfaces[iB];
-                  if (A.material == B.material) {
-                      return A.indexBuffer < B.indexBuffer;
-                  } else {
-                      return A.material < B.material;
-                  }
-              });
-
-    VkRenderingAttachmentInfo colorAttachment = {};
-    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachment.imageView = _drawImage.imageView;
-    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    VkRenderingAttachmentInfo depthAttachment = {};
-    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depthAttachment.imageView = _depthImage.imageView;
-    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    // TODO: Vkguide uses 0.f as the far value here, do we need that?
-    depthAttachment.clearValue.depthStencil.depth = 1.f;
-
-    VkRenderingInfo renderInfo = {};
-    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renderInfo.colorAttachmentCount = 1;
-    renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.pDepthAttachment = &depthAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
-    renderInfo.layerCount = 1;
-
-    vkCmdBeginRendering(cmd, &renderInfo);
-
-    AllocatedBuffer gpuSceneDataBuffer =
-        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                      VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-    get_current_frame()._deletionQueue.push_function(
-        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
-
-    GPUSceneData *sceneUniformData =
-        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
-    *sceneUniformData = sceneData;
-
-    VkDescriptorSet globalDescriptor =
-        get_current_frame()._frameDescriptors.allocate(
-            _device, _gpuSceneDataDescriptorLayout);
-    DescriptorWriter writer;
-    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
-                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.update_set(_device, globalDescriptor);
-
-    MaterialPipeline *lastPipeline = nullptr;
-    MaterialInstance *lastMaterial = nullptr;
-    VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
-
-    auto draw = [&](const RenderObject &r) {
-        if (r.material != lastMaterial) {
-            lastMaterial = r.material;
-            if (r.material->pipeline != lastPipeline) {
-                lastPipeline = r.material->pipeline;
-                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                  r.material->pipeline->pipeline);
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        r.material->pipeline->layout, 0, 1,
-                                        &globalDescriptor, 0, nullptr);
-
-                VkViewport viewport = {};
-                viewport.x = 0;
-                viewport.y = 0;
-                viewport.width = (float)_swapchainExtent.width;
-                viewport.height = (float)_swapchainExtent.height;
-                viewport.minDepth = 0.f;
-                viewport.maxDepth = 1.f;
-                vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-                VkRect2D scissor = {};
-                scissor.offset.x = 0;
-                scissor.offset.y = 0;
-                scissor.extent.width = _swapchainExtent.width;
-                scissor.extent.height = _swapchainExtent.height;
-                vkCmdSetScissor(cmd, 0, 1, &scissor);
-            }
-
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    r.material->pipeline->layout, 1, 1,
-                                    &r.material->materialSet, 0, nullptr);
-        }
-
-        if (r.indexBuffer != lastIndexBuffer) {
-            lastIndexBuffer = r.indexBuffer;
-            vkCmdBindIndexBuffer(cmd, r.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        }
-
-        GPUDrawPushConstants pushConstants;
-        pushConstants.vertexBuffer = r.vertexBufferAddress;
-        pushConstants.worldMatrix = r.transform;
-        vkCmdPushConstants(cmd, r.material->pipeline->layout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0,
-                           sizeof(GPUDrawPushConstants), &pushConstants);
-
-        _stats.drawcallCount++;
-        _stats.triangleCount += r.indexCount / 3;
-        vkCmdDrawIndexed(cmd, r.indexCount, 1, r.firstIndex, 0, 0);
-    };
-
-    _stats.drawcallCount = 0;
-    _stats.triangleCount = 0;
-
-    for (auto &r : opaqueDraws) {
-        draw(mainDrawContext.opaqueSurfaces[r]);
-    }
-
-    for (const RenderObject &obj : mainDrawContext.transparentSurfaces) {
-        draw(obj);
-    }
-
-    vkCmdEndRendering(cmd);
-    _stats.meshDrawTime = SDL_GetTicks() - start;
-}
-
 VkCommandBuffer Renderer::begin_frame() {
     FrameData *currentFrame = &get_current_frame();
     VK_CHECK(vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
@@ -766,9 +621,6 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
 }
 
 void Renderer::update_scene() {
-    // mainDrawContext.opaqueSurfaces.clear();
-    // mainDrawContext.transparentSurfaces.clear();
-
     sceneData.view = _cameraViewMatrix;
     sceneData.proj = glm::perspective(
         glm::radians(70.f),
@@ -781,8 +633,6 @@ void Renderer::update_scene() {
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
     sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
-
-    // loadedScenes["structure"]->Draw(glm::mat4{1.f}, mainDrawContext);
 }
 
 void Renderer::prepare_imgui(Uint64 dt) {
@@ -1135,27 +985,4 @@ MaterialInstance GLTFMetallic_Roughness::write_material(
     writer.update_set(device, matData.materialSet);
 
     return matData;
-}
-
-void MeshNode::Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
-    glm::mat4 nodeMatrix = topMatrix * worldTransform;
-
-    for (auto &s : mesh->surfaces) {
-        RenderObject def;
-        def.indexCount = s.count;
-        def.firstIndex = s.startIndex;
-        def.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
-        def.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
-        def.material = &s.material->data;
-        def.transform = nodeMatrix;
-        def.bounds = s.bounds;
-
-        if (s.material->data.passType == MaterialPass::Transparent) {
-            ctx.transparentSurfaces.push_back(def);
-        } else {
-            ctx.opaqueSurfaces.push_back(def);
-        }
-    }
-
-    Node::Draw(topMatrix, ctx);
 }

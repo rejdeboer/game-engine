@@ -95,11 +95,6 @@ struct GLTFMetallic_Roughness {
                    DescriptorAllocatorGrowable &descriptorAllocator);
 };
 
-struct DrawContext {
-    std::vector<RenderObject> opaqueSurfaces;
-    std::vector<RenderObject> transparentSurfaces;
-};
-
 struct MeshNode : public Node {
     std::shared_ptr<MeshAsset> mesh;
 
@@ -143,10 +138,6 @@ class Renderer {
 
     glm::mat4 _cameraViewMatrix;
 
-    DrawContext mainDrawContext;
-    std::unordered_map<std::string, std::shared_ptr<Node>> loadedNodes;
-    std::unordered_map<std::string, std::shared_ptr<LoadedGLTF>> loadedScenes;
-
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
     void update_scene();
@@ -186,7 +177,6 @@ class Renderer {
     void init(SDL_Window *window);
     void deinit();
     VkCommandBuffer begin_frame();
-    void draw_game(VkCommandBuffer cmd);
     void draw_world(VkCommandBuffer cmd);
     void draw_objects(VkCommandBuffer cmd,
                       const std::vector<RenderObject> &objects);
