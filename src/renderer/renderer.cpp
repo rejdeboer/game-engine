@@ -179,7 +179,57 @@ void Renderer::init_swapchain() {
                                               _swapchainImageFormat.format);
 }
 
-void Renderer::init_pipelines() { metalRoughMaterial.build_pipelines(this); }
+void Renderer::init_pipelines() {
+    init_shadow_pipeline();
+    metalRoughMaterial.build_pipelines(this);
+}
+
+void Renderer::init_shadow_pipeline() {
+    VkShaderModule shadowFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/shadow.frag.spv", _device,
+                                    &shadowFragShader)) {
+        fmt::println("Error when building the shadow fragment shader module");
+    }
+
+    VkShaderModule shadowVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/shadow.vert.spv", _device,
+                                    &shadowVertShader)) {
+        fmt::println("Error when building the shadow vertex shader module");
+    }
+
+    DescriptorLayoutBuilder layoutBuilder;
+    layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    _shadowMap.layout = layoutBuilder.build(
+        _device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout,
+                                       _shadowMap.layout};
+
+    VkPipelineLayoutCreateInfo meshLayoutInfo = {};
+    meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    meshLayoutInfo.setLayoutCount = 2;
+    meshLayoutInfo.pSetLayouts = layouts;
+    meshLayoutInfo.pushConstantRangeCount = 0;
+
+    VK_CHECK(vkCreatePipelineLayout(_device, &meshLayoutInfo, nullptr,
+                                    &_shadowPipeline.layout));
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder.set_shaders(shadowVertShader, shadowFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder._pipelineLayout = _shadowPipeline.layout;
+    _shadowPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
+
+    vkDestroyShaderModule(_device, shadowVertShader, nullptr);
+    vkDestroyShaderModule(_device, shadowFragShader, nullptr);
+}
 
 void Renderer::init_descriptors() {
     std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> sizes = {
