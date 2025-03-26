@@ -90,6 +90,7 @@ void Renderer::init(SDL_Window *window) {
     init_commands(graphicsIndex);
     init_sync_structures();
     _tileRenderer.init(this);
+    init_shadow_map();
     init_default_data();
 }
 
@@ -232,6 +233,50 @@ void Renderer::init_descriptors() {
                                      nullptr);
         vkDestroyDescriptorSetLayout(_device, _gpuSceneDataDescriptorLayout,
                                      nullptr);
+    });
+}
+
+void Renderer::init_shadow_map() {
+    VkExtent3D shadowMapExtent = {_shadowMap.resolution, _shadowMap.resolution,
+                                  1};
+
+    _shadowMap.image =
+        create_image(shadowMapExtent, VK_FORMAT_D32_SFLOAT,
+                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                         VK_IMAGE_USAGE_SAMPLED_BIT,
+                     false);
+
+    VkSamplerCreateInfo samplerInfo = {};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.maxAnisotropy = 1.0f;
+    // Enable comparison for PCF filtering
+    samplerInfo.compareEnable = VK_TRUE;
+    samplerInfo.compareOp = VK_COMPARE_OP_LESS;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 1.0f;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    VK_CHECK(
+        vkCreateSampler(_device, &samplerInfo, nullptr, &_shadowMap.sampler));
+
+    {
+        DescriptorLayoutBuilder builder;
+        builder.add_binding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        _shadowMap.layout =
+            builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
+
+    _mainDeletionQueue.push_function([=, this]() {
+        vkDestroySampler(_device, _shadowMap.sampler, nullptr);
+        vkDestroyImageView(_device, _shadowMap.image.imageView, nullptr);
+        destroy_image(_shadowMap.image);
+        vkDestroyDescriptorSetLayout(_device, _shadowMap.layout, nullptr);
     });
 }
 
