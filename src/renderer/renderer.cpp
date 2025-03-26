@@ -300,17 +300,16 @@ void Renderer::init_shadow_map() {
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = VK_FILTER_LINEAR;
     samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerInfo.mipLodBias = 0.0f;
     samplerInfo.maxAnisotropy = 1.0f;
     // Enable comparison for PCF filtering
     samplerInfo.compareEnable = VK_TRUE;
     samplerInfo.compareOp = VK_COMPARE_OP_LESS;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 1.0f;
+    samplerInfo.maxLod = 0.0f;
     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
     VK_CHECK(
         vkCreateSampler(_device, &samplerInfo, nullptr, &_shadowMap.sampler));
@@ -324,9 +323,14 @@ void Renderer::init_shadow_map() {
 
     _mainDeletionQueue.push_function([=, this]() {
         vkDestroySampler(_device, _shadowMap.sampler, nullptr);
-        vkDestroyImageView(_device, _shadowMap.image.imageView, nullptr);
         destroy_image(_shadowMap.image);
-        vkDestroyDescriptorSetLayout(_device, _shadowMap.layout, nullptr);
+    });
+
+    // TODO: Is this necessary?
+    immediate_submit([&](VkCommandBuffer cmd) {
+        vkutil::transition_image(cmd, _shadowMap.image.image,
+                                 VK_IMAGE_LAYOUT_UNDEFINED,
+                                 VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     });
 }
 
