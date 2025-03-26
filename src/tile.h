@@ -37,7 +37,7 @@ struct TileMap {
     int tile_side_in_pixels;
     float meters_to_pixels;
 
-    // NOTE: We use 256x256 tile chunks
+    // NOTE: We use 32x32 tile chunks
     uint32_t chunk_shift;
     uint32_t chunk_mask;
     uint32_t chunk_dim;

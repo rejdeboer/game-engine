@@ -184,8 +184,6 @@ void Game::run() {
         }
 
         auto cmd = _renderer.begin_frame();
-        // _renderer.draw_game(cmd);
-        // _renderer.draw_world(cmd);
         _renderer.draw(cmd);
         render_entities(cmd);
         _renderer.end_frame(cmd, now - last);

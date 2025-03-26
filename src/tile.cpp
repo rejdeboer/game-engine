@@ -39,7 +39,7 @@ World *generate_world(Arena *arena) {
     tile_map->tile_side_in_pixels = 60;
     tile_map->meters_to_pixels =
         tile_map->tile_side_in_pixels / (float)tile_map->tile_side_in_meters;
-    tile_map->chunk_shift = 8;
+    tile_map->chunk_shift = 5;
     tile_map->chunk_mask = (1 << tile_map->chunk_shift) - 1;
     tile_map->chunk_dim = (1 << tile_map->chunk_shift);
     tile_map->tile_chunks = (TileChunk *)tile_chunks;

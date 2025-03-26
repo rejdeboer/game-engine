@@ -67,3 +67,9 @@ target_link_libraries(vulkan_test PRIVATE
                         fmt::fmt
                         ${Stb_INCLUDE_DIR})
 
+target_compile_definitions(vulkan_test
+  PUBLIC
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    GLM_ENABLE_EXPERIMENTAL
+)
+

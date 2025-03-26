@@ -52,10 +52,10 @@ struct TileVertex {
 };
 
 constexpr std::array<TileVertex, 4> kTileVertices = {{
-    {{-0.5f, 0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.0f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.0f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 }};
 
 constexpr std::array<uint32_t, 6> kTileIndices = {0, 1, 2, 0, 2, 3};

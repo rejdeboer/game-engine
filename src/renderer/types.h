@@ -7,8 +7,6 @@
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
-
 struct AllocatedImage {
     VkImage image;
     VkImageView imageView;

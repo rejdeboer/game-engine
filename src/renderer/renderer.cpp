@@ -625,13 +625,30 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
 }
 
 void Renderer::update_scene() {
-    sceneData.view = _cameraViewMatrix;
-    sceneData.proj = glm::perspective(
-        glm::radians(70.f),
-        (float)_drawExtent.width / (float)_drawExtent.height, 0.1f, 1000.f);
+    float distance = 100.0f;            // Distance from the origin
+    float angleX = glm::radians(30.0f); // Tilt angle
+    float angleY = glm::radians(45.0f); // Rotation angle
 
-    // invert Y direction
-    sceneData.proj[1][1] *= -1;
+    glm::vec3 cameraPosition = glm::vec3(
+        distance * cos(angleY), distance * sin(angleX), distance * sin(angleY));
+    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis is "up"
+
+    // Orthographic projection parameters
+    float aspectRatio =
+        (float)_swapchainExtent.width / (float)_swapchainExtent.height;
+    float zoom = 10.0f;
+    float left = -aspectRatio * zoom; // Left boundary of the view
+    float right = aspectRatio * zoom; // Right boundary of the view
+    float bottom = -zoom;             // Bottom boundary of the view
+    float top = zoom;                 // Top boundary of the view
+    float nearPlane = 0.1f;           // Near clipping plane
+    float farPlane = 1000.0f;         // Far clipping plane
+
+    sceneData.proj = glm::ortho(left, right, bottom, top, nearPlane, farPlane);
+    sceneData.view = glm::lookAt(cameraPosition, cameraTarget, upVector);
+
+    sceneData.proj[1][1] *= -1; // invert Y direction
     sceneData.viewproj = sceneData.proj * sceneData.view;
 
     sceneData.ambientColor = glm::vec4(.1f);
