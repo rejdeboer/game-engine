@@ -62,6 +62,14 @@ struct RenderObject {
     VkDeviceAddress vertexBufferAddress;
 };
 
+struct ShadowMapResources {
+    AllocatedImage image;
+    VkDescriptorSetLayout layout;
+    VkDescriptorSet descriptor;
+    VkSampler sampler;
+    uint32_t resolution = 2048;
+};
+
 struct GLTFMetallic_Roughness {
     MaterialPipeline opaquePipeline;
     MaterialPipeline transparentPipeline;
@@ -127,6 +135,7 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     TileRenderer _tileRenderer;
+    ShadowMapResources _shadowMap;
 
     GPUSceneData sceneData;
 
@@ -149,6 +158,7 @@ class Renderer {
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
+    void init_shadow_map();
     void init_imgui();
     void destroy_swapchain();
 
