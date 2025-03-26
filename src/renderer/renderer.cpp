@@ -180,11 +180,11 @@ void Renderer::init_swapchain() {
 }
 
 void Renderer::init_pipelines() {
-    init_shadow_pipeline();
+    init_depth_pass_pipeline();
     metalRoughMaterial.build_pipelines(this);
 }
 
-void Renderer::init_shadow_pipeline() {
+void Renderer::init_depth_pass_pipeline() {
     VkShaderModule shadowFragShader;
     if (!vkutil::load_shader_module("shaders/spv/shadow.frag.spv", _device,
                                     &shadowFragShader)) {
@@ -213,7 +213,7 @@ void Renderer::init_shadow_pipeline() {
     meshLayoutInfo.pushConstantRangeCount = 0;
 
     VK_CHECK(vkCreatePipelineLayout(_device, &meshLayoutInfo, nullptr,
-                                    &_shadowPipeline.layout));
+                                    &_depthPassPipeline.layout));
 
     PipelineBuilder pipelineBuilder;
     pipelineBuilder.set_shaders(shadowVertShader, shadowFragShader);
@@ -224,8 +224,8 @@ void Renderer::init_shadow_pipeline() {
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_depth_format(_depthImage.format);
-    pipelineBuilder._pipelineLayout = _shadowPipeline.layout;
-    _shadowPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
+    pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
+    _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
     vkDestroyShaderModule(_device, shadowVertShader, nullptr);
     vkDestroyShaderModule(_device, shadowFragShader, nullptr);
