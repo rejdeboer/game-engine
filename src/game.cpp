@@ -214,6 +214,6 @@ void Game::render_entities(VkCommandBuffer cmd) {
 
 void Game::init_test_entities() {
     const auto entity = _registry.create();
-    _registry.emplace<WorldPosition>(entity, 1, 1, 0.f, 0.f);
+    _registry.emplace<WorldPosition>(entity, 5, 5, 0.f, 0.f);
     _registry.emplace<UnitType>(entity, kCube);
 }

@@ -16,7 +16,7 @@ struct WorldPosition {
         Transform transform;
         transform.set_position(
             // TODO: This only works if the tile side is 1.0f
-            glm::vec3(abs_tile_x + tile_rel_x, abs_tile_y + tile_rel_y, 0.f));
+            glm::vec3(abs_tile_x + tile_rel_x, 0.f, abs_tile_y + tile_rel_y));
         return transform;
     }
 };
