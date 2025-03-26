@@ -414,7 +414,6 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    // TODO: Vkguide uses 0.f as the far value here, do we need that?
     depthAttachment.clearValue.depthStencil.depth = 1.f;
 
     VkRenderingInfo renderInfo = {};
