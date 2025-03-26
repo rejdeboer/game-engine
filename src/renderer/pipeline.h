@@ -36,6 +36,8 @@ class PipelineBuilder {
     void set_depth_format(VkFormat format);
     void disable_depthtest();
     void enable_depthtest(bool depthWriteEnable, VkCompareOp op);
+    void enable_depth_bias(float constantFactor, float slopeFactor,
+                           float clamp);
     void
     set_vertex_input(VkVertexInputBindingDescription *bindingDescriptions,
                      uint32_t bindingDescriptionsCount,

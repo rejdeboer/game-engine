@@ -204,6 +204,14 @@ void PipelineBuilder::enable_depthtest(bool depthWriteEnable, VkCompareOp op) {
     _depthStencil.maxDepthBounds = 1.f;
 }
 
+void PipelineBuilder::enable_depth_bias(float constantFactor, float slopeFactor,
+                                        float clamp) {
+    _rasterizer.depthBiasEnable = VK_TRUE;
+    _rasterizer.depthBiasConstantFactor = constantFactor;
+    _rasterizer.depthBiasClamp = clamp; // Usually 0
+    _rasterizer.depthBiasSlopeFactor = slopeFactor;
+}
+
 void PipelineBuilder::set_vertex_input(
     VkVertexInputBindingDescription *bindingDescriptions,
     uint32_t bindingDescriptionsCount,
