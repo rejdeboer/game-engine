@@ -512,6 +512,10 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
 }
 
 VkCommandBuffer Renderer::begin_frame() {
+    if (_resizeRequested) {
+        resize_swapchain();
+    }
+
     FrameData *currentFrame = &get_current_frame();
     VK_CHECK(vkWaitForFences(_device, 1, &currentFrame->_renderFence, VK_TRUE,
                              UINT64_MAX));
