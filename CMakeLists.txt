@@ -69,7 +69,8 @@ target_link_libraries(vulkan_test PRIVATE
 
 target_compile_definitions(vulkan_test
   PUBLIC
-    GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_ENABLE_EXPERIMENTAL
+    GLM_FORCE_CTOR_INIT
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
