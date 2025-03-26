@@ -6,7 +6,7 @@ layout(set = 0, binding = 0) uniform SceneData {
     mat4 view;
     mat4 proj;
     mat4 viewproj;
-    // mat4 lightViewProj;
+    mat4 lightViewproj;
     vec4 ambientColor;
     vec4 sunlightColor;
     vec4 sunlightDirection;
@@ -19,7 +19,6 @@ layout(push_constant) uniform constants {
 
 void main() {
     // Only need position for shadow mapping
-    // gl_Position = sceneData.lightViewProj * pushConstants.model * vec4(vPosition, 1.0);
-	gl_Position = pushConstants.model * vec4(vPosition, 1.0);
+    gl_Position = sceneData.lightViewProj * pushConstants.model * vec4(vPosition, 1.0);
 }
 

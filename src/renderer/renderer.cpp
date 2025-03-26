@@ -748,6 +748,23 @@ void Renderer::update_scene() {
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
     sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
+
+    glm::vec3 lightPos =
+        glm::vec3(0, 100, 0) - glm::vec3(sceneData.sunlightDirection) *
+                                   150.0f; // Backtrack along direction
+    glm::mat4 lightView =
+        glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // Define the light's orthographic projection matrix
+    // The bounds [-orthoSize, orthoSize] define the area covered by shadows.
+    // This needs to be large enough to cover the camera's view.
+    // Consider techniques like Cascaded Shadow Maps (CSM) for large scenes.
+    float orthoSize = 100.0f; // Adjust based on your scene scale
+    glm::mat4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize,
+                                     orthoSize, nearPlane, farPlane);
+    lightProj[1][1] *= -1; // Vulkan Y-flip
+
+    sceneData.lightViewproj = lightProj * lightView;
 }
 
 void Renderer::prepare_imgui(Uint64 dt) {
