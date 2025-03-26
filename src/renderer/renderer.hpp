@@ -135,7 +135,9 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     TileRenderer _tileRenderer;
+
     ShadowMapResources _shadowMap;
+    MaterialPipeline _shadowPipeline;
 
     GPUSceneData sceneData;
 
@@ -155,6 +157,7 @@ class Renderer {
     void init_default_data();
     void init_swapchain();
     void init_pipelines();
+    void init_shadow_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
