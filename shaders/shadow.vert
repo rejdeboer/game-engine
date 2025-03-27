@@ -19,6 +19,6 @@ layout(push_constant) uniform constants {
 
 void main() {
     // Only need position for shadow mapping
-    gl_Position = sceneData.lightViewProj * pushConstants.model * vec4(vPosition, 1.0);
+    gl_Position = sceneData.lightViewproj * pushConstants.model * vec4(vPosition, 1.0);
 }
 
