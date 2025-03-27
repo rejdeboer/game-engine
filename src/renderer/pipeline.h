@@ -29,6 +29,7 @@ class PipelineBuilder {
     void set_cull_mode(VkCullModeFlags cullMode, VkFrontFace frontFace);
     void set_multisampling_none();
     void disable_blending();
+    void disable_color_attachment_write();
     void enable_blending_additive();
     void enable_blending_alphablend();
 
@@ -43,6 +44,9 @@ class PipelineBuilder {
                      uint32_t bindingDescriptionsCount,
                      VkVertexInputAttributeDescription *attributeDescriptions,
                      uint32_t attributeDescriptionsCount);
+
+  private:
+    bool _hasColorAttachment;
 };
 
 namespace vkutil {

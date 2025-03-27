@@ -15,6 +15,7 @@ void PipelineBuilder::clear() {
     _renderInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
     _vertexInput = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+    _hasColorAttachment = false;
     _shaderStages.clear();
 }
 
@@ -37,8 +38,14 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device) {
 
     colorBlending.logicOpEnable = VK_FALSE;
     colorBlending.logicOp = VK_LOGIC_OP_COPY;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &_colorBlendAttachment;
+
+    if (_hasColorAttachment) {
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &_colorBlendAttachment;
+    } else {
+        colorBlending.attachmentCount = 0;
+        colorBlending.pAttachments = nullptr;
+    }
 
     // build the actual pipeline
     // we now use all of the info structs we have been writing into into this
@@ -171,9 +178,17 @@ void PipelineBuilder::enable_blending_alphablend() {
 
 void PipelineBuilder::set_color_attachment_format(VkFormat format) {
     _colorAttachmentformat = format;
-    // connect the format to the renderInfo  structure
     _renderInfo.colorAttachmentCount = 1;
     _renderInfo.pColorAttachmentFormats = &_colorAttachmentformat;
+    _hasColorAttachment = true;
+}
+
+void PipelineBuilder::disable_color_attachment_write() {
+    _colorBlendAttachment.colorWriteMask = 0;
+    _colorBlendAttachment.blendEnable = VK_FALSE;
+    _renderInfo.colorAttachmentCount = 0;
+    _renderInfo.pColorAttachmentFormats = nullptr;
+    _hasColorAttachment = false;
 }
 
 void PipelineBuilder::set_depth_format(VkFormat format) {
