@@ -222,8 +222,10 @@ void Renderer::init_depth_pass_pipeline() {
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
     pipelineBuilder.set_multisampling_none();
     pipelineBuilder.disable_blending();
+    pipelineBuilder.disable_color_attachment_write();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder.enable_depth_bias(4.0f, 1.5f, 0.0f);
     pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
     _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
