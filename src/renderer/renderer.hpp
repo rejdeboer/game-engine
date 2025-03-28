@@ -62,6 +62,7 @@ struct DrawCommand {
     VkDeviceAddress vertexBufferAddress;
 };
 
+// TODO: Delete this
 struct RenderObject {
     uint32_t indexCount;
     uint32_t firstIndex;
@@ -164,7 +165,7 @@ class Renderer {
 
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
-    void draw_objects(VkCommandBuffer cmd);
+    void draw_objects(RenderContext ctx);
     void update_scene();
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];

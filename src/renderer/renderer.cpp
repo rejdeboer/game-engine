@@ -470,10 +470,10 @@ void Renderer::draw(VkCommandBuffer cmd) {
     };
 
     _tileRenderer.draw(ctx, _tileDrawCommands);
-    draw_objects(cmd);
+    draw_objects(ctx);
 }
 
-void Renderer::draw_objects(VkCommandBuffer cmd) {
+void Renderer::draw_objects(RenderContext ctx) {
     Uint64 start = SDL_GetTicks();
     std::vector<uint32_t> objectIndices;
     objectIndices.reserve(_drawCommands.size());
@@ -520,26 +520,7 @@ void Renderer::draw_objects(VkCommandBuffer cmd) {
     renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
     renderInfo.layerCount = 1;
 
-    vkCmdBeginRendering(cmd, &renderInfo);
-
-    AllocatedBuffer gpuSceneDataBuffer =
-        create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                      VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-    get_current_frame()._deletionQueue.push_function(
-        [=, this]() { destroy_buffer(gpuSceneDataBuffer); });
-
-    GPUSceneData *sceneUniformData =
-        (GPUSceneData *)gpuSceneDataBuffer.allocation->GetMappedData();
-    *sceneUniformData = sceneData;
-
-    VkDescriptorSet globalDescriptor =
-        get_current_frame()._frameDescriptors.allocate(
-            _device, _gpuSceneDataDescriptorLayout);
-    DescriptorWriter writer;
-    writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0,
-                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.update_set(_device, globalDescriptor);
+    vkCmdBeginRendering(ctx.cmd, &renderInfo);
 
     MaterialPipeline *lastPipeline = nullptr;
     MaterialInstance *lastMaterial = nullptr;
@@ -550,11 +531,12 @@ void Renderer::draw_objects(VkCommandBuffer cmd) {
             lastMaterial = r.material;
             if (r.material->pipeline != lastPipeline) {
                 lastPipeline = r.material->pipeline;
-                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                   r.material->pipeline->pipeline);
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                vkCmdBindDescriptorSets(ctx.cmd,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         r.material->pipeline->layout, 0, 1,
-                                        &globalDescriptor, 0, nullptr);
+                                        ctx.globalDescriptorSet, 0, nullptr);
 
                 VkViewport viewport = {};
                 viewport.x = 0;
@@ -563,36 +545,37 @@ void Renderer::draw_objects(VkCommandBuffer cmd) {
                 viewport.height = (float)_swapchainExtent.height;
                 viewport.minDepth = 0.f;
                 viewport.maxDepth = 1.f;
-                vkCmdSetViewport(cmd, 0, 1, &viewport);
+                vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
 
                 VkRect2D scissor = {};
                 scissor.offset.x = 0;
                 scissor.offset.y = 0;
                 scissor.extent.width = _swapchainExtent.width;
                 scissor.extent.height = _swapchainExtent.height;
-                vkCmdSetScissor(cmd, 0, 1, &scissor);
+                vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
             }
 
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     r.material->pipeline->layout, 1, 1,
                                     &r.material->materialSet, 0, nullptr);
         }
 
         if (r.indexBuffer != lastIndexBuffer) {
             lastIndexBuffer = r.indexBuffer;
-            vkCmdBindIndexBuffer(cmd, r.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindIndexBuffer(ctx.cmd, r.indexBuffer, 0,
+                                 VK_INDEX_TYPE_UINT32);
         }
 
         GPUDrawPushConstants pushConstants;
         pushConstants.vertexBuffer = r.vertexBufferAddress;
         pushConstants.worldMatrix = r.transform;
-        vkCmdPushConstants(cmd, r.material->pipeline->layout,
+        vkCmdPushConstants(ctx.cmd, r.material->pipeline->layout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(GPUDrawPushConstants), &pushConstants);
 
         _stats.drawcallCount++;
         _stats.triangleCount += r.indexCount / 3;
-        vkCmdDrawIndexed(cmd, r.indexCount, 1, r.firstIndex, 0, 0);
+        vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
     };
 
     _stats.drawcallCount = 0;
@@ -602,7 +585,7 @@ void Renderer::draw_objects(VkCommandBuffer cmd) {
         draw(_drawCommands[r]);
     }
 
-    vkCmdEndRendering(cmd);
+    vkCmdEndRendering(ctx.cmd);
     _stats.meshDrawTime = SDL_GetTicks() - start;
 }
 
