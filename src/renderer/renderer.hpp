@@ -202,7 +202,6 @@ class Renderer {
 
     void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
-    void create_tile_chunks(std::vector<TileRenderingInput> inputs);
     void update_tile_draw_commands(std::vector<TileRenderingInput> inputs);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,

@@ -1,4 +1,5 @@
 #include "tile.h"
+#include "frustum_culling.h"
 #include "pipeline.h"
 #include "renderer.hpp"
 #include "vk_mem_alloc.h"
@@ -8,7 +9,6 @@ void TileRenderer::init(Renderer *renderer) {
     _renderer = renderer;
     init_buffers();
     init_pipeline();
-    _renderChunks = std::vector<TileRenderChunk>();
 }
 
 void TileRenderer::deinit() {
@@ -16,7 +16,8 @@ void TileRenderer::deinit() {
     _renderer->destroy_buffer(_indexBuffer);
 }
 
-void TileRenderer::render(RenderContext ctx) {
+void TileRenderer::draw(RenderContext ctx,
+                        const std::vector<TileDrawCommand> &drawCommands) {
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
     colorAttachment.imageView = ctx.drawImageView;
@@ -69,18 +70,23 @@ void TileRenderer::render(RenderContext ctx) {
     vkCmdBindVertexBuffers(ctx.cmd, 0, 1, &_vertexBuffer.buffer, offsets);
     vkCmdBindIndexBuffer(ctx.cmd, _indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    for (auto chunk : _renderChunks) {
-        vkCmdBindVertexBuffers(ctx.cmd, 1, 1, &chunk.instanceBuffer.buffer,
-                               offsets);
+    for (auto drawCommand : drawCommands) {
+        if (!vkutil::is_visible(drawCommand.transform, drawCommand.bounds,
+                                ctx.cameraViewproj)) {
+            continue;
+        }
 
-        glm::mat4 chunkModel = glm::translate(glm::mat4(1.0f), chunk.position);
+        vkCmdBindVertexBuffers(ctx.cmd, 1, 1,
+                               &drawCommand.instanceBuffer.buffer, offsets);
+
+        glm::mat4 chunkModel = drawCommand.transform;
 
         vkCmdPushConstants(ctx.cmd, _pipeline.layout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
                            &chunkModel);
 
-        vkCmdDrawIndexed(ctx.cmd, kTileIndices.size(), chunk.instanceCount, 0,
-                         0, 0);
+        vkCmdDrawIndexed(ctx.cmd, kTileIndices.size(),
+                         drawCommand.instanceCount, 0, 0, 0);
     }
 
     vkCmdEndRendering(ctx.cmd);
@@ -188,33 +194,4 @@ void TileRenderer::init_buffers() {
     });
 
     _renderer->destroy_buffer(staging);
-}
-
-void TileRenderer::update_chunks(std::vector<TileRenderingInput> inputs) {
-    for (auto chunk : _renderChunks) {
-        _renderer->destroy_buffer(chunk.instanceBuffer);
-    }
-
-    _renderChunks.clear();
-    _renderChunks.resize(inputs.size());
-
-    for (int i = 0; i < inputs.size(); i++) {
-        TileRenderChunk chunk;
-        chunk.position = inputs[i].chunkPosition;
-        chunk.instanceCount = inputs[i].instances.size();
-
-        size_t bufferSize = sizeof(TileInstance) * chunk.instanceCount;
-        // TODO: This should probably be a GPU buffer
-        chunk.instanceBuffer = _renderer->create_buffer(
-            bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-        VmaAllocationInfo allocInfo;
-        vmaGetAllocationInfo(_renderer->_allocator,
-                             chunk.instanceBuffer.allocation, &allocInfo);
-        void *data = allocInfo.pMappedData;
-        memcpy(data, inputs[i].instances.data(), bufferSize);
-
-        _renderChunks[i] = chunk;
-    }
 }

@@ -407,11 +407,6 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
     _cameraViewMatrix = cameraViewMatrix;
 }
 
-// TODO: Refactor this, this feels dumb
-void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
-    _tileRenderer.update_chunks(inputs);
-}
-
 void Renderer::update_tile_draw_commands(
     std::vector<TileRenderingInput> inputs) {
     for (auto cmd : _tileDrawCommands) {
@@ -469,9 +464,10 @@ void Renderer::draw(VkCommandBuffer cmd) {
         .depthImageView = _depthImage.imageView,
         .drawExtent = _drawExtent,
         .globalDescriptorSet = &globalDescriptor,
+        .cameraViewproj = sceneData.viewproj,
     };
 
-    _tileRenderer.render(ctx);
+    _tileRenderer.draw(ctx, _tileDrawCommands);
 }
 
 void Renderer::draw_objects(VkCommandBuffer cmd,

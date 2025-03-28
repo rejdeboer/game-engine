@@ -73,6 +73,7 @@ struct RenderContext {
     VkImageView depthImageView;
     VkExtent2D drawExtent;
     VkDescriptorSet *globalDescriptorSet;
+    glm::mat4 cameraViewproj;
 };
 
 class IRenderable {

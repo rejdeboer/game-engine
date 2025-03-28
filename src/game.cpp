@@ -32,7 +32,7 @@ void Game::init() {
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
 
     _world = generate_world(&_arena);
-    _renderer.create_tile_chunks(create_tile_map_mesh(_world->tile_map));
+    _renderer.update_tile_draw_commands(create_tile_map_mesh(_world->tile_map));
 
     auto meshFile = loadGltf(&_renderer, "assets/meshes/basicmesh.glb");
     assert(meshFile.has_value());

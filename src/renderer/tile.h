@@ -84,15 +84,15 @@ class TileRenderer {
   public:
     void init(Renderer *renderer);
     void deinit();
-    void render(RenderContext ctx);
-    void update_chunks(std::vector<TileRenderingInput> inputs);
+    void draw(RenderContext ctx,
+              const std::vector<TileDrawCommand> &drawCommands);
 
   private:
     Renderer *_renderer;
     MaterialPipeline _pipeline;
     AllocatedBuffer _vertexBuffer;
     AllocatedBuffer _indexBuffer;
-    std::vector<TileRenderChunk> _renderChunks;
+    std::vector<TileRenderChunk> drawCommands;
 
     void init_pipeline();
     void init_buffers();
