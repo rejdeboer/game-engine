@@ -1,7 +1,8 @@
 #include "frustum_culling.h"
 #include <array>
 
-bool is_visible(glm::mat4 transform, Bounds bounds, const glm::mat4 &viewproj) {
+bool vkutil::is_visible(glm::mat4 transform, Bounds bounds,
+                        const glm::mat4 &viewproj) {
     std::array<glm::vec3, 8> corners{
         glm::vec3{1, 1, 1},   glm::vec3{1, 1, -1},   glm::vec3{1, -1, 1},
         glm::vec3{1, -1, -1}, glm::vec3{-1, 1, 1},   glm::vec3{-1, 1, -1},

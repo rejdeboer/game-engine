@@ -42,6 +42,7 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/math/transform.cpp
                 src/memory.cpp
                 src/renderer/descriptor.cpp
+                src/renderer/frustum_culling.cpp
                 src/renderer/image.cpp
                 src/renderer/init.cpp 
                 src/renderer/loader.cpp

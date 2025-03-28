@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
+#include "frustum_culling.h"
 #include "image.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -17,41 +18,6 @@
 
 Renderer *loadedRenderer = nullptr;
 Renderer &Renderer::Get() { return *loadedRenderer; }
-
-bool is_visible(const RenderObject &obj, const glm::mat4 &viewproj) {
-    std::array<glm::vec3, 8> corners{
-        glm::vec3{1, 1, 1},   glm::vec3{1, 1, -1},   glm::vec3{1, -1, 1},
-        glm::vec3{1, -1, -1}, glm::vec3{-1, 1, 1},   glm::vec3{-1, 1, -1},
-        glm::vec3{-1, -1, 1}, glm::vec3{-1, -1, -1},
-    };
-
-    glm::mat4 matrix = viewproj * obj.transform;
-
-    glm::vec3 min = {1.5, 1.5, 1.5};
-    glm::vec3 max = {-1.5, -1.5, -1.5};
-
-    for (int c = 0; c < 8; c++) {
-        // project each corner into clip space
-        glm::vec4 v = matrix * glm::vec4(obj.bounds.origin +
-                                             (corners[c] * obj.bounds.extents),
-                                         1.f);
-
-        // perspective correction
-        v.x = v.x / v.w;
-        v.y = v.y / v.w;
-        v.z = v.z / v.w;
-
-        min = glm::min(glm::vec3{v.x, v.y, v.z}, min);
-        max = glm::max(glm::vec3{v.x, v.y, v.z}, max);
-    }
-
-    // check the clip space box is within the view
-    if (min.z > 1.f || max.z < 0.f || min.x > 1.f || max.x < -1.f ||
-        min.y > 1.f || max.y < -1.f) {
-        return false;
-    }
-    return true;
-}
 
 void Renderer::init(SDL_Window *window) {
     _window = window;
@@ -446,6 +412,36 @@ void Renderer::create_tile_chunks(std::vector<TileRenderingInput> inputs) {
     _tileRenderer.update_chunks(inputs);
 }
 
+void Renderer::update_tile_draw_commands(
+    std::vector<TileRenderingInput> inputs) {
+    for (auto cmd : _tileDrawCommands) {
+        destroy_buffer(cmd.instanceBuffer);
+    }
+
+    _tileDrawCommands.clear();
+    _tileDrawCommands.resize(inputs.size());
+
+    for (int i = 0; i < inputs.size(); i++) {
+        TileDrawCommand cmd;
+        cmd.transform = glm::translate(glm::mat4(1.f), inputs[i].chunkPosition);
+        cmd.instanceCount = inputs[i].instances.size();
+
+        size_t bufferSize = sizeof(TileInstance) * cmd.instanceCount;
+        // TODO: This should probably be a GPU buffer
+        cmd.instanceBuffer =
+            create_buffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        VmaAllocationInfo allocInfo;
+        vmaGetAllocationInfo(_allocator, cmd.instanceBuffer.allocation,
+                             &allocInfo);
+        void *data = allocInfo.pMappedData;
+        memcpy(data, inputs[i].instances.data(), bufferSize);
+
+        _tileDrawCommands[i] = cmd;
+    }
+}
+
 void Renderer::draw(VkCommandBuffer cmd) {
     AllocatedBuffer gpuSceneDataBuffer =
         create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -485,7 +481,8 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     objectIndices.reserve(objects.size());
 
     for (int i = 0; i < objects.size(); i++) {
-        if (is_visible(objects[i], sceneData.viewproj)) {
+        if (vkutil::is_visible(objects[i].transform, objects[i].bounds,
+                               sceneData.viewproj)) {
             objectIndices.push_back(i);
         }
     }
