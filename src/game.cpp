@@ -26,7 +26,6 @@ void Game::init() {
 
     _renderer.init(_window);
     _renderer.set_camera_view(_state.camera.get_view_matrix());
-    _renderObjects.reserve(200);
 
     void *memory = malloc(GAME_MEMORY);
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
@@ -184,32 +183,30 @@ void Game::run() {
         }
 
         auto cmd = _renderer.begin_frame();
+        render_entities();
         _renderer.draw(cmd);
-        render_entities(cmd);
         _renderer.end_frame(cmd, now - last);
     }
 }
 
-void Game::render_entities(VkCommandBuffer cmd) {
-    _renderObjects.clear();
+void Game::render_entities() {
     auto view = _registry.view<UnitType, WorldPosition>();
     view.each([this](auto &t, auto &p) {
         UnitData unitData = UnitData::registry.at(t);
         std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
         glm::mat4 worldTransform = p.to_world_transform().as_matrix();
         for (auto s : mesh->surfaces) {
-            RenderObject obj;
-            obj.bounds = s.bounds;
-            obj.material = &s.material->data;
-            obj.transform = worldTransform;
-            obj.firstIndex = s.startIndex;
-            obj.indexCount = s.count;
-            obj.vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress;
-            obj.indexBuffer = mesh->meshBuffers.indexBuffer.buffer;
-            _renderObjects.push_back(obj);
+            _renderer.write_draw_command(DrawCommand{
+                .indexCount = s.count,
+                .firstIndex = s.startIndex,
+                .indexBuffer = mesh->meshBuffers.indexBuffer.buffer,
+                .material = &s.material->data,
+                .bounds = s.bounds,
+                .transform = worldTransform,
+                .vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress,
+            });
         }
     });
-    _renderer.draw_objects(cmd, _renderObjects);
 }
 
 void Game::init_test_entities() {

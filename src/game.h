@@ -36,10 +36,9 @@ class Game {
 
     SDL_Window *_window;
     Renderer _renderer;
-    std::vector<RenderObject> _renderObjects;
     std::shared_ptr<LoadedGLTF> _assets;
 
-    void render_entities(VkCommandBuffer cmd);
+    void render_entities();
     void init_test_entities();
 };
 

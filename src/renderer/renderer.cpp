@@ -58,6 +58,8 @@ void Renderer::init(SDL_Window *window) {
     _tileRenderer.init(this);
     init_shadow_map();
     init_default_data();
+
+    _drawCommands.reserve(1024);
 }
 
 void Renderer::init_default_data() {
@@ -468,17 +470,17 @@ void Renderer::draw(VkCommandBuffer cmd) {
     };
 
     _tileRenderer.draw(ctx, _tileDrawCommands);
+    draw_objects(cmd);
 }
 
-void Renderer::draw_objects(VkCommandBuffer cmd,
-                            const std::vector<RenderObject> &objects) {
+void Renderer::draw_objects(VkCommandBuffer cmd) {
     Uint64 start = SDL_GetTicks();
     std::vector<uint32_t> objectIndices;
-    objectIndices.reserve(objects.size());
+    objectIndices.reserve(_drawCommands.size());
 
-    for (int i = 0; i < objects.size(); i++) {
-        if (vkutil::is_visible(objects[i].transform, objects[i].bounds,
-                               sceneData.viewproj)) {
+    for (int i = 0; i < _drawCommands.size(); i++) {
+        if (vkutil::is_visible(_drawCommands[i].transform,
+                               _drawCommands[i].bounds, sceneData.viewproj)) {
             objectIndices.push_back(i);
         }
     }
@@ -486,8 +488,8 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     // sort the opaque surfaces by material and mesh
     std::sort(objectIndices.begin(), objectIndices.end(),
               [&](const auto &iA, const auto &iB) {
-                  const RenderObject &A = objects[iA];
-                  const RenderObject &B = objects[iB];
+                  const DrawCommand &A = _drawCommands[iA];
+                  const DrawCommand &B = _drawCommands[iB];
                   if (A.material == B.material) {
                       return A.indexBuffer < B.indexBuffer;
                   } else {
@@ -543,7 +545,7 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     MaterialInstance *lastMaterial = nullptr;
     VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
 
-    auto draw = [&](const RenderObject &r) {
+    auto draw = [&](const DrawCommand &r) {
         if (r.material != lastMaterial) {
             lastMaterial = r.material;
             if (r.material->pipeline != lastPipeline) {
@@ -597,7 +599,7 @@ void Renderer::draw_objects(VkCommandBuffer cmd,
     _stats.triangleCount = 0;
 
     for (auto &r : objectIndices) {
-        draw(objects[r]);
+        draw(_drawCommands[r]);
     }
 
     vkCmdEndRendering(cmd);
@@ -638,6 +640,7 @@ VkCommandBuffer Renderer::begin_frame() {
                              VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     update_scene();
+    _drawCommands.clear();
     return cmd;
 }
 
@@ -827,6 +830,10 @@ void Renderer::immediate_submit(
     VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submitInfo, _immFence));
 
     VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
+}
+
+void Renderer::write_draw_command(DrawCommand &&cmd) {
+    _drawCommands.emplace_back(cmd);
 }
 
 GPUMeshBuffers Renderer::uploadMesh(std::span<uint32_t> indices,

@@ -50,6 +50,18 @@ struct RenderStats {
     Uint64 meshDrawTime;
 };
 
+struct DrawCommand {
+    uint32_t indexCount;
+    uint32_t firstIndex;
+    VkBuffer indexBuffer;
+
+    MaterialInstance *material;
+    Bounds bounds;
+
+    glm::mat4 transform;
+    VkDeviceAddress vertexBufferAddress;
+};
+
 struct RenderObject {
     uint32_t indexCount;
     uint32_t firstIndex;
@@ -135,7 +147,9 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     TileRenderer _tileRenderer;
+
     std::vector<TileDrawCommand> _tileDrawCommands;
+    std::vector<DrawCommand> _drawCommands;
 
     ShadowMapResources _shadowMap;
     MaterialPipeline _depthPassPipeline;
@@ -150,6 +164,7 @@ class Renderer {
 
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
+    void draw_objects(VkCommandBuffer cmd);
     void update_scene();
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
@@ -190,8 +205,6 @@ class Renderer {
     void deinit();
     VkCommandBuffer begin_frame();
     void draw_world(VkCommandBuffer cmd);
-    void draw_objects(VkCommandBuffer cmd,
-                      const std::vector<RenderObject> &objects);
     void draw(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
@@ -202,6 +215,7 @@ class Renderer {
 
     void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
+    void write_draw_command(DrawCommand &&cmd);
     void update_tile_draw_commands(std::vector<TileRenderingInput> inputs);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
