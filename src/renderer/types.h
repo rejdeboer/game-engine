@@ -42,6 +42,12 @@ struct GPUSceneData {
     glm::vec4 sunlightColor;
 };
 
+struct Bounds {
+    glm::vec3 origin;
+    float sphereRadius;
+    glm::vec3 extents;
+};
+
 enum class MaterialPass : uint8_t {
     MainColor,
     Transparent,

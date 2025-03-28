@@ -60,6 +60,13 @@ constexpr std::array<TileVertex, 4> kTileVertices = {{
 
 constexpr std::array<uint32_t, 6> kTileIndices = {0, 1, 2, 0, 2, 3};
 
+struct TileDrawCommand {
+    AllocatedBuffer instanceBuffer;
+    uint32_t instanceCount;
+    glm::mat4 transform;
+    Bounds bounds;
+};
+
 struct TileRenderChunk {
     AllocatedBuffer instanceBuffer;
     uint32_t instanceCount;
