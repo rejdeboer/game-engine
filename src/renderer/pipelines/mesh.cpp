@@ -1,24 +1,21 @@
 #include "mesh.h"
 #include "../frustum_culling.h"
-#include "../renderer.hpp"
 #include "builder.h"
 #include <algorithm>
 
-void MeshPipeline::init(Renderer *renderer) {
-    _renderer = renderer;
-    init_pipeline();
-}
-
-void MeshPipeline::init_pipeline() {
+void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
+                        VkFormat depthImageFormat,
+                        VkDescriptorSetLayout gpuSceneDataDescriptorLayout,
+                        VkDescriptorSetLayout shadowDescriptorSetLayout) {
     VkShaderModule meshFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.frag.spv",
-                                    _renderer->_device, &meshFragShader)) {
+    if (!vkutil::load_shader_module("shaders/spv/mesh.frag.spv", device,
+                                    &meshFragShader)) {
         fmt::println("Error when building the mesh fragment shader module");
     }
 
     VkShaderModule meshVertShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv",
-                                    _renderer->_device, &meshVertShader)) {
+    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv", device,
+                                    &meshVertShader)) {
         fmt::println("Error when building the mesh vertex shader module");
     }
 
@@ -31,23 +28,25 @@ void MeshPipeline::init_pipeline() {
     layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    _materialLayout = layoutBuilder.build(_renderer->_device,
-                                          VK_SHADER_STAGE_VERTEX_BIT |
-                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+    _materialLayout = layoutBuilder.build(
+        device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    VkDescriptorSetLayout layouts[] = {_renderer->_gpuSceneDataDescriptorLayout,
-                                       _materialLayout};
+    VkDescriptorSetLayout layouts[] = {
+        gpuSceneDataDescriptorLayout,
+        _materialLayout,
+        shadowDescriptorSetLayout,
+    };
 
     VkPipelineLayoutCreateInfo meshLayoutInfo = {};
     meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    meshLayoutInfo.setLayoutCount = 2;
+    meshLayoutInfo.setLayoutCount = 3;
     meshLayoutInfo.pSetLayouts = layouts;
     meshLayoutInfo.pushConstantRangeCount = 1;
     meshLayoutInfo.pPushConstantRanges = &matrixRange;
 
     VkPipelineLayout newLayout;
-    VK_CHECK(vkCreatePipelineLayout(_renderer->_device, &meshLayoutInfo,
-                                    nullptr, &newLayout));
+    VK_CHECK(
+        vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr, &newLayout));
 
     _opaquePipeline.layout = newLayout;
     _transparentPipeline.layout = newLayout;
@@ -60,19 +59,17 @@ void MeshPipeline::init_pipeline() {
     pipelineBuilder.set_multisampling_none();
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    pipelineBuilder.set_color_attachment_format(_renderer->_drawImage.format);
-    pipelineBuilder.set_depth_format(_renderer->_depthImage.format);
+    pipelineBuilder.set_color_attachment_format(drawImageFormat);
+    pipelineBuilder.set_depth_format(depthImageFormat);
     pipelineBuilder._pipelineLayout = newLayout;
-    _opaquePipeline.pipeline =
-        pipelineBuilder.build_pipeline(_renderer->_device);
+    _opaquePipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
     pipelineBuilder.enable_blending_additive();
     pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
-    _transparentPipeline.pipeline =
-        pipelineBuilder.build_pipeline(_renderer->_device);
+    _transparentPipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
-    vkDestroyShaderModule(_renderer->_device, meshVertShader, nullptr);
-    vkDestroyShaderModule(_renderer->_device, meshFragShader, nullptr);
+    vkDestroyShaderModule(device, meshVertShader, nullptr);
+    vkDestroyShaderModule(device, meshFragShader, nullptr);
 }
 
 void MeshPipeline::draw(RenderContext &ctx,

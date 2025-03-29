@@ -57,7 +57,8 @@ void Renderer::init(SDL_Window *window) {
     init_imgui();
 
     _tilePipeline.init(this);
-    _meshPipeline.init(this);
+    _meshPipeline.init(_device, _drawImage.format, _depthImage.format,
+                       _gpuSceneDataDescriptorLayout, _shadowMap.layout);
     init_default_data();
 
     _drawCommands.reserve(1024);

@@ -25,8 +25,6 @@ struct MeshDrawCommand {
     VkDeviceAddress vertexBufferAddress;
 };
 
-class Renderer; // Forward declaration
-
 class MeshPipeline {
   public:
     struct MaterialConstants {
@@ -45,7 +43,10 @@ class MeshPipeline {
         uint32_t dataBufferOffset;
     };
 
-    void init(Renderer *renderer);
+    void init(VkDevice device, VkFormat drawImageFormat,
+              VkFormat depthImageFormat,
+              VkDescriptorSetLayout gpuSceneDataDescriptorLayout,
+              VkDescriptorSetLayout shadowDescriptorSetLayout);
     void deinit();
     void draw(RenderContext &ctx,
               const std::vector<MeshDrawCommand> &drawCommands);
@@ -56,13 +57,9 @@ class MeshPipeline {
                    DescriptorAllocatorGrowable &descriptorAllocator);
 
   private:
-    Renderer *_renderer;
     MaterialPipeline _opaquePipeline;
     MaterialPipeline _transparentPipeline;
     DescriptorWriter _writer;
 
     VkDescriptorSetLayout _materialLayout;
-
-    void init_pipeline();
-    void init_buffers();
 };
