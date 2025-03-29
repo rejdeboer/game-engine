@@ -1,10 +1,9 @@
 #pragma once
 #include "../camera.h"
-#include "../main.h"
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
-#include "tile.h"
+#include "pipelines/tile.h"
 #include "types.h"
 #include "vertex.h"
 #include <SDL3/SDL.h>

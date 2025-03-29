@@ -47,8 +47,8 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/renderer/init.cpp 
                 src/renderer/loader.cpp
                 src/renderer/pipeline.cpp
+                src/renderer/pipelines/tile.cpp
                 src/renderer/renderer.cpp 
-                src/renderer/tile.cpp 
                 src/tile.cpp
                 ${SHADERS})
 
