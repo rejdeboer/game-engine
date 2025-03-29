@@ -146,7 +146,7 @@ class Renderer {
     VkDescriptorSet _drawImageDescriptors;
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
-    TileRenderer _tileRenderer;
+    TilePipeline _tilePipeline;
 
     std::vector<TileDrawCommand> _tileDrawCommands;
     std::vector<DrawCommand> _drawCommands;

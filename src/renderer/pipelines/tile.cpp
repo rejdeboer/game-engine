@@ -5,18 +5,18 @@
 #include "vk_mem_alloc.h"
 #include <glm/ext/matrix_transform.hpp>
 
-void TileRenderer::init(Renderer *renderer) {
+void TilePipeline::init(Renderer *renderer) {
     _renderer = renderer;
     init_buffers();
     init_pipeline();
 }
 
-void TileRenderer::deinit() {
+void TilePipeline::deinit() {
     _renderer->destroy_buffer(_vertexBuffer);
     _renderer->destroy_buffer(_indexBuffer);
 }
 
-void TileRenderer::draw(RenderContext ctx,
+void TilePipeline::draw(RenderContext ctx,
                         const std::vector<TileDrawCommand> &drawCommands) {
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -59,11 +59,10 @@ void TileRenderer::draw(RenderContext ctx,
     scissor.extent.height = ctx.drawExtent.height;
     vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
 
-    vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                      _pipeline.pipeline);
+    vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
 
     vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            _pipeline.layout, 0, 1, ctx.globalDescriptorSet, 0,
+                            _pipelineLayout, 0, 1, ctx.globalDescriptorSet, 0,
                             nullptr);
 
     VkDeviceSize offsets[] = {0};
@@ -81,9 +80,8 @@ void TileRenderer::draw(RenderContext ctx,
 
         glm::mat4 chunkModel = drawCommand.transform;
 
-        vkCmdPushConstants(ctx.cmd, _pipeline.layout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4),
-                           &chunkModel);
+        vkCmdPushConstants(ctx.cmd, _pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                           0, sizeof(glm::mat4), &chunkModel);
 
         vkCmdDrawIndexed(ctx.cmd, kTileIndices.size(),
                          drawCommand.instanceCount, 0, 0, 0);
@@ -92,7 +90,7 @@ void TileRenderer::draw(RenderContext ctx,
     vkCmdEndRendering(ctx.cmd);
 }
 
-void TileRenderer::init_pipeline() {
+void TilePipeline::init_pipeline() {
     VkShaderModule tileFragShader;
     if (!vkutil::load_shader_module("shaders/spv/tile.frag.spv",
                                     _renderer->_device, &tileFragShader)) {
@@ -124,7 +122,7 @@ void TileRenderer::init_pipeline() {
     VkPipelineLayout newLayout;
     VK_CHECK(vkCreatePipelineLayout(_renderer->_device, &tileLayoutInfo,
                                     nullptr, &newLayout));
-    _pipeline.layout = newLayout;
+    _pipelineLayout = newLayout;
 
     auto bindingDescriptions = TileVertex::get_binding_descriptions();
     auto attributeDescriptions = TileVertex::get_attribute_descriptions();
@@ -143,13 +141,13 @@ void TileRenderer::init_pipeline() {
         &bindingDescriptions[0], bindingDescriptions.size(),
         &attributeDescriptions[0], attributeDescriptions.size());
     pipelineBuilder._pipelineLayout = newLayout;
-    _pipeline.pipeline = pipelineBuilder.build_pipeline(_renderer->_device);
+    _pipeline = pipelineBuilder.build_pipeline(_renderer->_device);
 
     vkDestroyShaderModule(_renderer->_device, tileVertShader, nullptr);
     vkDestroyShaderModule(_renderer->_device, tileFragShader, nullptr);
 }
 
-void TileRenderer::init_buffers() {
+void TilePipeline::init_buffers() {
     const size_t vertexBufferSize = kTileVertices.size() * sizeof(TileVertex);
     const size_t indexBufferSize = kTileIndices.size() * sizeof(uint32_t);
 

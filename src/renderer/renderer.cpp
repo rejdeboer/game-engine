@@ -56,7 +56,7 @@ void Renderer::init(SDL_Window *window) {
     init_pipelines();
     init_imgui();
 
-    _tileRenderer.init(this);
+    _tilePipeline.init(this);
     init_default_data();
 
     _drawCommands.reserve(1024);
@@ -390,7 +390,7 @@ void Renderer::init_imgui() {
 
 void Renderer::deinit() {
     vkDeviceWaitIdle(_device);
-    _tileRenderer.deinit();
+    _tilePipeline.deinit();
     for (auto &frame : _frames) {
         frame._deletionQueue.flush();
     }
@@ -557,7 +557,7 @@ void Renderer::draw(VkCommandBuffer cmd) {
         .lightViewproj = sceneData.lightViewproj,
     };
 
-    _tileRenderer.draw(ctx, _tileDrawCommands);
+    _tilePipeline.draw(ctx, _tileDrawCommands);
     draw_objects(ctx);
 }
 

@@ -80,7 +80,7 @@ struct TileRenderingInput {
 
 class Renderer;
 
-class TileRenderer {
+class TilePipeline {
   public:
     void init(Renderer *renderer);
     void deinit();
@@ -89,7 +89,8 @@ class TileRenderer {
 
   private:
     Renderer *_renderer;
-    MaterialPipeline _pipeline;
+    VkPipeline _pipeline;
+    VkPipelineLayout _pipelineLayout;
     AllocatedBuffer _vertexBuffer;
     AllocatedBuffer _indexBuffer;
     std::vector<TileRenderChunk> drawCommands;
