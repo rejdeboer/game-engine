@@ -57,6 +57,7 @@ void Renderer::init(SDL_Window *window) {
     init_imgui();
 
     _tilePipeline.init(this);
+    _meshPipeline.init(this);
     init_default_data();
 
     _drawCommands.reserve(1024);
@@ -147,10 +148,7 @@ void Renderer::init_swapchain() {
                                               _swapchainImageFormat.format);
 }
 
-void Renderer::init_pipelines() {
-    init_depth_pass_pipeline();
-    metalRoughMaterial.build_pipelines(this);
-}
+void Renderer::init_pipelines() { init_depth_pass_pipeline(); }
 
 void Renderer::init_depth_pass_pipeline() {
     VkShaderModule shadowFragShader;
@@ -558,123 +556,7 @@ void Renderer::draw(VkCommandBuffer cmd) {
     };
 
     _tilePipeline.draw(ctx, _tileDrawCommands);
-    draw_objects(ctx);
-}
-
-void Renderer::draw_objects(RenderContext ctx) {
-    Uint64 start = SDL_GetTicks();
-    std::vector<uint32_t> objectIndices;
-    objectIndices.reserve(_drawCommands.size());
-
-    for (int i = 0; i < _drawCommands.size(); i++) {
-        if (vkutil::is_visible(_drawCommands[i].transform,
-                               _drawCommands[i].bounds, sceneData.viewproj)) {
-            objectIndices.push_back(i);
-        }
-    }
-
-    // sort the opaque surfaces by material and mesh
-    std::sort(objectIndices.begin(), objectIndices.end(),
-              [&](const auto &iA, const auto &iB) {
-                  const DrawCommand &A = _drawCommands[iA];
-                  const DrawCommand &B = _drawCommands[iB];
-                  if (A.material == B.material) {
-                      return A.indexBuffer < B.indexBuffer;
-                  } else {
-                      return A.material < B.material;
-                  }
-              });
-
-    VkRenderingAttachmentInfo colorAttachment = {};
-    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachment.imageView = _drawImage.imageView;
-    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    VkRenderingAttachmentInfo depthAttachment = {};
-    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depthAttachment.imageView = _depthImage.imageView;
-    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttachment.clearValue.depthStencil.depth = 1.f;
-
-    VkRenderingInfo renderInfo = {};
-    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renderInfo.colorAttachmentCount = 1;
-    renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.pDepthAttachment = &depthAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
-    renderInfo.layerCount = 1;
-
-    vkCmdBeginRendering(ctx.cmd, &renderInfo);
-
-    MaterialPipeline *lastPipeline = nullptr;
-    MaterialInstance *lastMaterial = nullptr;
-    VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
-
-    auto draw = [&](const DrawCommand &r) {
-        if (r.material != lastMaterial) {
-            lastMaterial = r.material;
-            if (r.material->pipeline != lastPipeline) {
-                lastPipeline = r.material->pipeline;
-                vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                  r.material->pipeline->pipeline);
-                vkCmdBindDescriptorSets(ctx.cmd,
-                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        r.material->pipeline->layout, 0, 1,
-                                        ctx.globalDescriptorSet, 0, nullptr);
-
-                VkViewport viewport = {};
-                viewport.x = 0;
-                viewport.y = 0;
-                viewport.width = (float)_swapchainExtent.width;
-                viewport.height = (float)_swapchainExtent.height;
-                viewport.minDepth = 0.f;
-                viewport.maxDepth = 1.f;
-                vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
-
-                VkRect2D scissor = {};
-                scissor.offset.x = 0;
-                scissor.offset.y = 0;
-                scissor.extent.width = _swapchainExtent.width;
-                scissor.extent.height = _swapchainExtent.height;
-                vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
-            }
-
-            vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    r.material->pipeline->layout, 1, 1,
-                                    &r.material->materialSet, 0, nullptr);
-        }
-
-        if (r.indexBuffer != lastIndexBuffer) {
-            lastIndexBuffer = r.indexBuffer;
-            vkCmdBindIndexBuffer(ctx.cmd, r.indexBuffer, 0,
-                                 VK_INDEX_TYPE_UINT32);
-        }
-
-        GPUDrawPushConstants pushConstants;
-        pushConstants.vertexBuffer = r.vertexBufferAddress;
-        pushConstants.worldMatrix = r.transform;
-        vkCmdPushConstants(ctx.cmd, r.material->pipeline->layout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0,
-                           sizeof(GPUDrawPushConstants), &pushConstants);
-
-        _stats.drawcallCount++;
-        _stats.triangleCount += r.indexCount / 3;
-        vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
-    };
-
-    _stats.drawcallCount = 0;
-    _stats.triangleCount = 0;
-
-    for (auto &r : objectIndices) {
-        draw(_drawCommands[r]);
-    }
-
-    vkCmdEndRendering(ctx.cmd);
-    _stats.meshDrawTime = SDL_GetTicks() - start;
+    _meshPipeline.draw(ctx, _drawCommands);
 }
 
 VkCommandBuffer Renderer::begin_frame() {
@@ -903,7 +785,7 @@ void Renderer::immediate_submit(
     VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
 }
 
-void Renderer::write_draw_command(DrawCommand &&cmd) {
+void Renderer::write_draw_command(MeshDrawCommand &&cmd) {
     _drawCommands.emplace_back(cmd);
 }
 
@@ -1098,100 +980,4 @@ void Renderer::destroy_swapchain() {
     for (int i = 0; i < _swapchainImageViews.size(); i++) {
         vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
     }
-}
-
-void GLTFMetallic_Roughness::build_pipelines(Renderer *renderer) {
-    VkShaderModule meshFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.frag.spv",
-                                    renderer->_device, &meshFragShader)) {
-        fmt::println("Error when building the mesh fragment shader module");
-    }
-
-    VkShaderModule meshVertShader;
-    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv",
-                                    renderer->_device, &meshVertShader)) {
-        fmt::println("Error when building the mesh vertex shader module");
-    }
-
-    VkPushConstantRange matrixRange{};
-    matrixRange.offset = 0;
-    matrixRange.size = sizeof(GPUDrawPushConstants);
-    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    DescriptorLayoutBuilder layoutBuilder;
-    layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    materialLayout = layoutBuilder.build(renderer->_device,
-                                         VK_SHADER_STAGE_VERTEX_BIT |
-                                             VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    VkDescriptorSetLayout layouts[] = {renderer->_gpuSceneDataDescriptorLayout,
-                                       materialLayout};
-
-    VkPipelineLayoutCreateInfo meshLayoutInfo = {};
-    meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    meshLayoutInfo.setLayoutCount = 2;
-    meshLayoutInfo.pSetLayouts = layouts;
-    meshLayoutInfo.pushConstantRangeCount = 1;
-    meshLayoutInfo.pPushConstantRanges = &matrixRange;
-
-    VkPipelineLayout newLayout;
-    VK_CHECK(vkCreatePipelineLayout(renderer->_device, &meshLayoutInfo, nullptr,
-                                    &newLayout));
-
-    opaquePipeline.layout = newLayout;
-    transparentPipeline.layout = newLayout;
-
-    PipelineBuilder pipelineBuilder;
-    pipelineBuilder.set_shaders(meshVertShader, meshFragShader);
-    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_multisampling_none();
-    pipelineBuilder.disable_blending();
-    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    pipelineBuilder.set_color_attachment_format(renderer->_drawImage.format);
-    pipelineBuilder.set_depth_format(renderer->_depthImage.format);
-    pipelineBuilder._pipelineLayout = newLayout;
-    opaquePipeline.pipeline = pipelineBuilder.build_pipeline(renderer->_device);
-
-    pipelineBuilder.enable_blending_additive();
-    pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
-    transparentPipeline.pipeline =
-        pipelineBuilder.build_pipeline(renderer->_device);
-
-    vkDestroyShaderModule(renderer->_device, meshVertShader, nullptr);
-    vkDestroyShaderModule(renderer->_device, meshFragShader, nullptr);
-}
-
-MaterialInstance GLTFMetallic_Roughness::write_material(
-    VkDevice device, MaterialPass pass, const MaterialResources &resources,
-    DescriptorAllocatorGrowable &descriptorAllocator) {
-
-    MaterialInstance matData;
-    matData.passType = pass;
-    if (pass == MaterialPass::Transparent) {
-        matData.pipeline = &transparentPipeline;
-    } else {
-        matData.pipeline = &opaquePipeline;
-    }
-
-    matData.materialSet = descriptorAllocator.allocate(device, materialLayout);
-
-    writer.clear();
-    writer.write_buffer(0, resources.dataBuffer, sizeof(MaterialConstants),
-                        resources.dataBufferOffset,
-                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    writer.write_image(1, resources.colorImage.imageView,
-                       resources.colorSampler,
-                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.write_image(2, resources.metalRoughImage.imageView,
-                       resources.metalRoughSampler,
-                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    writer.update_set(device, matData.materialSet);
-
-    return matData;
 }

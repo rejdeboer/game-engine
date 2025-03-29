@@ -3,6 +3,7 @@
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
+#include "pipelines/mesh.h"
 #include "pipelines/tile.h"
 #include "types.h"
 #include "vertex.h"
@@ -82,39 +83,6 @@ struct ShadowMapResources {
     uint32_t resolution = 2048;
 };
 
-struct GLTFMetallic_Roughness {
-    MaterialPipeline opaquePipeline;
-    MaterialPipeline transparentPipeline;
-
-    VkDescriptorSetLayout materialLayout;
-
-    struct MaterialConstants {
-        glm::vec4 colorFactors;
-        glm::vec4 metalRoughFactors;
-        // padding, we need it for uniform buffers
-        glm::vec4 extra[14];
-    };
-
-    struct MaterialResources {
-        AllocatedImage colorImage;
-        VkSampler colorSampler;
-        AllocatedImage metalRoughImage;
-        VkSampler metalRoughSampler;
-        VkBuffer dataBuffer;
-        uint32_t dataBufferOffset;
-    };
-
-    DescriptorWriter writer;
-
-    void build_pipelines(Renderer *renderer);
-    void clear_resources(VkDevice device);
-
-    MaterialInstance
-    write_material(VkDevice device, MaterialPass pass,
-                   const MaterialResources &resources,
-                   DescriptorAllocatorGrowable &descriptorAllocator);
-};
-
 struct MeshNode : public Node {
     std::shared_ptr<MeshAsset> mesh;
 };
@@ -149,7 +117,7 @@ class Renderer {
     TilePipeline _tilePipeline;
 
     std::vector<TileDrawCommand> _tileDrawCommands;
-    std::vector<DrawCommand> _drawCommands;
+    std::vector<MeshDrawCommand> _drawCommands;
 
     ShadowMapResources _shadowMap;
     MaterialPipeline _depthPassPipeline;
@@ -164,7 +132,6 @@ class Renderer {
 
     void prepare_imgui(Uint64 dt);
     void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
-    void draw_objects(RenderContext ctx);
     void update_scene();
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
@@ -199,7 +166,7 @@ class Renderer {
     VkSampler _defaultSamplerLinear;
     VkSampler _defaultSamplerNearest;
 
-    GLTFMetallic_Roughness metalRoughMaterial;
+    MeshPipeline _meshPipeline;
 
     void init(SDL_Window *window);
     void deinit();
@@ -215,7 +182,7 @@ class Renderer {
 
     void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
-    void write_draw_command(DrawCommand &&cmd);
+    void write_draw_command(MeshDrawCommand &&cmd);
     void update_tile_draw_commands(std::vector<TileRenderingInput> inputs);
 
     AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,

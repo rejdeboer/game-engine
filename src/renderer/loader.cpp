@@ -218,12 +218,11 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
 
     // create buffer to hold the material data
     file.materialDataBuffer = renderer->create_buffer(
-        sizeof(GLTFMetallic_Roughness::MaterialConstants) *
-            gltf.materials.size(),
+        sizeof(MeshPipeline::MaterialConstants) * gltf.materials.size(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     int data_index = 0;
-    GLTFMetallic_Roughness::MaterialConstants *sceneMaterialConstants =
-        (GLTFMetallic_Roughness::MaterialConstants *)
+    MeshPipeline::MaterialConstants *sceneMaterialConstants =
+        (MeshPipeline::MaterialConstants *)
             file.materialDataBuffer.info.pMappedData;
 
     for (fastgltf::Material &mat : gltf.materials) {
@@ -231,7 +230,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         materials.push_back(newMat);
         file.materials[mat.name.c_str()] = newMat;
 
-        GLTFMetallic_Roughness::MaterialConstants constants;
+        MeshPipeline::MaterialConstants constants;
         constants.colorFactors.x = mat.pbrData.baseColorFactor[0];
         constants.colorFactors.y = mat.pbrData.baseColorFactor[1];
         constants.colorFactors.z = mat.pbrData.baseColorFactor[2];
@@ -247,7 +246,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
             passType = MaterialPass::Transparent;
         }
 
-        GLTFMetallic_Roughness::MaterialResources materialResources;
+        MeshPipeline::MaterialResources materialResources;
         // default the material textures
         materialResources.colorImage = renderer->_whiteImage;
         materialResources.colorSampler = renderer->_defaultSamplerLinear;
@@ -257,7 +256,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         // set the uniform buffer for the material data
         materialResources.dataBuffer = file.materialDataBuffer.buffer;
         materialResources.dataBufferOffset =
-            data_index * sizeof(GLTFMetallic_Roughness::MaterialConstants);
+            data_index * sizeof(MeshPipeline::MaterialConstants);
         // grab textures from gltf file
         if (mat.pbrData.baseColorTexture.has_value()) {
             size_t img =
@@ -271,7 +270,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
             materialResources.colorSampler = file.samplers[sampler];
         }
         // build material
-        newMat->data = renderer->metalRoughMaterial.write_material(
+        newMat->data = renderer->_meshPipeline.write_material(
             renderer->_device, passType, materialResources,
             file.descriptorPool);
 

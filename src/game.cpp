@@ -196,7 +196,7 @@ void Game::render_entities() {
         std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
         glm::mat4 worldTransform = p.to_world_transform().as_matrix();
         for (auto s : mesh->surfaces) {
-            _renderer.write_draw_command(DrawCommand{
+            _renderer.write_draw_command(MeshDrawCommand{
                 .indexCount = s.count,
                 .firstIndex = s.startIndex,
                 .indexBuffer = mesh->meshBuffers.indexBuffer.buffer,

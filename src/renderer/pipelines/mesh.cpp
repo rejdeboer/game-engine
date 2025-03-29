@@ -1,0 +1,215 @@
+#include "mesh.h"
+#include "../frustum_culling.h"
+#include "../renderer.hpp"
+#include "builder.h"
+#include <algorithm>
+
+void MeshPipeline::init(Renderer *renderer) {
+    _renderer = renderer;
+    init_pipeline();
+}
+
+void MeshPipeline::init_pipeline() {
+    VkShaderModule meshFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/mesh.frag.spv",
+                                    _renderer->_device, &meshFragShader)) {
+        fmt::println("Error when building the mesh fragment shader module");
+    }
+
+    VkShaderModule meshVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/mesh.vert.spv",
+                                    _renderer->_device, &meshVertShader)) {
+        fmt::println("Error when building the mesh vertex shader module");
+    }
+
+    VkPushConstantRange matrixRange{};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(GPUDrawPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    DescriptorLayoutBuilder layoutBuilder;
+    layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    layoutBuilder.add_binding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    _materialLayout = layoutBuilder.build(_renderer->_device,
+                                          VK_SHADER_STAGE_VERTEX_BIT |
+                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    VkDescriptorSetLayout layouts[] = {_renderer->_gpuSceneDataDescriptorLayout,
+                                       _materialLayout};
+
+    VkPipelineLayoutCreateInfo meshLayoutInfo = {};
+    meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    meshLayoutInfo.setLayoutCount = 2;
+    meshLayoutInfo.pSetLayouts = layouts;
+    meshLayoutInfo.pushConstantRangeCount = 1;
+    meshLayoutInfo.pPushConstantRanges = &matrixRange;
+
+    VkPipelineLayout newLayout;
+    VK_CHECK(vkCreatePipelineLayout(_renderer->_device, &meshLayoutInfo,
+                                    nullptr, &newLayout));
+
+    _opaquePipeline.layout = newLayout;
+    _transparentPipeline.layout = newLayout;
+
+    PipelineBuilder pipelineBuilder;
+    pipelineBuilder.set_shaders(meshVertShader, meshFragShader);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_multisampling_none();
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.set_color_attachment_format(_renderer->_drawImage.format);
+    pipelineBuilder.set_depth_format(_renderer->_depthImage.format);
+    pipelineBuilder._pipelineLayout = newLayout;
+    _opaquePipeline.pipeline =
+        pipelineBuilder.build_pipeline(_renderer->_device);
+
+    pipelineBuilder.enable_blending_additive();
+    pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
+    _transparentPipeline.pipeline =
+        pipelineBuilder.build_pipeline(_renderer->_device);
+
+    vkDestroyShaderModule(_renderer->_device, meshVertShader, nullptr);
+    vkDestroyShaderModule(_renderer->_device, meshFragShader, nullptr);
+}
+
+void MeshPipeline::draw(RenderContext &ctx,
+                        const std::vector<MeshDrawCommand> &drawCommands) {
+    std::vector<uint32_t> objectIndices;
+    objectIndices.reserve(drawCommands.size());
+
+    for (int i = 0; i < drawCommands.size(); i++) {
+        if (vkutil::is_visible(drawCommands[i].transform,
+                               drawCommands[i].bounds, ctx.cameraViewproj)) {
+            objectIndices.push_back(i);
+        }
+    }
+
+    // sort the opaque surfaces by material and mesh
+    std::sort(objectIndices.begin(), objectIndices.end(),
+              [&](const auto &iA, const auto &iB) {
+                  const MeshDrawCommand &A = drawCommands[iA];
+                  const MeshDrawCommand &B = drawCommands[iB];
+                  if (A.material == B.material) {
+                      return A.indexBuffer < B.indexBuffer;
+                  } else {
+                      return A.material < B.material;
+                  }
+              });
+
+    VkRenderingAttachmentInfo colorAttachment = {};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = ctx.drawImageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingAttachmentInfo depthAttachment = {};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = ctx.depthImageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttachment.clearValue.depthStencil.depth = 1.f;
+
+    VkRenderingInfo renderInfo = {};
+    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &colorAttachment;
+    renderInfo.pDepthAttachment = &depthAttachment;
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, ctx.drawExtent};
+    renderInfo.layerCount = 1;
+
+    vkCmdBeginRendering(ctx.cmd, &renderInfo);
+
+    MaterialPipeline *lastPipeline = nullptr;
+    MaterialInstance *lastMaterial = nullptr;
+    VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
+
+    for (auto &i : objectIndices) {
+        auto r = drawCommands[i];
+        if (r.material != lastMaterial) {
+            lastMaterial = r.material;
+            if (r.material->pipeline != lastPipeline) {
+                lastPipeline = r.material->pipeline;
+                vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  r.material->pipeline->pipeline);
+                vkCmdBindDescriptorSets(ctx.cmd,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        r.material->pipeline->layout, 0, 1,
+                                        ctx.globalDescriptorSet, 0, nullptr);
+
+                VkViewport viewport = {};
+                viewport.x = 0;
+                viewport.y = 0;
+                viewport.width = (float)ctx.drawExtent.width;
+                viewport.height = (float)ctx.drawExtent.height;
+                viewport.minDepth = 0.f;
+                viewport.maxDepth = 1.f;
+                vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
+
+                VkRect2D scissor = {};
+                scissor.offset.x = 0;
+                scissor.offset.y = 0;
+                scissor.extent.width = ctx.drawExtent.width;
+                scissor.extent.height = ctx.drawExtent.height;
+                vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
+            }
+
+            vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    r.material->pipeline->layout, 1, 1,
+                                    &r.material->materialSet, 0, nullptr);
+        }
+
+        if (r.indexBuffer != lastIndexBuffer) {
+            lastIndexBuffer = r.indexBuffer;
+            vkCmdBindIndexBuffer(ctx.cmd, r.indexBuffer, 0,
+                                 VK_INDEX_TYPE_UINT32);
+        }
+
+        GPUDrawPushConstants pushConstants;
+        pushConstants.vertexBuffer = r.vertexBufferAddress;
+        pushConstants.worldMatrix = r.transform;
+        vkCmdPushConstants(ctx.cmd, r.material->pipeline->layout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           sizeof(GPUDrawPushConstants), &pushConstants);
+
+        vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
+    }
+
+    vkCmdEndRendering(ctx.cmd);
+}
+
+MaterialInstance
+MeshPipeline::write_material(VkDevice device, MaterialPass pass,
+                             const MaterialResources &resources,
+                             DescriptorAllocatorGrowable &descriptorAllocator) {
+
+    MaterialInstance matData;
+    matData.passType = pass;
+    if (pass == MaterialPass::Transparent) {
+        matData.pipeline = &_transparentPipeline;
+    } else {
+        matData.pipeline = &_opaquePipeline;
+    }
+
+    matData.materialSet = descriptorAllocator.allocate(device, _materialLayout);
+
+    _writer.clear();
+    _writer.write_buffer(0, resources.dataBuffer, sizeof(MaterialConstants),
+                         resources.dataBufferOffset,
+                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    _writer.write_image(1, resources.colorImage.imageView,
+                        resources.colorSampler,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    _writer.write_image(2, resources.metalRoughImage.imageView,
+                        resources.metalRoughSampler,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    _writer.update_set(device, matData.materialSet);
+
+    return matData;
+}
