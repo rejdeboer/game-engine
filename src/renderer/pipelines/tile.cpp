@@ -18,31 +18,6 @@ void TilePipeline::deinit() {
 
 void TilePipeline::draw(RenderContext ctx,
                         const std::vector<TileDrawCommand> &drawCommands) {
-    VkRenderingAttachmentInfo colorAttachment = {};
-    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachment.imageView = ctx.drawImageView;
-    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    VkRenderingAttachmentInfo depthAttachment = {};
-    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depthAttachment.imageView = ctx.depthImageView;
-    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttachment.clearValue.depthStencil.depth = 1.f;
-
-    VkRenderingInfo renderInfo = {};
-    renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-    renderInfo.colorAttachmentCount = 1;
-    renderInfo.pColorAttachments = &colorAttachment;
-    renderInfo.pDepthAttachment = &depthAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, ctx.drawExtent};
-    renderInfo.layerCount = 1;
-
-    vkCmdBeginRendering(ctx.cmd, &renderInfo);
-
     VkViewport viewport = {};
     viewport.x = 0;
     viewport.y = 0;
@@ -86,8 +61,6 @@ void TilePipeline::draw(RenderContext ctx,
         vkCmdDrawIndexed(ctx.cmd, kTileIndices.size(),
                          drawCommand.instanceCount, 0, 0, 0);
     }
-
-    vkCmdEndRendering(ctx.cmd);
 }
 
 void TilePipeline::init_pipeline() {
