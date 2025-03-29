@@ -169,18 +169,13 @@ void Renderer::init_depth_pass_pipeline() {
     matrixRange.size = sizeof(GPUDrawPushConstants);
     matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    DescriptorLayoutBuilder layoutBuilder;
-    layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    _shadowMap.layout = layoutBuilder.build(
-        _device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout,
-                                       _shadowMap.layout};
+    VkDescriptorSetLayout layouts[] = {
+        _gpuSceneDataDescriptorLayout,
+    };
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 2;
+    layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = layouts;
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges = &matrixRange;
@@ -295,6 +290,15 @@ void Renderer::init_shadow_map() {
         _shadowMap.layout =
             builder.build(_device, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
+
+    _shadowMap.descriptor =
+        _globalDescriptorAllocator.allocate(_device, _shadowMap.layout);
+
+    DescriptorWriter writer;
+    writer.write_image(0, _shadowMap.image.imageView, _shadowMap.sampler,
+                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    writer.update_set(_device, _shadowMap.descriptor);
 
     _mainDeletionQueue.push_function([=, this]() {
         vkDestroySampler(_device, _shadowMap.sampler, nullptr);
@@ -546,26 +550,16 @@ void Renderer::draw(VkCommandBuffer cmd) {
             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     }
 
-    RenderContext ctx = RenderContext{
-        .cmd = cmd,
-        .drawImageView = _drawImage.imageView,
-        .depthImageView = _depthImage.imageView,
-        .drawExtent = _drawExtent,
-        .globalDescriptorSet = &globalDescriptor,
-        .cameraViewproj = sceneData.viewproj,
-        .lightViewproj = sceneData.lightViewproj,
-    };
-
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    colorAttachment.imageView = ctx.drawImageView;
+    colorAttachment.imageView = _drawImage.imageView;
     colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
     VkRenderingAttachmentInfo depthAttachment = {};
     depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depthAttachment.imageView = ctx.depthImageView;
+    depthAttachment.imageView = _depthImage.imageView;
     depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -576,10 +570,21 @@ void Renderer::draw(VkCommandBuffer cmd) {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
     renderInfo.pDepthAttachment = &depthAttachment;
-    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, ctx.drawExtent};
+    renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
     renderInfo.layerCount = 1;
 
     vkCmdBeginRendering(cmd, &renderInfo);
+
+    RenderContext ctx = RenderContext{
+        .cmd = cmd,
+        .drawImageView = _drawImage.imageView,
+        .depthImageView = _depthImage.imageView,
+        .drawExtent = _drawExtent,
+        .globalDescriptorSet = &globalDescriptor,
+        .shadowMapSet = &_shadowMap.descriptor,
+        .cameraViewproj = sceneData.viewproj,
+        .lightViewproj = sceneData.lightViewproj,
+    };
 
     _tilePipeline.draw(ctx, _tileDrawCommands);
     _meshPipeline.draw(ctx, _drawCommands);

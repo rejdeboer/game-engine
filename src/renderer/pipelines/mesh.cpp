@@ -112,6 +112,10 @@ void MeshPipeline::draw(RenderContext &ctx,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         r.material->pipeline->layout, 0, 1,
                                         ctx.globalDescriptorSet, 0, nullptr);
+                vkCmdBindDescriptorSets(ctx.cmd,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        r.material->pipeline->layout, 2, 1,
+                                        ctx.shadowMapSet, 0, nullptr);
 
                 VkViewport viewport = {};
                 viewport.x = 0;
