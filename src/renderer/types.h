@@ -74,6 +74,7 @@ struct RenderContext {
     VkExtent2D drawExtent;
     VkDescriptorSet *globalDescriptorSet;
     glm::mat4 cameraViewproj;
+    glm::mat4 lightViewproj;
 };
 
 class IRenderable {

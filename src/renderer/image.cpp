@@ -28,10 +28,11 @@ void vkutil::transition_image(VkCommandBuffer cmd, VkImage image,
     imageBarrier.oldLayout = currentLayout;
     imageBarrier.newLayout = newLayout;
 
+    bool useDepthBit =
+        newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
+        newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     VkImageAspectFlags aspectMask =
-        newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-            ? VK_IMAGE_ASPECT_DEPTH_BIT
-            : VK_IMAGE_ASPECT_COLOR_BIT;
+        useDepthBit ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrier.subresourceRange = image_subresource_range(aspectMask);
     imageBarrier.image = image;
 

@@ -46,17 +46,17 @@ void Renderer::init(SDL_Window *window) {
         vmaDestroyImage(_allocator, _depthImage.image, _depthImage.allocation);
     });
 
-    init_descriptors();
-    init_pipelines();
-
     _graphicsQueue = get_device_queue(_device, graphicsIndex, 0);
     _presentationQueue = get_device_queue(_device, presentationIndex, 0);
 
-    init_imgui();
     init_commands(graphicsIndex);
     init_sync_structures();
-    _tileRenderer.init(this);
+    init_descriptors();
     init_shadow_map();
+    init_pipelines();
+    init_imgui();
+
+    _tileRenderer.init(this);
     init_default_data();
 
     _drawCommands.reserve(1024);
@@ -165,6 +165,11 @@ void Renderer::init_depth_pass_pipeline() {
         fmt::println("Error when building the shadow vertex shader module");
     }
 
+    VkPushConstantRange matrixRange{};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(GPUDrawPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
     DescriptorLayoutBuilder layoutBuilder;
     layoutBuilder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     layoutBuilder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -174,13 +179,14 @@ void Renderer::init_depth_pass_pipeline() {
     VkDescriptorSetLayout layouts[] = {_gpuSceneDataDescriptorLayout,
                                        _shadowMap.layout};
 
-    VkPipelineLayoutCreateInfo meshLayoutInfo = {};
-    meshLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    meshLayoutInfo.setLayoutCount = 2;
-    meshLayoutInfo.pSetLayouts = layouts;
-    meshLayoutInfo.pushConstantRangeCount = 0;
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount = 2;
+    layoutInfo.pSetLayouts = layouts;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &matrixRange;
 
-    VK_CHECK(vkCreatePipelineLayout(_device, &meshLayoutInfo, nullptr,
+    VK_CHECK(vkCreatePipelineLayout(_device, &layoutInfo, nullptr,
                                     &_depthPassPipeline.layout));
 
     PipelineBuilder pipelineBuilder;
@@ -192,7 +198,7 @@ void Renderer::init_depth_pass_pipeline() {
     pipelineBuilder.disable_blending();
     pipelineBuilder.disable_color_attachment_write();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    pipelineBuilder.set_depth_format(_depthImage.format);
+    pipelineBuilder.set_depth_format(_shadowMap.image.format);
     pipelineBuilder.enable_depth_bias(4.0f, 1.5f, 0.0f);
     pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
     _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
@@ -296,11 +302,10 @@ void Renderer::init_shadow_map() {
         destroy_image(_shadowMap.image);
     });
 
-    // TODO: Is this necessary?
     immediate_submit([&](VkCommandBuffer cmd) {
-        vkutil::transition_image(cmd, _shadowMap.image.image,
-                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+        vkutil::transition_image(
+            cmd, _shadowMap.image.image, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     });
 }
 
@@ -460,6 +465,88 @@ void Renderer::draw(VkCommandBuffer cmd) {
                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.update_set(_device, globalDescriptor);
 
+    // TODO: Move shadow pass
+    {
+        vkutil::transition_image(
+            cmd, _shadowMap.image.image,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+        VkRenderingAttachmentInfo shadowDepthAttachment = {};
+        shadowDepthAttachment.sType =
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        shadowDepthAttachment.imageView = _shadowMap.image.imageView;
+        shadowDepthAttachment.imageLayout =
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+        shadowDepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        shadowDepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        shadowDepthAttachment.clearValue.depthStencil.depth = 1.0f;
+
+        VkRenderingInfo shadowRenderInfo = {};
+        shadowRenderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        shadowRenderInfo.renderArea = VkRect2D{
+            .offset = VkOffset2D{0, 0},
+            .extent = VkExtent2D{_shadowMap.resolution, _shadowMap.resolution},
+        };
+        shadowRenderInfo.layerCount = 1;
+        shadowRenderInfo.colorAttachmentCount = 0;
+        shadowRenderInfo.pDepthAttachment = &shadowDepthAttachment;
+
+        vkCmdBeginRendering(cmd, &shadowRenderInfo);
+
+        VkViewport shadowViewport = {};
+        shadowViewport.x = 0.0f;
+        shadowViewport.y = 0.0f;
+        shadowViewport.width = (float)_shadowMap.resolution;
+        shadowViewport.height = (float)_shadowMap.resolution;
+        shadowViewport.minDepth = 0.0f;
+        shadowViewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmd, 0, 1, &shadowViewport);
+
+        VkRect2D shadowScissor = {};
+        shadowScissor.offset = {0, 0};
+        shadowScissor.extent = {_shadowMap.resolution, _shadowMap.resolution};
+        vkCmdSetScissor(cmd, 0, 1, &shadowScissor);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          _depthPassPipeline.pipeline);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                _depthPassPipeline.layout, 0, 1,
+                                &globalDescriptor, 0, nullptr);
+
+        VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
+        for (const auto &drawCmd : _drawCommands) {
+            if (!vkutil::is_visible(drawCmd.transform, drawCmd.bounds,
+                                    sceneData.lightViewproj)) {
+                continue;
+            }
+
+            if (drawCmd.indexBuffer != lastIndexBuffer) {
+                lastIndexBuffer = drawCmd.indexBuffer;
+                vkCmdBindIndexBuffer(cmd, drawCmd.indexBuffer, 0,
+                                     VK_INDEX_TYPE_UINT32);
+            }
+
+            GPUDrawPushConstants pushConstants;
+            pushConstants.vertexBuffer = drawCmd.vertexBufferAddress;
+            pushConstants.worldMatrix = drawCmd.transform;
+            vkCmdPushConstants(cmd, _depthPassPipeline.layout,
+                               VK_SHADER_STAGE_VERTEX_BIT, 0,
+                               sizeof(GPUDrawPushConstants), &pushConstants);
+
+            vkCmdDrawIndexed(cmd, drawCmd.indexCount, 1, drawCmd.firstIndex, 0,
+                             0);
+        }
+
+        vkCmdEndRendering(cmd);
+
+        vkutil::transition_image(
+            cmd, _shadowMap.image.image,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+    }
+
     RenderContext ctx = RenderContext{
         .cmd = cmd,
         .drawImageView = _drawImage.imageView,
@@ -467,6 +554,7 @@ void Renderer::draw(VkCommandBuffer cmd) {
         .drawExtent = _drawExtent,
         .globalDescriptorSet = &globalDescriptor,
         .cameraViewproj = sceneData.viewproj,
+        .lightViewproj = sceneData.lightViewproj,
     };
 
     _tileRenderer.draw(ctx, _tileDrawCommands);
