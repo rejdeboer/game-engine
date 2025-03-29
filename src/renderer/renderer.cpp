@@ -5,7 +5,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
-#include "pipeline.h"
+#include "pipelines/builder.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
