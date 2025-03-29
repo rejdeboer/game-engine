@@ -411,7 +411,7 @@ void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
 
 void Renderer::update_tile_draw_commands(
     std::vector<TileRenderingInput> inputs) {
-    for (auto cmd : _tileDrawCommands) {
+    for (auto &cmd : _tileDrawCommands) {
         destroy_buffer(cmd.instanceBuffer);
     }
 

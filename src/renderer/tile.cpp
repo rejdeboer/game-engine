@@ -70,7 +70,7 @@ void TileRenderer::draw(RenderContext ctx,
     vkCmdBindVertexBuffers(ctx.cmd, 0, 1, &_vertexBuffer.buffer, offsets);
     vkCmdBindIndexBuffer(ctx.cmd, _indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    for (auto drawCommand : drawCommands) {
+    for (auto &drawCommand : drawCommands) {
         if (!vkutil::is_visible(drawCommand.transform, drawCommand.bounds,
                                 ctx.cameraViewproj)) {
             continue;
