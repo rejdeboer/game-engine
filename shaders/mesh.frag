@@ -21,5 +21,9 @@ void main() {
     vec3 ambient = direct * sceneData.ambientColor.xyz;
     vec3 color = direct * shadow;
 
+    vec3 projCoords = inPosLightSpace.xyz / inPosLightSpace.w; // Perspective divide -> NDC
+    vec2 shadowTexCoord = projCoords.xy * 0.5 + 0.5;
+
     outFragColor = vec4(color * lightValue * sceneData.sunlightColor.w + ambient, 1.0f);
+    // outFragColor = vec4(shadowTexCoord, 0, 1);
 }

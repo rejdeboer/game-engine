@@ -193,7 +193,7 @@ void Renderer::init_depth_pass_pipeline() {
     pipelineBuilder.disable_color_attachment_write();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_depth_format(_shadowMap.image.format);
-    pipelineBuilder.enable_depth_bias(1.0f, 0.5f, 0.0f);
+    pipelineBuilder.enable_depth_bias(4.0f, 1.5f, 0.0f);
     pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
     _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
@@ -735,17 +735,17 @@ void Renderer::update_scene() {
 
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
-    sceneData.sunlightDirection = glm::vec4(0.25f, 1, 0.01f, 0.f);
+    sceneData.sunlightDirection = glm::vec4(-0.25f, 1, -0.25f, 0.f);
 
     glm::vec3 lightPos = glm::vec3(sceneData.sunlightDirection) *
-                         150.0f; // Backtrack along direction
+                         100.0f; // Backtrack along direction
     glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), upVector);
 
     // Define the light's orthographic projection matrix
     // The bounds [-orthoSize, orthoSize] define the area covered by shadows.
     // This needs to be large enough to cover the camera's view.
     // Consider techniques like Cascaded Shadow Maps (CSM) for large scenes.
-    float orthoSize = 100.0f; // Adjust based on your scene scale
+    float orthoSize = 50.0f; // Adjust based on your scene scale
     glm::mat4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize,
                                      orthoSize, nearPlane, farPlane);
     lightProj[1][1] *= -1; // Vulkan Y-flip
