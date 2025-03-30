@@ -93,7 +93,6 @@ class TilePipeline {
     VkPipelineLayout _pipelineLayout;
     AllocatedBuffer _vertexBuffer;
     AllocatedBuffer _indexBuffer;
-    std::vector<TileRenderChunk> drawCommands;
 
     void init_pipeline(VkDescriptorSetLayout shadowMapLayout);
     void init_buffers();
