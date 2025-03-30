@@ -421,45 +421,39 @@ void Renderer::draw(VkCommandBuffer cmd) {
                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     writer.update_set(_device, globalDescriptor);
 
-    // TODO: Move shadow pass
-    {
-        vkutil::transition_image(
-            cmd, _shadowMap.image.image,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    vkutil::transition_image(cmd, _shadowMap.image.image,
+                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-        VkRenderingAttachmentInfo shadowDepthAttachment = {};
-        shadowDepthAttachment.sType =
-            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        shadowDepthAttachment.imageView = _shadowMap.image.imageView;
-        shadowDepthAttachment.imageLayout =
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-        shadowDepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        shadowDepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        shadowDepthAttachment.clearValue.depthStencil.depth = 1.0f;
+    VkRenderingAttachmentInfo shadowDepthAttachment = {};
+    shadowDepthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    shadowDepthAttachment.imageView = _shadowMap.image.imageView;
+    shadowDepthAttachment.imageLayout =
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    shadowDepthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    shadowDepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    shadowDepthAttachment.clearValue.depthStencil.depth = 1.0f;
 
-        VkRenderingInfo shadowRenderInfo = {};
-        shadowRenderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-        shadowRenderInfo.renderArea = VkRect2D{
-            .offset = VkOffset2D{0, 0},
-            .extent = VkExtent2D{_shadowMap.resolution, _shadowMap.resolution},
-        };
-        shadowRenderInfo.layerCount = 1;
-        shadowRenderInfo.colorAttachmentCount = 0;
-        shadowRenderInfo.pDepthAttachment = &shadowDepthAttachment;
+    VkRenderingInfo shadowRenderInfo = {};
+    shadowRenderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    shadowRenderInfo.renderArea = VkRect2D{
+        .offset = VkOffset2D{0, 0},
+        .extent = VkExtent2D{_shadowMap.resolution, _shadowMap.resolution},
+    };
+    shadowRenderInfo.layerCount = 1;
+    shadowRenderInfo.colorAttachmentCount = 0;
+    shadowRenderInfo.pDepthAttachment = &shadowDepthAttachment;
 
-        vkCmdBeginRendering(cmd, &shadowRenderInfo);
+    vkCmdBeginRendering(cmd, &shadowRenderInfo);
 
-        _depthPassPipeline.draw(cmd, globalDescriptor, sceneData.lightViewproj,
-                                _shadowMap.resolution, _drawCommands);
+    _depthPassPipeline.draw(cmd, globalDescriptor, sceneData.lightViewproj,
+                            _shadowMap.resolution, _drawCommands);
 
-        vkCmdEndRendering(cmd);
+    vkCmdEndRendering(cmd);
 
-        vkutil::transition_image(
-            cmd, _shadowMap.image.image,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-    }
+    vkutil::transition_image(cmd, _shadowMap.image.image,
+                             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
     VkRenderingAttachmentInfo colorAttachment = {};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
