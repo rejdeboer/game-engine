@@ -277,7 +277,7 @@ void Renderer::init_shadow_map() {
     samplerInfo.maxAnisotropy = 1.0f;
     // Enable comparison for PCF filtering
     samplerInfo.compareEnable = VK_TRUE;
-    samplerInfo.compareOp = VK_COMPARE_OP_LESS;
+    samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     samplerInfo.minLod = 0.0f;
     samplerInfo.maxLod = 0.0f;
     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
@@ -735,7 +735,7 @@ void Renderer::update_scene() {
 
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
-    sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 1.f);
+    sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 0.f);
 
     glm::vec3 lightPos =
         glm::vec3(0, 100, 0) - glm::vec3(sceneData.sunlightDirection) *
