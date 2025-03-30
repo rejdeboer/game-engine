@@ -56,9 +56,6 @@ void Renderer::init(SDL_Window *window) {
     init_pipelines();
     init_imgui();
 
-    _tilePipeline.init(this, _shadowMap.layout);
-    _meshPipeline.init(_device, _drawImage.format, _depthImage.format,
-                       _gpuSceneDataDescriptorLayout, _shadowMap.layout);
     init_default_data();
 
     _drawCommands.reserve(1024);
@@ -149,56 +146,12 @@ void Renderer::init_swapchain() {
                                               _swapchainImageFormat.format);
 }
 
-void Renderer::init_pipelines() { init_depth_pass_pipeline(); }
-
-void Renderer::init_depth_pass_pipeline() {
-    VkShaderModule shadowFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/depth.frag.spv", _device,
-                                    &shadowFragShader)) {
-        fmt::println("Error when building the depth fragment shader module");
-    }
-
-    VkShaderModule shadowVertShader;
-    if (!vkutil::load_shader_module("shaders/spv/depth.vert.spv", _device,
-                                    &shadowVertShader)) {
-        fmt::println("Error when building the depth vertex shader module");
-    }
-
-    VkPushConstantRange matrixRange{};
-    matrixRange.offset = 0;
-    matrixRange.size = sizeof(GPUDrawPushConstants);
-    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkDescriptorSetLayout layouts[] = {
-        _gpuSceneDataDescriptorLayout,
-    };
-
-    VkPipelineLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = layouts;
-    layoutInfo.pushConstantRangeCount = 1;
-    layoutInfo.pPushConstantRanges = &matrixRange;
-
-    VK_CHECK(vkCreatePipelineLayout(_device, &layoutInfo, nullptr,
-                                    &_depthPassPipeline.layout));
-
-    PipelineBuilder pipelineBuilder;
-    pipelineBuilder.set_shaders(shadowVertShader, shadowFragShader);
-    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_multisampling_none();
-    pipelineBuilder.disable_blending();
-    pipelineBuilder.disable_color_attachment_write();
-    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
-    pipelineBuilder.set_depth_format(_shadowMap.image.format);
-    pipelineBuilder.enable_depth_bias(4.0f, 1.5f, 0.0f);
-    pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
-    _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
-
-    vkDestroyShaderModule(_device, shadowVertShader, nullptr);
-    vkDestroyShaderModule(_device, shadowFragShader, nullptr);
+void Renderer::init_pipelines() {
+    _depthPassPipeline.init(_device, _shadowMap.image.format,
+                            _gpuSceneDataDescriptorLayout);
+    _tilePipeline.init(this, _shadowMap.layout);
+    _meshPipeline.init(_device, _drawImage.format, _depthImage.format,
+                       _gpuSceneDataDescriptorLayout, _shadowMap.layout);
 }
 
 void Renderer::init_descriptors() {
@@ -497,50 +450,8 @@ void Renderer::draw(VkCommandBuffer cmd) {
 
         vkCmdBeginRendering(cmd, &shadowRenderInfo);
 
-        VkViewport shadowViewport = {};
-        shadowViewport.x = 0.0f;
-        shadowViewport.y = 0.0f;
-        shadowViewport.width = (float)_shadowMap.resolution;
-        shadowViewport.height = (float)_shadowMap.resolution;
-        shadowViewport.minDepth = 0.0f;
-        shadowViewport.maxDepth = 1.0f;
-        vkCmdSetViewport(cmd, 0, 1, &shadowViewport);
-
-        VkRect2D shadowScissor = {};
-        shadowScissor.offset = {0, 0};
-        shadowScissor.extent = {_shadowMap.resolution, _shadowMap.resolution};
-        vkCmdSetScissor(cmd, 0, 1, &shadowScissor);
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          _depthPassPipeline.pipeline);
-
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                _depthPassPipeline.layout, 0, 1,
-                                &globalDescriptor, 0, nullptr);
-
-        VkBuffer lastIndexBuffer = VK_NULL_HANDLE;
-        for (const auto &drawCmd : _drawCommands) {
-            if (!vkutil::is_visible(drawCmd.transform, drawCmd.bounds,
-                                    sceneData.lightViewproj)) {
-                continue;
-            }
-
-            if (drawCmd.indexBuffer != lastIndexBuffer) {
-                lastIndexBuffer = drawCmd.indexBuffer;
-                vkCmdBindIndexBuffer(cmd, drawCmd.indexBuffer, 0,
-                                     VK_INDEX_TYPE_UINT32);
-            }
-
-            GPUDrawPushConstants pushConstants;
-            pushConstants.vertexBuffer = drawCmd.vertexBufferAddress;
-            pushConstants.worldMatrix = drawCmd.transform;
-            vkCmdPushConstants(cmd, _depthPassPipeline.layout,
-                               VK_SHADER_STAGE_VERTEX_BIT, 0,
-                               sizeof(GPUDrawPushConstants), &pushConstants);
-
-            vkCmdDrawIndexed(cmd, drawCmd.indexCount, 1, drawCmd.firstIndex, 0,
-                             0);
-        }
+        _depthPassPipeline.draw(cmd, globalDescriptor, sceneData.lightViewproj,
+                                _shadowMap.resolution, _drawCommands);
 
         vkCmdEndRendering(cmd);
 

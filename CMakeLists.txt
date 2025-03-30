@@ -47,6 +47,7 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/renderer/init.cpp 
                 src/renderer/loader.cpp
                 src/renderer/pipelines/builder.cpp
+                src/renderer/pipelines/depth_pass.cpp
                 src/renderer/pipelines/mesh.cpp
                 src/renderer/pipelines/tile.cpp
                 src/renderer/renderer.cpp 

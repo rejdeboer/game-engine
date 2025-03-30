@@ -3,6 +3,7 @@
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
+#include "pipelines/depth_pass.h"
 #include "pipelines/mesh.h"
 #include "pipelines/tile.h"
 #include "types.h"
@@ -115,12 +116,12 @@ class Renderer {
     VkDescriptorSetLayout _drawImageDescriptorLayout;
 
     TilePipeline _tilePipeline;
+    DepthPassPipeline _depthPassPipeline;
 
     std::vector<TileDrawCommand> _tileDrawCommands;
     std::vector<MeshDrawCommand> _drawCommands;
 
     ShadowMapResources _shadowMap;
-    MaterialPipeline _depthPassPipeline;
 
     GPUSceneData sceneData;
 
@@ -140,7 +141,6 @@ class Renderer {
     void init_default_data();
     void init_swapchain();
     void init_pipelines();
-    void init_depth_pass_pipeline();
     void init_commands(uint32_t queueFamilyIndex);
     void init_sync_structures();
     void init_descriptors();
