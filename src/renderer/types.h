@@ -72,8 +72,8 @@ struct RenderContext {
     VkImageView drawImageView;
     VkImageView depthImageView;
     VkExtent2D drawExtent;
-    VkDescriptorSet *globalDescriptorSet;
-    VkDescriptorSet *shadowMapSet;
+    VkDescriptorSet globalDescriptorSet;
+    VkDescriptorSet shadowMapSet;
     glm::mat4 cameraViewproj;
     glm::mat4 lightViewproj;
 };

@@ -56,7 +56,7 @@ void Renderer::init(SDL_Window *window) {
     init_pipelines();
     init_imgui();
 
-    _tilePipeline.init(this);
+    _tilePipeline.init(this, _shadowMap.layout);
     _meshPipeline.init(_device, _drawImage.format, _depthImage.format,
                        _gpuSceneDataDescriptorLayout, _shadowMap.layout);
     init_default_data();
@@ -153,15 +153,15 @@ void Renderer::init_pipelines() { init_depth_pass_pipeline(); }
 
 void Renderer::init_depth_pass_pipeline() {
     VkShaderModule shadowFragShader;
-    if (!vkutil::load_shader_module("shaders/spv/shadow.frag.spv", _device,
+    if (!vkutil::load_shader_module("shaders/spv/depth.frag.spv", _device,
                                     &shadowFragShader)) {
-        fmt::println("Error when building the shadow fragment shader module");
+        fmt::println("Error when building the depth fragment shader module");
     }
 
     VkShaderModule shadowVertShader;
-    if (!vkutil::load_shader_module("shaders/spv/shadow.vert.spv", _device,
+    if (!vkutil::load_shader_module("shaders/spv/depth.vert.spv", _device,
                                     &shadowVertShader)) {
-        fmt::println("Error when building the shadow vertex shader module");
+        fmt::println("Error when building the depth vertex shader module");
     }
 
     VkPushConstantRange matrixRange{};
@@ -193,7 +193,7 @@ void Renderer::init_depth_pass_pipeline() {
     pipelineBuilder.disable_color_attachment_write();
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_depth_format(_shadowMap.image.format);
-    pipelineBuilder.enable_depth_bias(4.0f, 1.5f, 0.0f);
+    pipelineBuilder.enable_depth_bias(1.0f, 0.5f, 0.0f);
     pipelineBuilder._pipelineLayout = _depthPassPipeline.layout;
     _depthPassPipeline.pipeline = pipelineBuilder.build_pipeline(_device);
 
@@ -580,8 +580,8 @@ void Renderer::draw(VkCommandBuffer cmd) {
         .drawImageView = _drawImage.imageView,
         .depthImageView = _depthImage.imageView,
         .drawExtent = _drawExtent,
-        .globalDescriptorSet = &globalDescriptor,
-        .shadowMapSet = &_shadowMap.descriptor,
+        .globalDescriptorSet = globalDescriptor,
+        .shadowMapSet = _shadowMap.descriptor,
         .cameraViewproj = sceneData.viewproj,
         .lightViewproj = sceneData.lightViewproj,
     };
@@ -735,13 +735,11 @@ void Renderer::update_scene() {
 
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
-    sceneData.sunlightDirection = glm::vec4(0, 1, 0.5, 0.f);
+    sceneData.sunlightDirection = glm::vec4(0.25f, 1, 0.01f, 0.f);
 
-    glm::vec3 lightPos =
-        glm::vec3(0, 100, 0) - glm::vec3(sceneData.sunlightDirection) *
-                                   150.0f; // Backtrack along direction
-    glm::mat4 lightView =
-        glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::vec3 lightPos = glm::vec3(sceneData.sunlightDirection) *
+                         150.0f; // Backtrack along direction
+    glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), upVector);
 
     // Define the light's orthographic projection matrix
     // The bounds [-orthoSize, orthoSize] define the area covered by shadows.

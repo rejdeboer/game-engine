@@ -5,10 +5,11 @@
 #include "vk_mem_alloc.h"
 #include <glm/ext/matrix_transform.hpp>
 
-void TilePipeline::init(Renderer *renderer) {
+void TilePipeline::init(Renderer *renderer,
+                        VkDescriptorSetLayout shadowMapLayout) {
     _renderer = renderer;
     init_buffers();
-    init_pipeline();
+    init_pipeline(shadowMapLayout);
 }
 
 void TilePipeline::deinit() {
@@ -36,8 +37,10 @@ void TilePipeline::draw(RenderContext ctx,
 
     vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
 
+    VkDescriptorSet descriptorSets[] = {ctx.globalDescriptorSet,
+                                        ctx.shadowMapSet};
     vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            _pipelineLayout, 0, 1, ctx.globalDescriptorSet, 0,
+                            _pipelineLayout, 0, 2, &descriptorSets[0], 0,
                             nullptr);
 
     VkDeviceSize offsets[] = {0};
@@ -63,7 +66,7 @@ void TilePipeline::draw(RenderContext ctx,
     }
 }
 
-void TilePipeline::init_pipeline() {
+void TilePipeline::init_pipeline(VkDescriptorSetLayout shadowMapLayout) {
     VkShaderModule tileFragShader;
     if (!vkutil::load_shader_module("shaders/spv/tile.frag.spv",
                                     _renderer->_device, &tileFragShader)) {
@@ -83,11 +86,11 @@ void TilePipeline::init_pipeline() {
     pushConstantRange.size = sizeof(glm::mat4);
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayout layouts[] = {
-        _renderer->_gpuSceneDataDescriptorLayout};
+    VkDescriptorSetLayout layouts[] = {_renderer->_gpuSceneDataDescriptorLayout,
+                                       shadowMapLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
     tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    tileLayoutInfo.setLayoutCount = 1;
+    tileLayoutInfo.setLayoutCount = 2;
     tileLayoutInfo.pSetLayouts = layouts;
     tileLayoutInfo.pushConstantRangeCount = 1;
     tileLayoutInfo.pPushConstantRanges = &pushConstantRange;
