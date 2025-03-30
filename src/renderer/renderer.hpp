@@ -63,19 +63,6 @@ struct DrawCommand {
     VkDeviceAddress vertexBufferAddress;
 };
 
-// TODO: Delete this
-struct RenderObject {
-    uint32_t indexCount;
-    uint32_t firstIndex;
-    VkBuffer indexBuffer;
-
-    MaterialInstance *material;
-    Bounds bounds;
-
-    glm::mat4 transform;
-    VkDeviceAddress vertexBufferAddress;
-};
-
 struct ShadowMapResources {
     AllocatedImage image;
     VkDescriptorSetLayout layout;
