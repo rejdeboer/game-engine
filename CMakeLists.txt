@@ -35,7 +35,7 @@ endForeach()
 
 add_custom_target(shaders ALL DEPENDS ${SPV_SHADERS})
 
-add_executable(vulkan_test src/vulkan_test.cpp 
+add_executable(main src/main.cpp 
                 src/camera.cpp
                 src/file.cpp 
                 src/game.cpp
@@ -54,9 +54,9 @@ add_executable(vulkan_test src/vulkan_test.cpp
                 src/tile.cpp
                 ${SHADERS})
 
-add_dependencies(vulkan_test shaders)
+add_dependencies(main shaders)
 
-target_link_libraries(vulkan_test PRIVATE 
+target_link_libraries(main PRIVATE 
                         fastgltf::fastgltf
                         imgui::imgui
                         SDL3::SDL3 
@@ -70,7 +70,7 @@ target_link_libraries(vulkan_test PRIVATE
                         fmt::fmt
                         ${Stb_INCLUDE_DIR})
 
-target_compile_definitions(vulkan_test
+target_compile_definitions(main
   PUBLIC
     GLM_ENABLE_EXPERIMENTAL
     GLM_FORCE_CTOR_INIT
