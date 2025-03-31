@@ -84,7 +84,7 @@ class TilePipeline {
   public:
     void init(Renderer *renderer, VkDescriptorSetLayout shadowMapLayout);
     void deinit();
-    void draw(RenderContext ctx,
+    void draw(const RenderContext &ctx,
               const std::vector<TileDrawCommand> &drawCommands);
 
   private:

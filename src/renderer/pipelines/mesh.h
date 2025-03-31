@@ -36,7 +36,7 @@ class MeshPipeline {
               VkDescriptorSetLayout gpuSceneDataDescriptorLayout,
               VkDescriptorSetLayout shadowDescriptorSetLayout);
     void deinit();
-    void draw(RenderContext &ctx,
+    void draw(const RenderContext &ctx,
               const std::vector<MeshDrawCommand> &drawCommands);
 
     MaterialInstance

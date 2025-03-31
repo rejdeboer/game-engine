@@ -72,7 +72,7 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     vkDestroyShaderModule(device, meshFragShader, nullptr);
 }
 
-void MeshPipeline::draw(RenderContext &ctx,
+void MeshPipeline::draw(const RenderContext &ctx,
                         const std::vector<MeshDrawCommand> &drawCommands) {
     std::vector<uint32_t> objectIndices;
     objectIndices.reserve(drawCommands.size());

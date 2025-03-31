@@ -17,7 +17,7 @@ void TilePipeline::deinit() {
     _renderer->destroy_buffer(_indexBuffer);
 }
 
-void TilePipeline::draw(RenderContext ctx,
+void TilePipeline::draw(const RenderContext &ctx,
                         const std::vector<TileDrawCommand> &drawCommands) {
     VkViewport viewport = {};
     viewport.x = 0;
