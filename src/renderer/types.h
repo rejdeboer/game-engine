@@ -69,13 +69,10 @@ struct DrawContext;
 
 struct RenderContext {
     VkCommandBuffer cmd;
-    VkImageView drawImageView;
-    VkImageView depthImageView;
     VkExtent2D drawExtent;
     VkDescriptorSet globalDescriptorSet;
     VkDescriptorSet shadowMapSet;
-    glm::mat4 cameraViewproj;
-    glm::mat4 lightViewproj;
+    glm::mat4 viewproj;
 };
 
 struct MeshDrawCommand {

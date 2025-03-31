@@ -482,13 +482,10 @@ void Renderer::draw(VkCommandBuffer cmd) {
 
     RenderContext ctx = RenderContext{
         .cmd = cmd,
-        .drawImageView = _drawImage.imageView,
-        .depthImageView = _depthImage.imageView,
         .drawExtent = _drawExtent,
         .globalDescriptorSet = globalDescriptor,
         .shadowMapSet = _shadowMap.descriptor,
-        .cameraViewproj = sceneData.viewproj,
-        .lightViewproj = sceneData.lightViewproj,
+        .viewproj = sceneData.viewproj,
     };
 
     _tilePipeline.draw(ctx, _tileDrawCommands);

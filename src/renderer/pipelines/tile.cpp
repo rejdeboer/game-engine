@@ -49,7 +49,7 @@ void TilePipeline::draw(RenderContext ctx,
 
     for (auto &drawCommand : drawCommands) {
         if (!vkutil::is_visible(drawCommand.transform, drawCommand.bounds,
-                                ctx.cameraViewproj)) {
+                                ctx.viewproj)) {
             continue;
         }
 

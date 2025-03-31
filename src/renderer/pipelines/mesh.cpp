@@ -79,7 +79,7 @@ void MeshPipeline::draw(RenderContext &ctx,
 
     for (int i = 0; i < drawCommands.size(); i++) {
         if (vkutil::is_visible(drawCommands[i].transform,
-                               drawCommands[i].bounds, ctx.cameraViewproj)) {
+                               drawCommands[i].bounds, ctx.viewproj)) {
             objectIndices.push_back(i);
         }
     }
