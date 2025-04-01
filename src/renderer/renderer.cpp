@@ -149,7 +149,7 @@ void Renderer::init_swapchain() {
 void Renderer::init_pipelines() {
     _depthPassPipeline.init(_device, _shadowMap.image.format,
                             _gpuSceneDataDescriptorLayout);
-    _tilePipeline.init(this, _shadowMap.layout);
+    _tilePipeline.init(this, _gpuSceneDataDescriptorLayout, _shadowMap.layout);
     _meshPipeline.init(_device, _drawImage.format, _depthImage.format,
                        _gpuSceneDataDescriptorLayout, _shadowMap.layout);
 }

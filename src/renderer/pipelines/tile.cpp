@@ -66,7 +66,8 @@ void TilePipeline::draw(const RenderContext &ctx,
     }
 }
 
-void TilePipeline::init_pipeline(VkDescriptorSetLayout shadowMapLayout) {
+void TilePipeline::init_pipeline(VkDescriptorSetLayout sceneLayout,
+                                 VkDescriptorSetLayout shadowMapLayout) {
     VkShaderModule tileFragShader;
     if (!vkutil::load_shader_module("shaders/spv/tile.frag.spv",
                                     _renderer->_device, &tileFragShader)) {
@@ -86,8 +87,7 @@ void TilePipeline::init_pipeline(VkDescriptorSetLayout shadowMapLayout) {
     pushConstantRange.size = sizeof(glm::mat4);
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayout layouts[] = {_renderer->_gpuSceneDataDescriptorLayout,
-                                       shadowMapLayout};
+    VkDescriptorSetLayout layouts[] = {sceneLayout, shadowMapLayout};
     VkPipelineLayoutCreateInfo tileLayoutInfo = {};
     tileLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     tileLayoutInfo.setLayoutCount = 2;

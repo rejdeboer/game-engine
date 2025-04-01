@@ -82,7 +82,8 @@ class Renderer;
 
 class TilePipeline {
   public:
-    void init(Renderer *renderer, VkDescriptorSetLayout shadowMapLayout);
+    void init(Renderer *renderer, VkDescriptorSetLayout sceneLayout,
+              VkDescriptorSetLayout shadowMapLayout);
     void deinit();
     void draw(const RenderContext &ctx,
               const std::vector<TileDrawCommand> &drawCommands);
@@ -94,6 +95,7 @@ class TilePipeline {
     AllocatedBuffer _vertexBuffer;
     AllocatedBuffer _indexBuffer;
 
-    void init_pipeline(VkDescriptorSetLayout shadowMapLayout);
+    void init_pipeline(VkDescriptorSetLayout sceneLayout,
+                       VkDescriptorSetLayout shadowMapLayout);
     void init_buffers();
 };
