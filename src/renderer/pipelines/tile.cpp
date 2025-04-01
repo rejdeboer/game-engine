@@ -5,11 +5,11 @@
 #include "vk_mem_alloc.h"
 #include <glm/ext/matrix_transform.hpp>
 
-void TilePipeline::init(Renderer *renderer,
+void TilePipeline::init(Renderer *renderer, VkDescriptorSetLayout sceneLayout,
                         VkDescriptorSetLayout shadowMapLayout) {
     _renderer = renderer;
     init_buffers();
-    init_pipeline(shadowMapLayout);
+    init_pipeline(sceneLayout, shadowMapLayout);
 }
 
 void TilePipeline::deinit() {
