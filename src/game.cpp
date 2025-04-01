@@ -142,7 +142,8 @@ void Game::run() {
                 // TODO: Clean this up
                 _camera.processSDLEvent(e);
                 _camera.update();
-                _renderer.set_camera_view(_camera.get_view_matrix());
+                _renderer.set_camera_projection(
+                    _camera.get_projection_matrix());
 
                 float dx = PLAYER_SPEED * TIMESTEP_S;
                 float dy = PLAYER_SPEED * TIMESTEP_S;

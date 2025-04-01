@@ -39,18 +39,18 @@ void Camera::processSDLEvent(SDL_Event &e) {
     }
 }
 
+// TODO: Can this be a constant?
 glm::mat4 Camera::get_view_matrix() {
-    glm::vec3 cameraPosition = kOrigin + _position;
-    glm::vec3 cameraTarget = glm::vec3(_position.x, 0.0f, _position.z);
+    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis is "up"
-    return glm::lookAt(cameraPosition, cameraTarget, upVector);
+    return glm::lookAt(kOrigin, cameraTarget, upVector);
 }
 
 glm::mat4 Camera::get_projection_matrix() {
-    float left = -_aspectRatio * _zoom; // Left boundary of the view
-    float right = _aspectRatio * _zoom; // Right boundary of the view
-    float bottom = -_zoom;              // Bottom boundary of the view
-    float top = _zoom;                  // Top boundary of the view
+    float left = -_aspectRatio * _zoom + _position.x;
+    float right = _aspectRatio * _zoom + _position.x;
+    float bottom = -_zoom + _position.z;
+    float top = _zoom + _position.z;
     glm::mat4 proj = glm::ortho(left, right, bottom, top, 0.1f, 1000.f);
     proj[1][1] *= -1; // invert Y direction
     return proj;
