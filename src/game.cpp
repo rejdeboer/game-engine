@@ -21,11 +21,12 @@ void Game::init() {
         abort();
     }
 
-    _state.camera.position = glm::vec3(5.f, 5.f, 10.f);
+    _camera.set_aspect_ratio((float)SCREEN_WIDTH / (float)SCREEN_HEIGHT);
     _state.player_position = WorldPosition{3, 3, 0.0f, 0.0f};
 
     _renderer.init(_window);
-    _renderer.set_camera_view(_state.camera.get_view_matrix());
+    _renderer.set_camera_view(_camera.get_view_matrix());
+    _renderer.set_camera_projection(_camera.get_projection_matrix());
 
     void *memory = malloc(GAME_MEMORY);
     arena_init(&_arena, GAME_MEMORY, (uint8_t *)memory);
@@ -127,11 +128,21 @@ void Game::run() {
                     }
                 }
 
+                if (e.type == SDL_EVENT_WINDOW_RESIZED) {
+                    int width, height;
+                    SDL_GetWindowSizeInPixels(_window, &width, &height);
+                    if (width > 0 && height > 0) {
+                        _camera.set_aspect_ratio((float)width / (float)height);
+                    }
+                    _renderer.set_camera_projection(
+                        _camera.get_projection_matrix());
+                }
+
                 ImGui_ImplSDL3_ProcessEvent(&e);
                 // TODO: Clean this up
-                // camera.processSDLEvent(e);
-                // camera.update();
-                // _renderer.set_camera_view(_state.camera.get_view_matrix());
+                _camera.processSDLEvent(e);
+                _camera.update();
+                _renderer.set_camera_view(_camera.get_view_matrix());
 
                 float dx = PLAYER_SPEED * TIMESTEP_S;
                 float dy = PLAYER_SPEED * TIMESTEP_S;

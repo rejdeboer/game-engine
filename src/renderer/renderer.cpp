@@ -367,7 +367,13 @@ void Renderer::resize_swapchain() {
 }
 
 void Renderer::set_camera_view(glm::mat4 cameraViewMatrix) {
-    _cameraViewMatrix = cameraViewMatrix;
+    sceneData.view = cameraViewMatrix;
+    sceneData.viewproj = sceneData.proj * sceneData.view;
+}
+
+void Renderer::set_camera_projection(glm::mat4 cameraProjectionMatrix) {
+    sceneData.proj = cameraProjectionMatrix;
+    sceneData.viewproj = sceneData.proj * sceneData.view;
 }
 
 void Renderer::update_tile_draw_commands(
@@ -609,31 +615,31 @@ void Renderer::end_frame(VkCommandBuffer cmd, Uint64 dt) {
 }
 
 void Renderer::update_scene() {
-    float distance = 100.0f;            // Distance from the origin
-    float angleX = glm::radians(30.0f); // Tilt angle
-    float angleY = glm::radians(45.0f); // Rotation angle
-
-    glm::vec3 cameraPosition = glm::vec3(
-        distance * cos(angleY), distance * sin(angleX), distance * sin(angleY));
-    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis is "up"
-
-    // Orthographic projection parameters
-    float aspectRatio =
-        (float)_swapchainExtent.width / (float)_swapchainExtent.height;
-    float zoom = 10.0f;
-    float left = -aspectRatio * zoom; // Left boundary of the view
-    float right = aspectRatio * zoom; // Right boundary of the view
-    float bottom = -zoom;             // Bottom boundary of the view
-    float top = zoom;                 // Top boundary of the view
-    float nearPlane = 0.1f;           // Near clipping plane
-    float farPlane = 1000.0f;         // Far clipping plane
-
-    sceneData.proj = glm::ortho(left, right, bottom, top, nearPlane, farPlane);
-    sceneData.view = glm::lookAt(cameraPosition, cameraTarget, upVector);
-
-    sceneData.proj[1][1] *= -1; // invert Y direction
-    sceneData.viewproj = sceneData.proj * sceneData.view;
+    // float distance = 100.0f;            // Distance from the origin
+    // float angleX = glm::radians(30.0f); // Tilt angle
+    // float angleY = glm::radians(45.0f); // Rotation angle
+    //
+    // glm::vec3 cameraPosition = glm::vec3(
+    //     distance * cos(angleY), distance * sin(angleX), distance *
+    //     sin(angleY));
+    // glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    // glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis is "up"
+    //
+    // // Orthographic projection parameters
+    // float aspectRatio =
+    //     (float)_swapchainExtent.width / (float)_swapchainExtent.height;
+    // float zoom = 10.0f;
+    // float left = -aspectRatio * zoom; // Left boundary of the view
+    // float right = aspectRatio * zoom; // Right boundary of the view
+    // float bottom = -zoom;             // Bottom boundary of the view
+    // float top = zoom;                 // Top boundary of the view
+    // float nearPlane = 0.1f;           // Near clipping plane
+    // float farPlane = 1000.0f;         // Far clipping plane
+    //
+    // sceneData.proj = glm::ortho(left, right, bottom, top, nearPlane,
+    // farPlane); sceneData.proj[1][1] *= -1; // invert Y direction
+    // sceneData.view = glm::lookAt(cameraPosition, cameraTarget, upVector);
+    // sceneData.viewproj = sceneData.proj * sceneData.view;
 
     sceneData.ambientColor = glm::vec4(.1f);
     sceneData.sunlightColor = glm::vec4(1.f);
@@ -641,15 +647,16 @@ void Renderer::update_scene() {
 
     glm::vec3 lightPos = glm::vec3(sceneData.sunlightDirection) *
                          100.0f; // Backtrack along direction
-    glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), upVector);
+    glm::mat4 lightView =
+        glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Define the light's orthographic projection matrix
     // The bounds [-orthoSize, orthoSize] define the area covered by shadows.
     // This needs to be large enough to cover the camera's view.
     // Consider techniques like Cascaded Shadow Maps (CSM) for large scenes.
     float orthoSize = 50.0f; // Adjust based on your scene scale
-    glm::mat4 lightProj = glm::ortho(-orthoSize, orthoSize, -orthoSize,
-                                     orthoSize, nearPlane, farPlane);
+    glm::mat4 lightProj =
+        glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, 0.1f, 1000.f);
     lightProj[1][1] *= -1; // Vulkan Y-flip
 
     sceneData.lightViewproj = lightProj * lightView;

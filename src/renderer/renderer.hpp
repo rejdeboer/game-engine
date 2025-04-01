@@ -157,6 +157,8 @@ class Renderer {
 
     void resize_swapchain();
     void set_camera_view(glm::mat4 cameraViewMatrix);
+    void set_camera_projection(glm::mat4 cameraProjectionMatrix);
+
     void write_draw_command(MeshDrawCommand &&cmd);
     void update_tile_draw_commands(std::vector<TileRenderingInput> inputs);
 

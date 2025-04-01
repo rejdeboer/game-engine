@@ -20,7 +20,6 @@ class Game {
   public:
     struct State {
         WorldPosition player_position;
-        Camera camera;
     };
 
     void init();
@@ -34,6 +33,7 @@ class Game {
     World *_world;
     entt::registry _registry;
 
+    Camera _camera;
     SDL_Window *_window;
     Renderer _renderer;
     std::shared_ptr<LoadedGLTF> _assets;
