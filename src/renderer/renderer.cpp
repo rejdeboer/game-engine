@@ -390,6 +390,11 @@ void Renderer::update_tile_draw_commands(
         cmd.transform = glm::translate(glm::mat4(1.f), inputs[i].chunkPosition);
         cmd.instanceCount = inputs[i].instances.size();
 
+        glm::vec3 extents = inputs[i].instances.back().pos / 2.f;
+        cmd.bounds.origin = inputs[i].chunkPosition + extents;
+        cmd.bounds.extents = extents * 2.f;
+        cmd.bounds.sphereRadius = glm::length(cmd.bounds.extents);
+
         size_t bufferSize = sizeof(TileInstance) * cmd.instanceCount;
         // TODO: This should probably be a GPU buffer
         cmd.instanceBuffer =
