@@ -18,17 +18,12 @@
 
 class Game {
   public:
-    struct State {
-        WorldPosition player_position;
-    };
-
     void init();
     void deinit();
     void run();
 
   private:
     bool _isRunning{false};
-    State _state;
     Arena _arena;
     World *_world;
     entt::registry _registry;
