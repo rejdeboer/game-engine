@@ -1,4 +1,5 @@
 #pragma once
+#include <SDL3/SDL.h>
 #include <array>
 
 enum InputActionType {
@@ -10,7 +11,7 @@ enum InputActionType {
 class InputManager {
   public:
     InputManager();
-    void update();
+    void process_event(SDL_Event event);
     bool is_active(InputActionType type);
 
   private:

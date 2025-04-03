@@ -72,6 +72,8 @@ void Game::run() {
                     }
                     _renderer.set_camera_projection(
                         _camera.get_projection_matrix());
+                } else {
+                    _input.process_event(e);
                 }
 
                 ImGui_ImplSDL3_ProcessEvent(&e);

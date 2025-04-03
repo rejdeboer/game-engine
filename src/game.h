@@ -1,5 +1,6 @@
 #pragma once
 #include "camera.h"
+#include "input.h"
 #include "memory.h"
 #include "renderer/renderer.hpp"
 #include "tile.h"
@@ -27,6 +28,7 @@ class Game {
     Arena _arena;
     World *_world;
     entt::registry _registry;
+    InputManager _input;
 
     Camera _camera;
     SDL_Window *_window;
