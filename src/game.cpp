@@ -64,6 +64,13 @@ void Game::run() {
 
         while (nextGameStep <= now) {
             _input.update();
+            _camera.update(TIMESTEP_S);
+
+            if (_camera._isDirty) {
+                _renderer.set_camera_projection(
+                    _camera.get_projection_matrix());
+                _camera._isDirty = false;
+            }
 
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_EVENT_QUIT) {
@@ -82,11 +89,6 @@ void Game::run() {
                 }
 
                 ImGui_ImplSDL3_ProcessEvent(&e);
-                // TODO: Clean this up
-                _camera.processSDLEvent(e);
-                _camera.update();
-                _renderer.set_camera_projection(
-                    _camera.get_projection_matrix());
             }
 
             nextGameStep += TIMESTEP_MS;

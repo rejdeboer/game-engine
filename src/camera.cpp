@@ -1,43 +1,26 @@
 #include "camera.h"
 
+#include <cstdio>
 #include <glm/gtx/transform.hpp>
 
-Camera::Camera(const InputManager &input) : _input(input) {}
+Camera::Camera(InputManager &input) : _input(input) {}
 
-void Camera::update() { _position += _velocity; }
-
-void Camera::processSDLEvent(SDL_Event &e) {
-    if (e.type == SDL_EVENT_KEY_DOWN) {
-        if (e.key.key == SDLK_W) {
-            _velocity.z = -1;
-        }
-        if (e.key.key == SDLK_S) {
-            _velocity.z = 1;
-        }
-        if (e.key.key == SDLK_A) {
-            _velocity.x = -1;
-        }
-        if (e.key.key == SDLK_D) {
-            _velocity.x = 1;
-        }
+void Camera::update(float dt) {
+    glm::vec2 mousePos = _input.mousePos();
+    if (mousePos.x > _screenWidth - 50.f) {
+        _position.x += dt * kPanSpeed;
+        _isDirty = true;
+    } else if (mousePos.x < 50.f) {
+        _position.x -= dt * kPanSpeed;
+        _isDirty = true;
     }
 
-    if (e.type == SDL_EVENT_KEY_UP) {
-        if (e.key.key == SDLK_W) {
-            _velocity.z = 0;
-        }
-        if (e.key.key == SDLK_S) {
-            _velocity.z = 0;
-        }
-        if (e.key.key == SDLK_A) {
-            _velocity.x = 0;
-        }
-        if (e.key.key == SDLK_D) {
-            _velocity.x = 0;
-        }
-    }
-
-    if (e.type == SDL_EVENT_MOUSE_MOTION) {
+    if (mousePos.y > _screenHeight - 50.f) {
+        _position.z += dt * kPanSpeed;
+        _isDirty = true;
+    } else if (mousePos.y < 50.f) {
+        _position.z -= dt * kPanSpeed;
+        _isDirty = true;
     }
 }
 

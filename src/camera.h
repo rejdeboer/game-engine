@@ -1,29 +1,29 @@
 #pragma once
 #include "input.h"
-#include <SDL3/SDL_events.h>
 #include <glm/glm.hpp>
 
 class Camera {
   public:
-    Camera(const InputManager &input);
+    Camera(InputManager &input);
+
+    bool _isDirty{false};
 
     glm::mat4 get_view_matrix();
     glm::mat4 get_projection_matrix();
 
     void set_screen_dimensions(float width, float height);
 
-    void update();
-    void processSDLEvent(SDL_Event &e);
+    void update(float dt);
 
   private:
-    glm::vec3 _velocity{0.0f, 0.0f, 0.0f};
     glm::vec3 _position{0.0f, 0.0f, 0.0f};
     float _zoom{10.f};
     float _screenWidth;
     float _screenHeight;
 
-    const InputManager &_input;
+    InputManager &_input;
 
+    static constexpr float kPanSpeed = 10.f;
     static constexpr float kAngleX = glm::radians(30.0f); // Tilt angle
     static constexpr float kAngleY = glm::radians(45.0f); // Rotation angle
     static constexpr float kDistance = 100.f;
