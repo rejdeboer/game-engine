@@ -63,9 +63,7 @@ void Game::run() {
         }
 
         while (nextGameStep <= now) {
-            _input.update();
             _camera.update(TIMESTEP_S);
-
             if (_camera._isDirty) {
                 _renderer.set_camera_projection(
                     _camera.get_projection_matrix());
@@ -93,6 +91,8 @@ void Game::run() {
 
             nextGameStep += TIMESTEP_MS;
         }
+
+        _input.update();
 
         auto cmd = _renderer.begin_frame();
         render_entities();
