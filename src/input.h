@@ -12,7 +12,7 @@ enum InputActionType {
 class InputManager {
   public:
     InputManager();
-    void process_event(SDL_Event event);
+    void process_event(const SDL_Event &event);
     bool is_active(InputActionType type);
     void update();
 
@@ -21,4 +21,6 @@ class InputManager {
   private:
     std::array<bool, InputActionType::INPUT_ACTION_TYPE_COUNT> _inputStates;
     glm::vec2 _mousePos{0.0f, 0.0f};
+
+    void process_left_click(glm::vec2 &&clickPos);
 };
