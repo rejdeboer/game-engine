@@ -63,12 +63,6 @@ void Game::run() {
         }
 
         while (nextGameStep <= now) {
-            _camera.update(TIMESTEP_S);
-            if (_camera._isDirty) {
-                _renderer.set_camera_projection(
-                    _camera.get_projection_matrix());
-                _camera._isDirty = false;
-            }
 
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_EVENT_QUIT) {
@@ -93,6 +87,11 @@ void Game::run() {
         }
 
         _input.update();
+        _camera.update(TIMESTEP_S);
+        if (_camera._isDirty) {
+            _renderer.set_camera_projection(_camera.get_projection_matrix());
+            _camera._isDirty = false;
+        }
 
         auto cmd = _renderer.begin_frame();
         render_entities();
