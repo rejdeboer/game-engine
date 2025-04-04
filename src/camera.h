@@ -7,7 +7,7 @@ class Camera {
     glm::mat4 get_view_matrix();
     glm::mat4 get_projection_matrix();
 
-    void set_aspect_ratio(float ratio);
+    void set_screen_dimensions(float width, float height);
 
     void update();
     void processSDLEvent(SDL_Event &e);
@@ -16,7 +16,8 @@ class Camera {
     glm::vec3 _velocity{0.0f, 0.0f, 0.0f};
     glm::vec3 _position{0.0f, 0.0f, 0.0f};
     float _zoom{10.f};
-    float _aspectRatio;
+    float _screenWidth;
+    float _screenHeight;
 
     static constexpr float kAngleX = glm::radians(30.0f); // Tilt angle
     static constexpr float kAngleY = glm::radians(45.0f); // Rotation angle

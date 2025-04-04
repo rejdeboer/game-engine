@@ -21,7 +21,7 @@ void Game::init() {
         abort();
     }
 
-    _camera.set_aspect_ratio((float)SCREEN_WIDTH / (float)SCREEN_HEIGHT);
+    _camera.set_screen_dimensions((float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
 
     _renderer.init(_window);
     _renderer.set_camera_view(_camera.get_view_matrix());
@@ -61,6 +61,8 @@ void Game::run() {
         }
 
         while (nextGameStep <= now) {
+            _input.update();
+
             while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_EVENT_QUIT) {
                     _isRunning = false;
@@ -68,7 +70,8 @@ void Game::run() {
                     int width, height;
                     SDL_GetWindowSizeInPixels(_window, &width, &height);
                     if (width > 0 && height > 0) {
-                        _camera.set_aspect_ratio((float)width / (float)height);
+                        _camera.set_screen_dimensions((float)width,
+                                                      (float)height);
                     }
                     _renderer.set_camera_projection(
                         _camera.get_projection_matrix());

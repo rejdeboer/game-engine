@@ -47,8 +47,9 @@ glm::mat4 Camera::get_view_matrix() {
 }
 
 glm::mat4 Camera::get_projection_matrix() {
-    float left = -_aspectRatio * _zoom + _position.x;
-    float right = _aspectRatio * _zoom + _position.x;
+    float aspectRatio = _screenWidth / _screenHeight;
+    float left = -aspectRatio * _zoom + _position.x;
+    float right = aspectRatio * _zoom + _position.x;
     float bottom = -_zoom + _position.z;
     float top = _zoom + _position.z;
     glm::mat4 proj = glm::ortho(left, right, bottom, top, 0.1f, 1000.f);
@@ -56,4 +57,7 @@ glm::mat4 Camera::get_projection_matrix() {
     return proj;
 }
 
-void Camera::set_aspect_ratio(float ratio) { _aspectRatio = ratio; }
+void Camera::set_screen_dimensions(float width, float height) {
+    _screenWidth = width;
+    _screenHeight = height;
+}
