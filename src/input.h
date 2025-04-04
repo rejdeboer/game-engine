@@ -1,6 +1,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include <array>
+#include <glm/glm.hpp>
 
 enum InputActionType {
     PAN_X,
@@ -13,7 +14,11 @@ class InputManager {
     InputManager();
     void process_event(SDL_Event event);
     bool is_active(InputActionType type);
+    void update();
+
+    glm::vec2 mousePos();
 
   private:
     std::array<bool, InputActionType::INPUT_ACTION_TYPE_COUNT> _inputStates;
+    glm::vec2 _mousePos{0.0f, 0.0f};
 };

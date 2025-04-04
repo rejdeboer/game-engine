@@ -26,3 +26,11 @@ void InputManager::process_event(SDL_Event event) {
     } // END UP SWITCH
     } // END TYPE SWITCH
 }
+
+void InputManager::update() {
+    float mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    _mousePos = {mouseX, mouseY};
+}
+
+glm::vec2 InputManager::mousePos() { return _mousePos; }
