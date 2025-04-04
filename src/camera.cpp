@@ -2,6 +2,8 @@
 
 #include <glm/gtx/transform.hpp>
 
+Camera::Camera(const InputManager &input) : _input(input) {}
+
 void Camera::update() { _position += _velocity; }
 
 void Camera::processSDLEvent(SDL_Event &e) {

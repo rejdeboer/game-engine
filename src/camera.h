@@ -1,9 +1,12 @@
 #pragma once
+#include "input.h"
 #include <SDL3/SDL_events.h>
 #include <glm/glm.hpp>
 
 class Camera {
   public:
+    Camera(const InputManager &input);
+
     glm::mat4 get_view_matrix();
     glm::mat4 get_projection_matrix();
 
@@ -18,6 +21,8 @@ class Camera {
     float _zoom{10.f};
     float _screenWidth;
     float _screenHeight;
+
+    const InputManager &_input;
 
     static constexpr float kAngleX = glm::radians(30.0f); // Tilt angle
     static constexpr float kAngleY = glm::radians(45.0f); // Rotation angle

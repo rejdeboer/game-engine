@@ -19,6 +19,7 @@
 
 class Game {
   public:
+    Game();
     void init();
     void deinit();
     void run();

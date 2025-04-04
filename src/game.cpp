@@ -8,6 +8,8 @@ const std::unordered_map<UnitType, UnitData> UnitData::registry = {
     {UnitType::kCube, {"Cube"}},
 };
 
+Game::Game() : _camera(_input) {}
+
 void Game::init() {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "could not initialize sdl3: %s\n", SDL_GetError());
