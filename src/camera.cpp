@@ -1,5 +1,5 @@
 #include "camera.h"
-
+#include <algorithm>
 #include <cstdio>
 #include <glm/gtx/transform.hpp>
 
@@ -20,6 +20,11 @@ void Camera::update(float dt) {
         _isDirty = true;
     } else if (mousePos.y < 50.f) {
         _position.z -= dt * kPanSpeed;
+        _isDirty = true;
+    }
+
+    if (std::abs(_input.scrollDelta()) > 0.001f) {
+        _zoom = std::clamp(_zoom - _input.scrollDelta(), kMinZoom, kMaxZoom);
         _isDirty = true;
     }
 }

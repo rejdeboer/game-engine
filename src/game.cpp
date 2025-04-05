@@ -63,8 +63,8 @@ void Game::run() {
         }
 
         while (nextGameStep <= now) {
-
             while (SDL_PollEvent(&e)) {
+                ImGui_ImplSDL3_ProcessEvent(&e);
                 if (e.type == SDL_EVENT_QUIT) {
                     _isRunning = false;
                 } else if (e.type == SDL_EVENT_WINDOW_RESIZED) {
@@ -79,15 +79,15 @@ void Game::run() {
                 } else {
                     _input.process_event(e);
                 }
-
-                ImGui_ImplSDL3_ProcessEvent(&e);
             }
 
             nextGameStep += TIMESTEP_MS;
         }
 
-        _input.update();
         _camera.update(TIMESTEP_S);
+        // TODO: The update function resets some values to zero, maybe put this
+        // in separate function
+        _input.update();
         if (_camera._isDirty) {
             _renderer.set_camera_projection(_camera.get_projection_matrix());
             _camera._isDirty = false;

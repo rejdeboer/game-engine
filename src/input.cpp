@@ -6,7 +6,10 @@ InputManager::InputManager() {
     }
 }
 
-void InputManager::update() { SDL_GetMouseState(&_mousePos.x, &_mousePos.y); }
+void InputManager::update() {
+    SDL_GetMouseState(&_mousePos.x, &_mousePos.y);
+    _scrollDelta = 0.0f;
+}
 
 void InputManager::process_event(const SDL_Event &event) {
     switch (event.type) {
@@ -36,9 +39,11 @@ void InputManager::process_event(const SDL_Event &event) {
         }
         }
     }
+    case SDL_EVENT_MOUSE_WHEEL: {
+        _scrollDelta += event.wheel.y;
+        break;
+    }
     } // END TYPE SWITCH
 }
 
 void InputManager::process_left_click(glm::vec2 &&clickPos) {}
-
-glm::vec2 InputManager::mousePos() { return _mousePos; }

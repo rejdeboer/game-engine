@@ -24,6 +24,9 @@ class Camera {
     InputManager &_input;
 
     static constexpr float kPanSpeed = 10.f;
+    static constexpr float kMaxZoom = 25.f;
+    static constexpr float kMinZoom = 5.f;
+
     static constexpr float kAngleX = glm::radians(30.0f); // Tilt angle
     static constexpr float kAngleY = glm::radians(45.0f); // Rotation angle
     static constexpr float kDistance = 100.f;
