@@ -15,6 +15,7 @@ class InputManager {
     void process_event(const SDL_Event &event);
     bool is_active(InputActionType type);
     void update();
+    void reset();
 
     glm::vec2 mousePos() { return _mousePos; };
     float scrollDelta() { return _scrollDelta; };

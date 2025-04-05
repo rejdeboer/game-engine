@@ -6,10 +6,9 @@ InputManager::InputManager() {
     }
 }
 
-void InputManager::update() {
-    SDL_GetMouseState(&_mousePos.x, &_mousePos.y);
-    _scrollDelta = 0.0f;
-}
+void InputManager::update() { SDL_GetMouseState(&_mousePos.x, &_mousePos.y); }
+
+void InputManager::reset() { _scrollDelta = 0.0f; }
 
 void InputManager::process_event(const SDL_Event &event) {
     switch (event.type) {

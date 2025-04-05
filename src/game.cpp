@@ -84,14 +84,14 @@ void Game::run() {
             nextGameStep += TIMESTEP_MS;
         }
 
-        _camera.update(TIMESTEP_S);
-        // TODO: The update function resets some values to zero, maybe put this
-        // in separate function
         _input.update();
+        _camera.update(TIMESTEP_S);
         if (_camera._isDirty) {
             _renderer.set_camera_projection(_camera.get_projection_matrix());
             _camera._isDirty = false;
         }
+
+        _input.reset();
 
         auto cmd = _renderer.begin_frame();
         render_entities();
