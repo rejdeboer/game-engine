@@ -8,7 +8,10 @@ InputManager::InputManager() {
 
 void InputManager::update() { SDL_GetMouseState(&_mousePos.x, &_mousePos.y); }
 
-void InputManager::reset() { _scrollDelta = 0.0f; }
+void InputManager::reset() {
+    _scrollDelta = 0.0f;
+    _hasPendingPickRequest = false;
+}
 
 void InputManager::process_event(const SDL_Event &event) {
     switch (event.type) {
@@ -45,4 +48,7 @@ void InputManager::process_event(const SDL_Event &event) {
     } // END TYPE SWITCH
 }
 
-void InputManager::process_left_click(glm::vec2 &&clickPos) {}
+void InputManager::process_left_click(glm::vec2 &&clickPos) {
+    _hasPendingPickRequest = true;
+    _lastMousePickPos = clickPos;
+}
