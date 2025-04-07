@@ -148,12 +148,20 @@ void Game::handle_pick_request() {
         glm::vec3 localAABBMin = bounds.origin - bounds.extents;
         glm::vec3 localAABBMax = bounds.origin + bounds.extents;
 
+        // TODO: There seems to be a slight offset that is vertically down
         if (math::intersect_ray_aabb(localRayOrigin, localRayDir, localAABBMin,
                                      localAABBMax)) {
             selectedEntity = entity;
             printf("CUBE CLICKED\n");
         }
     });
+
+    if (selectedEntity == entt::null) {
+        return;
+    }
+
+    _registry.view<Selected>()->clear();
+    _registry.emplace<Selected>(selectedEntity);
 }
 
 void Game::render_entities() {

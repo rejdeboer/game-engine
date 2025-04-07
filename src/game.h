@@ -50,3 +50,5 @@ struct UnitData {
 
     static const std::unordered_map<UnitType, UnitData> registry;
 };
+
+struct Selected {};
