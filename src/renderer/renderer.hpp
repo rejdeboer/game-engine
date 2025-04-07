@@ -150,6 +150,8 @@ class Renderer {
     void draw(VkCommandBuffer cmd);
     void end_frame(VkCommandBuffer cmd, Uint64 dt);
 
+    VkExtent2D swapchainExtent() { return _swapchainExtent; };
+
     void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 
     GPUMeshBuffers uploadMesh(std::span<uint32_t> indices,
