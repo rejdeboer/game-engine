@@ -23,6 +23,7 @@ void InputManager::process_event(const SDL_Event &event) {
             break;
         } // END W SWITCH
         } // END KEY SWITCH
+        break;
     } // END DOWN SWITCH
     case SDL_EVENT_KEY_UP: {
         switch (event.key.key) {
@@ -32,6 +33,7 @@ void InputManager::process_event(const SDL_Event &event) {
             break;
         } // END W SWITCH
         } // END KEY SWITCH
+        break;
     } // END UP SWITCH
     case SDL_EVENT_MOUSE_BUTTON_DOWN: {
         switch (event.button.button) {
@@ -40,6 +42,7 @@ void InputManager::process_event(const SDL_Event &event) {
             break;
         }
         }
+        break;
     }
     case SDL_EVENT_MOUSE_WHEEL: {
         _scrollDelta += event.wheel.y;
