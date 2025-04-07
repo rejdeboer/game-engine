@@ -40,6 +40,7 @@ add_executable(main src/main.cpp
                 src/file.cpp 
                 src/game.cpp
                 src/input.cpp
+                src/math/intersection.cpp
                 src/math/transform.cpp
                 src/memory.cpp
                 src/renderer/descriptor.cpp
