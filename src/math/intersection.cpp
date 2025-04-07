@@ -22,14 +22,11 @@ bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
                               const glm::vec3 &rayDirection,
                               const glm::vec3 &boxMin, const glm::vec3 &boxMax,
                               float &outIntersectionDistance) {
-    // Initialize intersection distances for the overall interval
-    float tNear = -std::numeric_limits<float>::infinity();
-    float tFar = std::numeric_limits<float>::infinity();
-
-    // Process each axis (X, Y, Z)
-    for (int i = 0; i < 3; ++i) { // Iterate through dimensions x, y, z
+    float tNear = std::numeric_limits<float>::min();
+    float tFar = std::numeric_limits<float>::max();
+    for (int i = 0; i < 3; ++i) {
         // Check for division by zero if ray is parallel to slab planes
-        if (std::abs(rayDirection[i]) < 1e-6f) { // Use a small epsilon
+        if (std::abs(rayDirection[i]) < 1e-6f) {
             // Ray is parallel to the slab planes for this axis.
             // If the origin is not within the slab bounds, it misses the box.
             if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i]) {
@@ -84,7 +81,6 @@ bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
     return true;
 }
 
-// --- Overload without output distance ---
 bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
                               const glm::vec3 &rayDirection,
                               const glm::vec3 &boxMin,
