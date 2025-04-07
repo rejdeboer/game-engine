@@ -139,13 +139,10 @@ void Game::handle_pick_request() {
         glm::mat4 worldTransform = p.to_world_transform().as_matrix();
         glm::mat4 invWorldTransform = glm::inverse(worldTransform);
 
-        // --- Transform Ray into Object's Local Space ---
         glm::vec3 localRayOrigin =
             glm::vec3(invWorldTransform * glm::vec4(rayOrigin, 1.0f));
-        // Transform direction vector (W=0)
         glm::vec3 localRayDir =
             glm::vec3(invWorldTransform * glm::vec4(rayDirection, 0.0f));
-        // Re-normalize direction is crucial if worldTransformMat4 had scaling
         localRayDir = glm::normalize(localRayDir);
 
         glm::vec3 localAABBMin = bounds.origin - bounds.extents;
