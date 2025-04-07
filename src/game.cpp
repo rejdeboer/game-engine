@@ -1,4 +1,5 @@
 #include "game.h"
+#include "math/intersection.h"
 #include <imgui_impl_sdl3.h>
 
 Uint64 TIMESTEP_MS = 1000 / 60;
@@ -91,6 +92,10 @@ void Game::run() {
             _camera._isDirty = false;
         }
 
+        if (_input.hasPendingPickRequest()) {
+            handle_pick_request();
+        }
+
         _input.reset();
 
         auto cmd = _renderer.begin_frame();
@@ -98,6 +103,50 @@ void Game::run() {
         _renderer.draw(cmd);
         _renderer.end_frame(cmd, now - last);
     }
+}
+
+void Game::handle_pick_request() {
+    glm::vec2 clickPos = _input.lastMousePickPos();
+
+    VkExtent2D extent = _renderer.swapchainExtent();
+    assert(extent.width > 0 && extent.height > 0);
+
+    float ndcX = (2.0f * clickPos.x) / (float)extent.width - 1.0f;
+    float ndcY = 1.0f - (2.0f * clickPos.y) / (float)extent.height;
+    glm::vec2 ndcCoords = {ndcX, ndcY};
+
+    // TODO: Maybe cache the matrices in the camera class?
+    glm::mat4 projMatrix = _camera.get_projection_matrix();
+    glm::mat4 viewMatrix = _camera.get_view_matrix();
+    glm::mat4 invProj = glm::inverse(projMatrix);
+    glm::mat4 invView = glm::inverse(viewMatrix);
+
+    glm::vec4 rayOriginClip =
+        invProj * glm::vec4(ndcCoords.x, ndcCoords.y, 0.0f, 1.0f);
+    glm::vec4 rayOriginWorldH = invView * rayOriginClip;
+    glm::vec3 rayOrigin = glm::vec3(rayOriginWorldH);
+    glm::vec3 rayDirection = glm::normalize(
+        -glm::vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]));
+
+    entt::entity selectedEntity = entt::null;
+
+    auto view = _registry.view<UnitType, WorldPosition>();
+    view.each([this, rayOrigin, rayDirection,
+               &selectedEntity](const auto entity, auto &t, auto &p) {
+        UnitData unitData = UnitData::registry.at(t);
+        // TODO: This sucks
+        Bounds bounds = _assets->meshes.at(unitData.name)->surfaces[0].bounds;
+        glm::mat4 worldTransform = p.to_world_transform().as_matrix();
+
+        glm::vec3 localAABBMin = bounds.origin - bounds.extents;
+        glm::vec3 localAABBMax = bounds.origin + bounds.extents;
+
+        if (math::intersect_ray_aabb(rayOrigin, rayDirection, localAABBMin,
+                                     localAABBMax)) {
+            selectedEntity = entity;
+            printf("CUBE CLICKED\n");
+        }
+    });
 }
 
 void Game::render_entities() {

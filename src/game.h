@@ -36,6 +36,7 @@ class Game {
     Renderer _renderer;
     std::shared_ptr<LoadedGLTF> _assets;
 
+    void handle_pick_request();
     void render_entities();
     void init_test_entities();
 };
