@@ -481,11 +481,21 @@ void Renderer::draw(VkCommandBuffer cmd) {
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depthAttachment.clearValue.depthStencil.depth = 1.f;
 
+    VkRenderingAttachmentInfo stencilAttachment = {};
+    stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    stencilAttachment.imageView = _depthImage.imageView;
+    stencilAttachment.imageLayout =
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    stencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    stencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    stencilAttachment.clearValue.depthStencil.stencil = 0;
+
     VkRenderingInfo renderInfo = {};
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &colorAttachment;
     renderInfo.pDepthAttachment = &depthAttachment;
+    renderInfo.pStencilAttachment = &stencilAttachment;
     renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, _drawExtent};
     renderInfo.layerCount = 1;
 
