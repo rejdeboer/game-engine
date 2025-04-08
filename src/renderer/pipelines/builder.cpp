@@ -183,6 +183,10 @@ void PipelineBuilder::set_color_attachment_format(VkFormat format) {
     _hasColorAttachment = true;
 }
 
+void PipelineBuilder::set_color_write_mask(VkColorComponentFlags flags) {
+    _colorBlendAttachment.colorWriteMask = flags;
+}
+
 void PipelineBuilder::disable_color_attachment_write() {
     _colorBlendAttachment.colorWriteMask = 0;
     _colorBlendAttachment.blendEnable = VK_FALSE;

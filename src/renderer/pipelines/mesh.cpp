@@ -77,6 +77,9 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
         VK_STENCIL_OP_KEEP, 0xFF, 0xFF);
     _stencilWritePipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
+    vkDestroyShaderModule(device, meshVertShader, nullptr);
+    vkDestroyShaderModule(device, meshFragShader, nullptr);
+
     VkShaderModule outlineFragShader;
     if (!vkutil::load_shader_module("shaders/spv/outline.frag.spv", device,
                                     &outlineFragShader)) {
@@ -92,14 +95,13 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.set_shaders(outlineVertShader, outlineFragShader);
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT,
                                   VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_color_write_mask(0);
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.enable_stenciltest(VK_COMPARE_OP_NOT_EQUAL,
                                        VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
                                        VK_STENCIL_OP_KEEP, 0xFF, 0x00);
     _outlinePipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
-    vkDestroyShaderModule(device, meshVertShader, nullptr);
-    vkDestroyShaderModule(device, meshFragShader, nullptr);
     vkDestroyShaderModule(device, outlineVertShader, nullptr);
     vkDestroyShaderModule(device, outlineFragShader, nullptr);
 }

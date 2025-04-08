@@ -23,7 +23,7 @@ void main()
 
     // Apply offset
     // TODO: Make offset configurable
-    worldPos.xyz += worldNormal * 0.1f;
+    worldPos.xyz += worldNormal * 0.02f;
 
     gl_Position = sceneData.viewproj * worldPos;
 }
