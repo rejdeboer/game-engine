@@ -50,6 +50,8 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
 
     _opaquePipeline.layout = newLayout;
     _transparentPipeline.layout = newLayout;
+    _stencilWritePipeline.layout = newLayout;
+    _outlinePipeline.layout = newLayout;
 
     PipelineBuilder pipelineBuilder;
     pipelineBuilder.set_shaders(meshVertShader, meshFragShader);
@@ -68,8 +70,38 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
     _transparentPipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
+    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pipelineBuilder.disable_blending();
+    pipelineBuilder.enable_stenciltest(
+        VK_COMPARE_OP_ALWAYS, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP,
+        VK_STENCIL_OP_KEEP, 0xFF, 0xFF);
+    _stencilWritePipeline.pipeline = pipelineBuilder.build_pipeline(device);
+
+    VkShaderModule outlineFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/outline.frag.spv", device,
+                                    &outlineFragShader)) {
+        fmt::println("Error when building the outline fragment shader module");
+    }
+
+    VkShaderModule outlineVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/outline.vert.spv", device,
+                                    &outlineVertShader)) {
+        fmt::println("Error when building the outline vertex shader module");
+    }
+
+    pipelineBuilder.set_shaders(outlineVertShader, outlineFragShader);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT,
+                                  VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.disable_depthtest();
+    pipelineBuilder.enable_stenciltest(VK_COMPARE_OP_NOT_EQUAL,
+                                       VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
+                                       VK_STENCIL_OP_KEEP, 0xFF, 0x00);
+    _outlinePipeline.pipeline = pipelineBuilder.build_pipeline(device);
+
     vkDestroyShaderModule(device, meshVertShader, nullptr);
     vkDestroyShaderModule(device, meshFragShader, nullptr);
+    vkDestroyShaderModule(device, outlineVertShader, nullptr);
+    vkDestroyShaderModule(device, outlineFragShader, nullptr);
 }
 
 void MeshPipeline::draw(const RenderContext &ctx,

@@ -47,6 +47,11 @@ class MeshPipeline {
   private:
     MaterialPipeline _opaquePipeline;
     MaterialPipeline _transparentPipeline;
+
+    MaterialPipeline _stencilWritePipeline;
+    // TODO: Should we use a separate pipeline layout for this
+    MaterialPipeline _outlinePipeline;
+
     DescriptorWriter _writer;
 
     VkDescriptorSetLayout _materialLayout;
