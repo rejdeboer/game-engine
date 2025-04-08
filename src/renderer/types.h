@@ -86,7 +86,7 @@ struct MeshDrawCommand {
     glm::mat4 transform;
     VkDeviceAddress vertexBufferAddress;
 
-    bool isSelected = false;
+    bool isOutlined = false;
 };
 
 class IRenderable {
