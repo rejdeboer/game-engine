@@ -200,9 +200,6 @@ void PipelineBuilder::disable_depthtest() {
     _depthStencil.depthWriteEnable = VK_FALSE;
     _depthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
     _depthStencil.depthBoundsTestEnable = VK_FALSE;
-    _depthStencil.stencilTestEnable = VK_FALSE;
-    _depthStencil.front = {};
-    _depthStencil.back = {};
     _depthStencil.minDepthBounds = 0.f;
     _depthStencil.maxDepthBounds = 1.f;
 }
@@ -212,11 +209,27 @@ void PipelineBuilder::enable_depthtest(bool depthWriteEnable, VkCompareOp op) {
     _depthStencil.depthWriteEnable = depthWriteEnable;
     _depthStencil.depthCompareOp = op;
     _depthStencil.depthBoundsTestEnable = VK_FALSE;
-    _depthStencil.stencilTestEnable = VK_FALSE;
-    _depthStencil.front = {};
-    _depthStencil.back = {};
     _depthStencil.minDepthBounds = 0.f;
     _depthStencil.maxDepthBounds = 1.f;
+}
+
+// TODO: Make this more customizable?
+void PipelineBuilder::enable_stenciltest(VkCompareOp compareOp,
+                                         VkStencilOp passOp, VkStencilOp failOp,
+                                         VkStencilOp depthFailOp,
+                                         uint32_t compareMask,
+                                         uint32_t writeMask) {
+    _depthStencil.depthTestEnable = VK_TRUE;
+    VkStencilOpState stencilOpState = {};
+    stencilOpState.reference = 1;
+    stencilOpState.compareOp = compareOp;
+    stencilOpState.passOp = passOp;
+    stencilOpState.failOp = failOp;
+    stencilOpState.depthFailOp = depthFailOp;
+    stencilOpState.compareMask = compareMask;
+    stencilOpState.writeMask = writeMask;
+    _depthStencil.front = stencilOpState;
+    _depthStencil.back = stencilOpState;
 }
 
 void PipelineBuilder::enable_depth_bias(float constantFactor, float slopeFactor,
