@@ -179,7 +179,7 @@ void Game::render_entities() {
                 .bounds = s.bounds,
                 .transform = worldTransform,
                 .vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress,
-                .isSelected = _registry.storage<Selected>().contains(entity),
+                .isOutlined = _registry.storage<Selected>().contains(entity),
             });
         }
     });
