@@ -166,7 +166,7 @@ void Game::handle_pick_request() {
 
 void Game::render_entities() {
     auto view = _registry.view<UnitType, WorldPosition>();
-    view.each([this](auto &t, auto &p) {
+    view.each([this](const auto entity, auto &t, auto &p) {
         UnitData unitData = UnitData::registry.at(t);
         std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
         glm::mat4 worldTransform = p.to_world_transform().as_matrix();
@@ -179,6 +179,7 @@ void Game::render_entities() {
                 .bounds = s.bounds,
                 .transform = worldTransform,
                 .vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress,
+                .isSelected = _registry.storage<Selected>().contains(entity),
             });
         }
     });
