@@ -185,7 +185,10 @@ void Game::render_entities() {
 }
 
 void Game::init_test_entities() {
-    const auto entity = _registry.create();
-    _registry.emplace<WorldPosition>(entity, 5, 5, 0.f, 0.f);
-    _registry.emplace<UnitType>(entity, kCube);
+    const auto cube0 = _registry.create();
+    _registry.emplace<WorldPosition>(cube0, 5, 5, 0.f, 0.f);
+    _registry.emplace<UnitType>(cube0, kCube);
+    const auto cube1 = _registry.create();
+    _registry.emplace<WorldPosition>(cube1, 10, 10, 0.f, 0.f);
+    _registry.emplace<UnitType>(cube1, kCube);
 }
