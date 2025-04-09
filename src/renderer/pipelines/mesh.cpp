@@ -63,6 +63,7 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_color_attachment_format(drawImageFormat);
     pipelineBuilder.set_depth_format(depthImageFormat);
+    pipelineBuilder.set_stencil_format(depthImageFormat);
     pipelineBuilder._pipelineLayout = newLayout;
     _opaquePipeline.pipeline = pipelineBuilder.build_pipeline(device);
 

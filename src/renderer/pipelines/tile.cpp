@@ -113,6 +113,7 @@ void TilePipeline::init_pipeline(VkDescriptorSetLayout sceneLayout,
     pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.set_color_attachment_format(_renderer->_drawImage.format);
     pipelineBuilder.set_depth_format(_renderer->_depthImage.format);
+    pipelineBuilder.set_stencil_format(_renderer->_depthImage.format);
     pipelineBuilder.set_vertex_input(
         &bindingDescriptions[0], bindingDescriptions.size(),
         &attributeDescriptions[0], attributeDescriptions.size());
