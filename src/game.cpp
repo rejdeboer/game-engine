@@ -112,7 +112,7 @@ void Game::handle_pick_request() {
     assert(extent.width > 0 && extent.height > 0);
 
     float ndcX = (2.0f * clickPos.x) / (float)extent.width - 1.0f;
-    float ndcY = 1.0f - (2.0f * clickPos.y) / (float)extent.height;
+    float ndcY = (2.0f * clickPos.y) / (float)extent.height - 1.0f;
     glm::vec2 ndcCoords = {ndcX, ndcY};
 
     // TODO: Maybe cache the matrices in the camera class?
