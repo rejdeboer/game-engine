@@ -199,6 +199,10 @@ void PipelineBuilder::set_depth_format(VkFormat format) {
     _renderInfo.depthAttachmentFormat = format;
 }
 
+void PipelineBuilder::set_stencil_format(VkFormat format) {
+    _renderInfo.stencilAttachmentFormat = format;
+}
+
 void PipelineBuilder::disable_depthtest() {
     _depthStencil.depthTestEnable = VK_FALSE;
     _depthStencil.depthWriteEnable = VK_FALSE;

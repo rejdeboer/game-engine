@@ -21,7 +21,6 @@ class PipelineBuilder {
     void clear();
 
     VkPipeline build_pipeline(VkDevice device);
-    //< pipeline
     void set_shaders(VkShaderModule vertexShader,
                      VkShaderModule fragmentShader);
     void set_input_topology(VkPrimitiveTopology topology);
@@ -36,6 +35,7 @@ class PipelineBuilder {
     void set_color_attachment_format(VkFormat format);
     void set_color_write_mask(VkColorComponentFlags flags);
     void set_depth_format(VkFormat format);
+    void set_stencil_format(VkFormat format);
     void disable_depthtest();
     void enable_depthtest(bool depthWriteEnable, VkCompareOp op);
     void enable_stenciltest(VkCompareOp compareOp, VkStencilOp passOp,
