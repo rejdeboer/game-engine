@@ -509,7 +509,7 @@ AllocatedImage create_depth_image(VkDevice device, VmaAllocator allocator,
                                    swapChainExtent.height, 1};
 
     AllocatedImage allocatedImage;
-    allocatedImage.format = VK_FORMAT_D32_SFLOAT;
+    allocatedImage.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
     allocatedImage.extent = depthImageExtent;
 
     VkImageUsageFlags depthImageUsages{};
