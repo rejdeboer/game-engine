@@ -26,12 +26,5 @@ class Camera {
     static constexpr float kPanSpeed = 10.f;
     static constexpr float kMaxZoom = 25.f;
     static constexpr float kMinZoom = 5.f;
-
-    static constexpr float kAngleX = glm::radians(30.0f); // Tilt angle
-    static constexpr float kAngleY = glm::radians(45.0f); // Rotation angle
-    static constexpr float kDistance = 100.f;
-    // TODO: Turn into constexpr using cpp 20+
-    const glm::vec3 kOrigin =
-        glm::vec3(kDistance * cos(kAngleY), kDistance *sin(kAngleX),
-                  kDistance *sin(kAngleY));
+    static constexpr float kCameraDistance = 100.f;
 };

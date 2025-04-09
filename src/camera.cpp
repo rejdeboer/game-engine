@@ -33,7 +33,9 @@ void Camera::update(float dt) {
 glm::mat4 Camera::get_view_matrix() {
     glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f); // Y-axis is "up"
-    return glm::lookAt(kOrigin, cameraTarget, upVector);
+    glm::vec3 cameraDir = glm::normalize(glm::vec3(-1.0f, 1.0f, -1.0f));
+    glm::vec3 cameraPosition = cameraTarget + cameraDir * kCameraDistance;
+    return glm::lookAt(cameraPosition, cameraTarget, upVector);
 }
 
 glm::mat4 Camera::get_projection_matrix() {
