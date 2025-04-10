@@ -227,7 +227,7 @@ void PipelineBuilder::enable_stenciltest(VkCompareOp compareOp,
                                          VkStencilOp depthFailOp,
                                          uint32_t compareMask,
                                          uint32_t writeMask) {
-    _depthStencil.depthTestEnable = VK_TRUE;
+    _depthStencil.stencilTestEnable = VK_TRUE;
     VkStencilOpState stencilOpState = {};
     stencilOpState.reference = 1;
     stencilOpState.compareOp = compareOp;
