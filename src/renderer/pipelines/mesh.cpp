@@ -44,14 +44,12 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     meshLayoutInfo.pushConstantRangeCount = 1;
     meshLayoutInfo.pPushConstantRanges = &matrixRange;
 
-    VkPipelineLayout newLayout;
+    VkPipelineLayout meshLayout;
     VK_CHECK(
-        vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr, &newLayout));
+        vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr, &meshLayout));
 
-    _opaquePipeline.layout = newLayout;
-    _transparentPipeline.layout = newLayout;
-    _stencilWritePipeline.layout = newLayout;
-    _outlinePipeline.layout = newLayout;
+    _opaquePipeline.layout = meshLayout;
+    _transparentPipeline.layout = meshLayout;
 
     PipelineBuilder pipelineBuilder;
     pipelineBuilder.set_shaders(meshVertShader, meshFragShader);
@@ -64,18 +62,25 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.set_color_attachment_format(drawImageFormat);
     pipelineBuilder.set_depth_format(depthImageFormat);
     pipelineBuilder.set_stencil_format(depthImageFormat);
-    pipelineBuilder._pipelineLayout = newLayout;
+    pipelineBuilder._pipelineLayout = meshLayout;
     _opaquePipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
     pipelineBuilder.enable_blending_additive();
     pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
     _transparentPipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
+    VkPipelineLayoutCreateInfo outlineLayoutInfo = meshLayoutInfo;
+    // NOTE: We only use the scene descriptor, pointer can remain same
+    outlineLayoutInfo.setLayoutCount = 1;
+    VK_CHECK(vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr,
+                                    &_outlinePipelineLayout));
+
+    pipelineBuilder._pipelineLayout = _outlinePipelineLayout;
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_stenciltest(
         VK_COMPARE_OP_ALWAYS, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP,
         VK_STENCIL_OP_KEEP, 0xFF, 0xFF);
-    _stencilWritePipeline.pipeline = pipelineBuilder.build_pipeline(device);
+    _stencilWritePipeline = pipelineBuilder.build_pipeline(device);
 
     vkDestroyShaderModule(device, meshVertShader, nullptr);
     vkDestroyShaderModule(device, meshFragShader, nullptr);
@@ -100,7 +105,7 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.enable_stenciltest(VK_COMPARE_OP_NOT_EQUAL,
                                        VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
                                        VK_STENCIL_OP_KEEP, 0xFF, 0x00);
-    _outlinePipeline.pipeline = pipelineBuilder.build_pipeline(device);
+    _outlinePipeline = pipelineBuilder.build_pipeline(device);
 
     vkDestroyShaderModule(device, outlineVertShader, nullptr);
     vkDestroyShaderModule(device, outlineFragShader, nullptr);
