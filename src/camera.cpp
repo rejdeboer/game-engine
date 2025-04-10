@@ -44,7 +44,7 @@ glm::mat4 Camera::get_projection_matrix() {
     float right = aspectRatio * _zoom + _position.x;
     float bottom = -_zoom + _position.z;
     float top = _zoom + _position.z;
-    glm::mat4 proj = glm::ortho(left, right, bottom, top, 0.1f, 1000.f);
+    glm::mat4 proj = glm::ortho(left, right, bottom, top, 10.f, 200.f);
     proj[1][1] *= -1; // invert Y direction
     return proj;
 }
