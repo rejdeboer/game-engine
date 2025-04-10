@@ -93,6 +93,7 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder._pipelineLayout = _outlinePipelineLayout;
     pipelineBuilder.set_shaders(stencilVertShader, stencilFragShader);
     pipelineBuilder.disable_blending();
+    pipelineBuilder.set_color_write_mask(0);
     pipelineBuilder.enable_stenciltest(
         VK_COMPARE_OP_ALWAYS, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP,
         VK_STENCIL_OP_KEEP, 0xFF, 0xFF);
@@ -116,6 +117,7 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.set_shaders(outlineVertShader, outlineFragShader);
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT,
                                   VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.disable_blending();
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.enable_stenciltest(VK_COMPARE_OP_NOT_EQUAL,
                                        VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
