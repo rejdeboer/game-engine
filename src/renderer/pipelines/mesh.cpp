@@ -69,21 +69,37 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
     _transparentPipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
+    vkDestroyShaderModule(device, meshVertShader, nullptr);
+    vkDestroyShaderModule(device, meshFragShader, nullptr);
+
     VkPipelineLayoutCreateInfo outlineLayoutInfo = meshLayoutInfo;
     // NOTE: We only use the scene descriptor, pointer can remain same
     outlineLayoutInfo.setLayoutCount = 1;
-    VK_CHECK(vkCreatePipelineLayout(device, &meshLayoutInfo, nullptr,
+    VK_CHECK(vkCreatePipelineLayout(device, &outlineLayoutInfo, nullptr,
                                     &_outlinePipelineLayout));
 
+    VkShaderModule stencilFragShader;
+    if (!vkutil::load_shader_module("shaders/spv/stencil.frag.spv", device,
+                                    &stencilFragShader)) {
+        fmt::println("Error when building the stencil fragment shader module");
+    }
+
+    VkShaderModule stencilVertShader;
+    if (!vkutil::load_shader_module("shaders/spv/stencil.vert.spv", device,
+                                    &stencilVertShader)) {
+        fmt::println("Error when building the stencil vertex shader module");
+    }
+
     pipelineBuilder._pipelineLayout = _outlinePipelineLayout;
+    pipelineBuilder.set_shaders(stencilVertShader, stencilFragShader);
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_stenciltest(
         VK_COMPARE_OP_ALWAYS, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP,
         VK_STENCIL_OP_KEEP, 0xFF, 0xFF);
     _stencilWritePipeline = pipelineBuilder.build_pipeline(device);
 
-    vkDestroyShaderModule(device, meshVertShader, nullptr);
-    vkDestroyShaderModule(device, meshFragShader, nullptr);
+    vkDestroyShaderModule(device, stencilVertShader, nullptr);
+    vkDestroyShaderModule(device, stencilFragShader, nullptr);
 
     VkShaderModule outlineFragShader;
     if (!vkutil::load_shader_module("shaders/spv/outline.frag.spv", device,
@@ -100,7 +116,6 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.set_shaders(outlineVertShader, outlineFragShader);
     pipelineBuilder.set_cull_mode(VK_CULL_MODE_FRONT_BIT,
                                   VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_color_write_mask(0);
     pipelineBuilder.disable_depthtest();
     pipelineBuilder.enable_stenciltest(VK_COMPARE_OP_NOT_EQUAL,
                                        VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
@@ -191,6 +206,83 @@ void MeshPipeline::draw(const RenderContext &ctx,
                            VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(GPUDrawPushConstants), &pushConstants);
 
+        vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
+    }
+
+    std::vector<uint32_t> outlinedObjectIndices;
+    outlinedObjectIndices.reserve(objectIndices.size());
+    for (int i = 0; i < objectIndices.size(); i++) {
+        if (drawCommands[objectIndices[i]].isOutlined) {
+            outlinedObjectIndices.push_back(objectIndices[i]);
+        }
+    }
+
+    if (outlinedObjectIndices.empty()) {
+        return;
+    }
+
+    vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _stencilWritePipeline);
+    vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _outlinePipelineLayout, 0, 1,
+                            &ctx.globalDescriptorSet, 0, nullptr);
+
+    VkViewport viewport = {};
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = (float)ctx.drawExtent.width;
+    viewport.height = (float)ctx.drawExtent.height;
+    viewport.minDepth = 0.f;
+    viewport.maxDepth = 1.f;
+    vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
+
+    VkRect2D scissor = {};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = ctx.drawExtent.width;
+    scissor.extent.height = ctx.drawExtent.height;
+    vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
+
+    for (auto &i : outlinedObjectIndices) {
+        auto r = drawCommands[i];
+
+        if (r.indexBuffer != lastIndexBuffer) {
+            lastIndexBuffer = r.indexBuffer;
+            vkCmdBindIndexBuffer(ctx.cmd, r.indexBuffer, 0,
+                                 VK_INDEX_TYPE_UINT32);
+        }
+
+        GPUDrawPushConstants pushConstants;
+        pushConstants.vertexBuffer = r.vertexBufferAddress;
+        pushConstants.worldMatrix = r.transform;
+        vkCmdPushConstants(ctx.cmd, _outlinePipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           sizeof(GPUDrawPushConstants), &pushConstants);
+        vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
+    }
+
+    vkCmdBindPipeline(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      _outlinePipeline);
+    vkCmdBindDescriptorSets(ctx.cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            _outlinePipelineLayout, 0, 1,
+                            &ctx.globalDescriptorSet, 0, nullptr);
+    vkCmdSetViewport(ctx.cmd, 0, 1, &viewport);
+    vkCmdSetScissor(ctx.cmd, 0, 1, &scissor);
+
+    for (auto &i : outlinedObjectIndices) {
+        auto r = drawCommands[i];
+        if (r.indexBuffer != lastIndexBuffer) {
+            lastIndexBuffer = r.indexBuffer;
+            vkCmdBindIndexBuffer(ctx.cmd, r.indexBuffer, 0,
+                                 VK_INDEX_TYPE_UINT32);
+        }
+
+        GPUDrawPushConstants pushConstants;
+        pushConstants.vertexBuffer = r.vertexBufferAddress;
+        pushConstants.worldMatrix = r.transform;
+        vkCmdPushConstants(ctx.cmd, _outlinePipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           sizeof(GPUDrawPushConstants), &pushConstants);
         vkCmdDrawIndexed(ctx.cmd, r.indexCount, 1, r.firstIndex, 0, 0);
     }
 }

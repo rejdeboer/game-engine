@@ -14,11 +14,8 @@ layout(push_constant) uniform constants {
     VertexBuffer vertexBuffer;
 } pushConstants;
 
-void main()
-{
+void main() {
     Vertex v = pushConstants.vertexBuffer.vertices[gl_VertexIndex];
-
     vec4 worldPos = pushConstants.renderMatrix * vec4(v.position, 1.0f);
-
     gl_Position = sceneData.viewproj * worldPos;
 }
