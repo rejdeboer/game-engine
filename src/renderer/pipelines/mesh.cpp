@@ -71,7 +71,6 @@ void MeshPipeline::init(VkDevice device, VkFormat drawImageFormat,
     pipelineBuilder.enable_depthtest(false, VK_COMPARE_OP_LESS_OR_EQUAL);
     _transparentPipeline.pipeline = pipelineBuilder.build_pipeline(device);
 
-    pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_LESS_OR_EQUAL);
     pipelineBuilder.disable_blending();
     pipelineBuilder.enable_stenciltest(
         VK_COMPARE_OP_ALWAYS, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP,
