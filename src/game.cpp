@@ -1,5 +1,4 @@
 #include "game.h"
-#include "math/intersection.h"
 #include <imgui_impl_sdl3.h>
 
 Uint64 TIMESTEP_MS = 1000 / 60;
@@ -96,6 +95,10 @@ void Game::run() {
             handle_pick_request();
         }
 
+        if (_input.hasRightClickRequest()) {
+            handle_move_request();
+        }
+
         update_positions();
 
         _input.reset();
@@ -108,52 +111,31 @@ void Game::run() {
 }
 
 void Game::handle_pick_request() {
-    glm::vec2 clickPos = _input.lastLeftClickPos();
-
-    VkExtent2D extent = _renderer.swapchainExtent();
-    assert(extent.width > 0 && extent.height > 0);
-
-    float ndcX = (2.0f * clickPos.x) / (float)extent.width - 1.0f;
-    float ndcY = (2.0f * clickPos.y) / (float)extent.height - 1.0f;
-    glm::vec2 ndcCoords = {ndcX, ndcY};
-
-    // TODO: Maybe cache the matrices in the camera class?
-    glm::mat4 projMatrix = _camera.get_projection_matrix();
-    glm::mat4 viewMatrix = _camera.get_view_matrix();
-    glm::mat4 invProj = glm::inverse(projMatrix);
-    glm::mat4 invView = glm::inverse(viewMatrix);
-
-    glm::vec4 rayOriginClip =
-        invProj * glm::vec4(ndcCoords.x, ndcCoords.y, 0.0f, 1.0f);
-    glm::vec4 rayOriginWorldH = invView * rayOriginClip;
-    glm::vec3 rayOrigin = glm::vec3(rayOriginWorldH);
-    glm::vec3 rayDirection = glm::normalize(
-        -glm::vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]));
+    Ray clickRay = screen_point_to_ray(_input.lastLeftClickPos());
 
     entt::entity selectedEntity = entt::null;
 
-    auto view = _registry.view<UnitType, WorldPosition>();
-    view.each([this, rayOrigin, rayDirection,
-               &selectedEntity](const auto entity, auto &t, auto &p) {
+    auto view = _registry.view<UnitType, PositionComponent>();
+    view.each([this, clickRay, &selectedEntity](const auto entity, auto &t,
+                                                auto &p) {
         UnitData unitData = UnitData::registry.at(t);
         // TODO: This sucks
         Bounds bounds = _assets->meshes.at(unitData.name)->surfaces[0].bounds;
-        glm::mat4 worldTransform = p.to_world_transform().as_matrix();
+        glm::mat4 worldTransform = p.value.to_world_transform().as_matrix();
         glm::mat4 invWorldTransform = glm::inverse(worldTransform);
 
         glm::vec3 localRayOrigin =
-            glm::vec3(invWorldTransform * glm::vec4(rayOrigin, 1.0f));
+            glm::vec3(invWorldTransform * glm::vec4(clickRay.origin, 1.0f));
         glm::vec3 localRayDir =
-            glm::vec3(invWorldTransform * glm::vec4(rayDirection, 0.0f));
+            glm::vec3(invWorldTransform * glm::vec4(clickRay.direction, 0.0f));
         localRayDir = glm::normalize(localRayDir);
+        Ray localRay = Ray{localRayOrigin, localRayDir};
 
         glm::vec3 localAABBMin = bounds.origin - bounds.extents;
         glm::vec3 localAABBMax = bounds.origin + bounds.extents;
 
-        if (math::intersect_ray_aabb(localRayOrigin, localRayDir, localAABBMin,
-                                     localAABBMax)) {
+        if (math::intersect_ray_aabb(localRay, localAABBMin, localAABBMax)) {
             selectedEntity = entity;
-            printf("CUBE CLICKED\n");
         }
     });
 
@@ -163,6 +145,13 @@ void Game::handle_pick_request() {
 
     _registry.view<Selected>()->clear();
     _registry.emplace<Selected>(selectedEntity);
+}
+
+void Game::handle_move_request() {
+    Ray ray = screen_point_to_ray(_input.lastRightClickPos());
+
+    // TODO: Move entities
+    auto selectedView = _registry.view<Selected>();
 }
 
 void Game::render_entities() {
@@ -199,4 +188,28 @@ void Game::update_positions() {}
 void Game::init_test_entities() {
     add_entity(UnitType::kCube, {5, 5, 0.f, 0.f});
     add_entity(UnitType::kCube, {10, 10, 0.f, 0.f});
+}
+
+Ray Game::screen_point_to_ray(glm::vec2 &&point) {
+    VkExtent2D extent = _renderer.swapchainExtent();
+    assert(extent.width > 0 && extent.height > 0);
+
+    float ndcX = (2.0f * point.x) / (float)extent.width - 1.0f;
+    float ndcY = (2.0f * point.y) / (float)extent.height - 1.0f;
+    glm::vec2 ndcCoords = {ndcX, ndcY};
+
+    // TODO: Maybe cache the matrices in the camera class?
+    glm::mat4 projMatrix = _camera.get_projection_matrix();
+    glm::mat4 viewMatrix = _camera.get_view_matrix();
+    glm::mat4 invProj = glm::inverse(projMatrix);
+    glm::mat4 invView = glm::inverse(viewMatrix);
+
+    glm::vec4 rayOriginClip =
+        invProj * glm::vec4(ndcCoords.x, ndcCoords.y, 0.0f, 1.0f);
+    glm::vec4 rayOriginWorldH = invView * rayOriginClip;
+    glm::vec3 rayOrigin = glm::vec3(rayOriginWorldH);
+    glm::vec3 rayDirection = glm::normalize(
+        -glm::vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]));
+
+    return Ray{.origin = rayOrigin, .direction = rayDirection};
 }

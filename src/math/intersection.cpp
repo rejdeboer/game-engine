@@ -8,9 +8,7 @@
  * @brief Checks if a ray intersects with an Axis-Aligned Bounding Box (AABB).
  *        Uses the Slab Test method.
  *
- * @param rayOrigin The starting point of the ray.
- * @param rayDirection The normalized direction vector of the ray. MUST NOT be
- * zero vector.
+ * @param ray the intersection ray.
  * @param boxMin The minimum corner coordinates (x, y, z) of the AABB.
  * @param boxMax The maximum corner coordinates (x, y, z) of the AABB.
  * @param outIntersectionDistance (Output) If intersection occurs, the distance
@@ -18,26 +16,25 @@
  * @return true if the ray intersects the AABB (at a non-negative distance),
  * false otherwise.
  */
-bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
-                              const glm::vec3 &rayDirection,
-                              const glm::vec3 &boxMin, const glm::vec3 &boxMax,
+bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
+                              const glm::vec3 &boxMax,
                               float &outIntersectionDistance) {
     float tNear = std::numeric_limits<float>::min();
     float tFar = std::numeric_limits<float>::max();
     for (int i = 0; i < 3; ++i) {
         // Check for division by zero if ray is parallel to slab planes
-        if (std::abs(rayDirection[i]) < 1e-6f) {
+        if (std::abs(ray.direction[i]) < 1e-6f) {
             // Ray is parallel to the slab planes for this axis.
             // If the origin is not within the slab bounds, it misses the box.
-            if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i]) {
+            if (ray.origin[i] < boxMin[i] || ray.origin[i] > boxMax[i]) {
                 return false; // Misses the box entirely
             }
             // Otherwise, the ray is parallel AND inside the slab, so continue
             // checking other axes.
         } else {
             // Calculate intersection distances for this axis's slab
-            float t1 = (boxMin[i] - rayOrigin[i]) / rayDirection[i];
-            float t2 = (boxMax[i] - rayOrigin[i]) / rayDirection[i];
+            float t1 = (boxMin[i] - ray.origin[i]) / ray.direction[i];
+            float t2 = (boxMax[i] - ray.origin[i]) / ray.direction[i];
 
             // Ensure t1 is the entry distance and t2 is the exit distance
             if (t1 > t2) {
@@ -81,11 +78,8 @@ bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
     return true;
 }
 
-bool math::intersect_ray_aabb(const glm::vec3 &rayOrigin,
-                              const glm::vec3 &rayDirection,
-                              const glm::vec3 &boxMin,
+bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
                               const glm::vec3 &boxMax) {
     float dummyDistance;
-    return intersect_ray_aabb(rayOrigin, rayDirection, boxMin, boxMax,
-                              dummyDistance);
+    return intersect_ray_aabb(ray, boxMin, boxMax, dummyDistance);
 }

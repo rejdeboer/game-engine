@@ -1,6 +1,7 @@
 #pragma once
 #include "camera.h"
 #include "input.h"
+#include "math/intersection.h"
 #include "memory.h"
 #include "renderer/renderer.hpp"
 #include "tile.h"
@@ -48,6 +49,8 @@ class Game {
     void init_test_entities();
 
     void add_entity(UnitType &&type, WorldPosition &&pos);
+
+    Ray screen_point_to_ray(glm::vec2 &&point);
 };
 
 struct PositionComponent {
