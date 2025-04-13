@@ -1,11 +1,9 @@
 #include "renderer.hpp"
 #include "SDL3/SDL_vulkan.h"
-#include "frustum_culling.h"
 #include "image.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
-#include "pipelines/builder.h"
 #include <algorithm>
 #include <array>
 #include <cstdint>
