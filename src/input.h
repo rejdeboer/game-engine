@@ -20,14 +20,19 @@ class InputManager {
     glm::vec2 mousePos() { return _mousePos; };
     float scrollDelta() { return _scrollDelta; };
     bool hasPendingPickRequest() { return _hasPendingPickRequest; };
+    bool hasRightClickRequest() { return _hasRightClickRequest; };
     glm::vec2 lastLeftClickPos() { return _lastLeftClickPos; };
+    glm::vec2 lastRightClickPos() { return _lastRightClickPos; };
 
   private:
     std::array<bool, InputActionType::INPUT_ACTION_TYPE_COUNT> _inputStates;
     glm::vec2 _mousePos{0.0f, 0.0f};
     float _scrollDelta{0.0f};
     bool _hasPendingPickRequest{false};
+    bool _hasRightClickRequest{false};
     glm::vec2 _lastLeftClickPos{0.0f, 0.0f};
+    glm::vec2 _lastRightClickPos{0.0f, 0.0f};
 
     void process_left_click(glm::vec2 &&clickPos);
+    void process_right_click(glm::vec2 &&clickPos);
 };

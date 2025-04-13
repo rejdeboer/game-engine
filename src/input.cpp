@@ -12,6 +12,7 @@ void InputManager::update() { SDL_GetMouseState(&_mousePos.x, &_mousePos.y); }
 void InputManager::reset() {
     _scrollDelta = 0.0f;
     _hasPendingPickRequest = false;
+    _hasRightClickRequest = false;
 }
 
 void InputManager::process_event(const SDL_Event &event) {
@@ -42,6 +43,10 @@ void InputManager::process_event(const SDL_Event &event) {
             process_left_click({(float)event.button.x, (float)event.button.y});
             break;
         }
+        case SDL_BUTTON_RIGHT: {
+            process_right_click({(float)event.button.x, (float)event.button.y});
+            break;
+        }
         }
         break;
     }
@@ -55,4 +60,9 @@ void InputManager::process_event(const SDL_Event &event) {
 void InputManager::process_left_click(glm::vec2 &&clickPos) {
     _hasPendingPickRequest = true;
     _lastLeftClickPos = clickPos;
+}
+
+void InputManager::process_right_click(glm::vec2 &&clickPos) {
+    _hasRightClickRequest = true;
+    _lastRightClickPos = clickPos;
 }
