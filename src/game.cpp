@@ -96,6 +96,8 @@ void Game::run() {
             handle_pick_request();
         }
 
+        update_positions();
+
         _input.reset();
 
         auto cmd = _renderer.begin_frame();
@@ -191,6 +193,8 @@ void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
     _registry.emplace<UnitType>(entity, type);
     _registry.emplace<MovementSpeed>(entity, data.movementSpeed);
 }
+
+void Game::update_positions() {}
 
 void Game::init_test_entities() {
     add_entity(UnitType::kCube, {5, 5, 0.f, 0.f});
