@@ -106,7 +106,7 @@ void Game::run() {
 }
 
 void Game::handle_pick_request() {
-    glm::vec2 clickPos = _input.lastMousePickPos();
+    glm::vec2 clickPos = _input.lastLeftClickPos();
 
     VkExtent2D extent = _renderer.swapchainExtent();
     assert(extent.width > 0 && extent.height > 0);

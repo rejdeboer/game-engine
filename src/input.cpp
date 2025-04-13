@@ -54,5 +54,5 @@ void InputManager::process_event(const SDL_Event &event) {
 
 void InputManager::process_left_click(glm::vec2 &&clickPos) {
     _hasPendingPickRequest = true;
-    _lastMousePickPos = clickPos;
+    _lastLeftClickPos = clickPos;
 }
