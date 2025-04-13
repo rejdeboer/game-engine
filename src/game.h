@@ -50,6 +50,14 @@ class Game {
     void add_entity(UnitType &&type, WorldPosition &&pos);
 };
 
+struct PositionComponent {
+    WorldPosition value;
+};
+
+struct TargetPositionComponent {
+    WorldPosition value;
+};
+
 struct MovementSpeed {
     float value;
 };

@@ -164,11 +164,11 @@ void Game::handle_pick_request() {
 }
 
 void Game::render_entities() {
-    auto view = _registry.view<UnitType, WorldPosition>();
+    auto view = _registry.view<UnitType, PositionComponent>();
     view.each([this](const auto entity, auto &t, auto &p) {
         UnitData unitData = UnitData::registry.at(t);
         std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
-        glm::mat4 worldTransform = p.to_world_transform().as_matrix();
+        glm::mat4 worldTransform = p.value.to_world_transform().as_matrix();
         for (auto s : mesh->surfaces) {
             _renderer.write_draw_command(MeshDrawCommand{
                 .indexCount = s.count,
@@ -187,7 +187,7 @@ void Game::render_entities() {
 void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
     auto data = UnitData::registry.at(type);
     const auto entity = _registry.create();
-    _registry.emplace<WorldPosition>(entity, pos);
+    _registry.emplace<PositionComponent>(entity, PositionComponent{pos});
     _registry.emplace<UnitType>(entity, type);
     _registry.emplace<MovementSpeed>(entity, data.movementSpeed);
 }
