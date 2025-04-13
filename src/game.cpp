@@ -6,7 +6,7 @@ Uint64 TIMESTEP_MS = 1000 / 60;
 float TIMESTEP_S = (float)TIMESTEP_MS / 1000;
 
 const std::unordered_map<UnitType, UnitData> UnitData::registry = {
-    {UnitType::kCube, {"Cube"}},
+    {UnitType::kCube, {"Cube", 5.f}},
 };
 
 Game::Game() : _camera(_input) {}
@@ -184,11 +184,15 @@ void Game::render_entities() {
     });
 }
 
+void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
+    auto data = UnitData::registry.at(type);
+    const auto entity = _registry.create();
+    _registry.emplace<WorldPosition>(entity, pos);
+    _registry.emplace<UnitType>(entity, type);
+    _registry.emplace<MovementSpeed>(entity, data.movementSpeed);
+}
+
 void Game::init_test_entities() {
-    const auto cube0 = _registry.create();
-    _registry.emplace<WorldPosition>(cube0, 5, 5, 0.f, 0.f);
-    _registry.emplace<UnitType>(cube0, kCube);
-    const auto cube1 = _registry.create();
-    _registry.emplace<WorldPosition>(cube1, 10, 10, 0.f, 0.f);
-    _registry.emplace<UnitType>(cube1, kCube);
+    add_entity(UnitType::kCube, {5, 5, 0.f, 0.f});
+    add_entity(UnitType::kCube, {10, 10, 0.f, 0.f});
 }

@@ -17,6 +17,10 @@
 #define PLAYER_WIDTH (0.70 * PLAYER_HEIGHT)
 #define PLAYER_SPEED 5.0f
 
+enum UnitType {
+    kCube,
+};
+
 class Game {
   public:
     Game();
@@ -36,17 +40,23 @@ class Game {
     Renderer _renderer;
     std::shared_ptr<LoadedGLTF> _assets;
 
+    void update_positions();
+
     void handle_pick_request();
+    void handle_move_request();
     void render_entities();
     void init_test_entities();
+
+    void add_entity(UnitType &&type, WorldPosition &&pos);
 };
 
-enum UnitType {
-    kCube,
+struct MovementSpeed {
+    float value;
 };
 
 struct UnitData {
     std::string name;
+    float movementSpeed;
 
     static const std::unordered_map<UnitType, UnitData> registry;
 };
