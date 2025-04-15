@@ -193,7 +193,15 @@ void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
     _registry.emplace<MovementSpeed>(entity, data.movementSpeed);
 }
 
-void Game::update_positions() {}
+void Game::update_positions() {
+    auto view =
+        _registry
+            .view<PositionComponent, TargetPositionComponent, MovementSpeed>();
+    view.each([this](auto &currentPosition, const auto &targetPosition,
+                     const auto &movementSpeed) {
+        Transform currentTransform = currentPosition.to_world_transform();
+    });
+}
 
 void Game::init_test_entities() {
     add_entity(UnitType::kCube, {5, 5, 0.f, 0.f});
