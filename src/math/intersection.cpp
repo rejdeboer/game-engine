@@ -83,3 +83,26 @@ bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
     float dummyDistance;
     return intersect_ray_aabb(ray, boxMin, boxMax, dummyDistance);
 }
+
+glm::vec3 intersect_ray_plane(const Ray &ray, const glm::vec3 &planeOrigin,
+                              const glm::vec3 &planeNormal) {
+    // Ensure ray direction is normalized (important for distance 't')
+    assert(glm::length(ray.direction) > 0.99f &&
+           glm::length(ray.direction) < 1.01f);
+
+    float denominator = glm::dot(ray.direction, planeNormal);
+
+    // Ray should not be parallel to plane
+    const float epsilon = 1e-6f;
+    assert(std::abs(denominator) > epsilon);
+
+    float numerator = glm::dot(planeOrigin - ray.origin, planeNormal);
+    float t = numerator / denominator;
+
+    // Intersection point should be after ray origin
+    assert(t > 0);
+
+    glm::vec3 intersectionPoint = ray.origin + t * ray.direction;
+
+    return intersectionPoint;
+}

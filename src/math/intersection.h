@@ -12,4 +12,6 @@ bool intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
                         float &outIntersectionDistance);
 bool intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
                         const glm::vec3 &boxMax);
+glm::vec3 intersect_ray_plane(const Ray &ray, const glm::vec3 &planeOrigin,
+                              const glm::vec3 &planeNormal);
 } // namespace math
