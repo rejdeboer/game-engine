@@ -150,8 +150,18 @@ void Game::handle_pick_request() {
 void Game::handle_move_request() {
     Ray ray = screen_point_to_ray(_input.lastRightClickPos());
 
-    // TODO: Move entities
+    // TODO: Only works when ground is 0.f high
+    glm::vec3 groundPlaneOrigin = glm::vec3(0.0f, 0.f, 0.0f);
+    glm::vec3 groundPlaneNormal = glm::vec3(0.0f, 1.0f, 0.0f);
+
     auto selectedView = _registry.view<Selected>();
+    selectedView.each(
+        [this, ray, groundPlaneOrigin, groundPlaneNormal](const auto entity) {
+            glm::vec3 intersectionPoint = math::intersect_ray_plane(
+                ray, groundPlaneOrigin, groundPlaneNormal);
+            _registry.emplace_or_replace<TargetPositionComponent>(
+                entity, intersectionPoint);
+        });
 }
 
 void Game::render_entities() {

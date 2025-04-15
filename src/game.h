@@ -58,7 +58,7 @@ struct PositionComponent {
 };
 
 struct TargetPositionComponent {
-    WorldPosition value;
+    glm::vec3 value;
 };
 
 struct MovementSpeed {
