@@ -19,6 +19,16 @@ struct WorldPosition {
             glm::vec3(abs_tile_x + tile_rel_x, 1.f, abs_tile_y + tile_rel_y));
         return transform;
     }
+
+    WorldPosition from_transform(Transform transform) {
+        glm::vec3 pos = transform.get_position();
+        WorldPosition world_pos;
+        world_pos.abs_tile_x = (uint32_t)floorf(pos.x);
+        world_pos.abs_tile_y = (uint32_t)floorf(pos.z);
+        std::modf(pos.x, &world_pos.tile_rel_x);
+        std::modf(pos.z, &world_pos.tile_rel_y);
+        return world_pos;
+    }
 };
 
 struct TileChunk {
