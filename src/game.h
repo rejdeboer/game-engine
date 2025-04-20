@@ -41,7 +41,7 @@ class Game {
     Renderer _renderer;
     std::shared_ptr<LoadedGLTF> _assets;
 
-    void update_positions();
+    void update_positions(float dt);
 
     void handle_pick_request();
     void handle_move_request();
@@ -51,10 +51,6 @@ class Game {
     void add_entity(UnitType &&type, WorldPosition &&pos);
 
     Ray screen_point_to_ray(glm::vec2 &&point);
-};
-
-struct PositionComponent {
-    WorldPosition value;
 };
 
 struct TargetPositionComponent {

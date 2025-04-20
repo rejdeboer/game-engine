@@ -81,6 +81,9 @@ void Game::run() {
                 }
             }
 
+            float dt = TIMESTEP_MS / 1000.f;
+            update_positions(dt);
+
             nextGameStep += TIMESTEP_MS;
         }
 
@@ -99,8 +102,6 @@ void Game::run() {
             handle_move_request();
         }
 
-        update_positions();
-
         _input.reset();
 
         auto cmd = _renderer.begin_frame();
@@ -115,13 +116,13 @@ void Game::handle_pick_request() {
 
     entt::entity selectedEntity = entt::null;
 
-    auto view = _registry.view<UnitType, PositionComponent>();
-    view.each([this, clickRay, &selectedEntity](const auto entity, auto &t,
-                                                auto &p) {
-        UnitData unitData = UnitData::registry.at(t);
+    auto view = _registry.view<UnitType, Transform>();
+    view.each([this, clickRay, &selectedEntity](const auto entity, auto &type,
+                                                auto &transform) {
+        UnitData unitData = UnitData::registry.at(type);
         // TODO: This sucks
         Bounds bounds = _assets->meshes.at(unitData.name)->surfaces[0].bounds;
-        glm::mat4 worldTransform = p.value.to_world_transform().as_matrix();
+        glm::mat4 worldTransform = transform.as_matrix();
         glm::mat4 invWorldTransform = glm::inverse(worldTransform);
 
         glm::vec3 localRayOrigin =
@@ -165,11 +166,11 @@ void Game::handle_move_request() {
 }
 
 void Game::render_entities() {
-    auto view = _registry.view<UnitType, PositionComponent>();
-    view.each([this](const auto entity, auto &t, auto &p) {
-        UnitData unitData = UnitData::registry.at(t);
+    auto view = _registry.view<UnitType, Transform>();
+    view.each([this](const auto entity, auto &type, auto &transform) {
+        UnitData unitData = UnitData::registry.at(type);
         std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
-        glm::mat4 worldTransform = p.value.to_world_transform().as_matrix();
+        glm::mat4 worldTransform = transform.as_matrix();
         for (auto s : mesh->surfaces) {
             _renderer.write_draw_command(MeshDrawCommand{
                 .indexCount = s.count,
@@ -188,19 +189,16 @@ void Game::render_entities() {
 void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
     auto data = UnitData::registry.at(type);
     const auto entity = _registry.create();
-    _registry.emplace<PositionComponent>(entity, PositionComponent{pos});
+    _registry.emplace<Transform>(entity, pos.to_world_transform());
     _registry.emplace<UnitType>(entity, type);
     _registry.emplace<MovementSpeed>(entity, data.movementSpeed);
 }
 
-void Game::update_positions() {
+void Game::update_positions(float dt) {
     auto view =
-        _registry
-            .view<PositionComponent, TargetPositionComponent, MovementSpeed>();
+        _registry.view<Transform, TargetPositionComponent, MovementSpeed>();
     view.each([this](auto &currentPosition, const auto &targetPosition,
-                     const auto &movementSpeed) {
-        Transform currentTransform = currentPosition.to_world_transform();
-    });
+                     const auto &movementSpeed) {});
 }
 
 void Game::init_test_entities() {
