@@ -15,10 +15,10 @@ Transform::Transform(const glm::mat4 &m) {
     glm::decompose(m, scaleVec, rotationQuat, translationVec, skewVec,
                    perspectiveVec);
 
-    position = translationVec;
-    heading = rotationQuat;
-    scale = scaleVec;
-    isDirty = true;
+    _position = translationVec;
+    _heading = rotationQuat;
+    _scale = scaleVec;
+    _isDirty = true;
 }
 
 Transform Transform::operator*(const Transform &rhs) const {
@@ -39,33 +39,33 @@ Transform Transform::inverse() const {
 }
 
 const glm::mat4 &Transform::as_matrix() const {
-    if (!isDirty) {
+    if (!_isDirty) {
         return transformMatrix;
     }
 
-    transformMatrix = glm::translate(I, position);
-    if (heading != glm::identity<glm::quat>()) {
-        transformMatrix *= glm::mat4_cast(heading);
+    transformMatrix = glm::translate(I, _position);
+    if (_heading != glm::identity<glm::quat>()) {
+        transformMatrix *= glm::mat4_cast(_heading);
     }
-    transformMatrix = glm::scale(transformMatrix, scale);
-    isDirty = false;
+    transformMatrix = glm::scale(transformMatrix, _scale);
+    _isDirty = false;
     return transformMatrix;
 }
 
-void Transform::set_position(const glm::vec3 &pos) {
-    position = pos;
-    isDirty = true;
+void Transform::position(const glm::vec3 &pos) {
+    _position = pos;
+    _isDirty = true;
 }
 
-void Transform::set_heading(const glm::quat &h) {
+void Transform::heading(const glm::quat &h) {
     // non-normalized quaternions cause all sorts of issues
-    heading = glm::normalize(h);
-    isDirty = true;
+    _heading = glm::normalize(h);
+    _isDirty = true;
 }
 
-void Transform::set_scale(const glm::vec3 &s) {
-    scale = s;
-    isDirty = true;
+void Transform::scale(const glm::vec3 &s) {
+    _scale = s;
+    _isDirty = true;
 }
 
 bool Transform::is_identity() const { return as_matrix() == I; }

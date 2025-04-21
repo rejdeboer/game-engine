@@ -14,14 +14,14 @@ struct WorldPosition {
 
     Transform to_world_transform() {
         Transform transform;
-        transform.set_position(
+        transform.position(
             // TODO: This only works if the tile side is 1.0f
             glm::vec3(abs_tile_x + tile_rel_x, 1.f, abs_tile_y + tile_rel_y));
         return transform;
     }
 
     WorldPosition from_transform(Transform transform) {
-        glm::vec3 pos = transform.get_position();
+        glm::vec3 pos = transform.position();
         WorldPosition world_pos;
         world_pos.abs_tile_x = (uint32_t)floorf(pos.x);
         world_pos.abs_tile_y = (uint32_t)floorf(pos.z);

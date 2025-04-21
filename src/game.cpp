@@ -5,7 +5,7 @@ Uint64 TIMESTEP_MS = 1000 / 60;
 float TIMESTEP_S = (float)TIMESTEP_MS / 1000;
 
 const std::unordered_map<UnitType, UnitData> UnitData::registry = {
-    {UnitType::kCube, {"Cube", 5.f}},
+    {UnitType::kCube, {"Cube", 2.f}},
 };
 
 Game::Game() : _camera(_input) {}
@@ -197,8 +197,23 @@ void Game::add_entity(UnitType &&type, WorldPosition &&pos) {
 void Game::update_positions(float dt) {
     auto view =
         _registry.view<Transform, TargetPositionComponent, MovementSpeed>();
-    view.each([this](auto &currentPosition, const auto &targetPosition,
-                     const auto &movementSpeed) {});
+    view.each([this, dt](const auto &entity, auto &currentTransform,
+                         const auto &targetPosition,
+                         const auto &movementSpeed) {
+        glm::vec3 currentPosition = currentTransform.position();
+        glm::vec3 vecToTarget = targetPosition.value - currentPosition;
+        float targetDistance = glm::length(vecToTarget);
+
+        if (targetDistance <= 0.1f) {
+            _registry.remove<TargetPositionComponent>(entity);
+            return;
+        }
+
+        glm::vec3 moveDirection = glm::normalize(vecToTarget);
+        float moveDistance = std::min(movementSpeed.value * dt, targetDistance);
+        currentTransform.position(currentPosition +
+                                  moveDirection * moveDistance);
+    });
 }
 
 void Game::init_test_entities() {
