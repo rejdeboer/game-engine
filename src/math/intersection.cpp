@@ -84,8 +84,9 @@ bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
     return intersect_ray_aabb(ray, boxMin, boxMax, dummyDistance);
 }
 
-glm::vec3 intersect_ray_plane(const Ray &ray, const glm::vec3 &planeOrigin,
-                              const glm::vec3 &planeNormal) {
+glm::vec3 math::intersect_ray_plane(const Ray &ray,
+                                    const glm::vec3 &planeOrigin,
+                                    const glm::vec3 &planeNormal) {
     // Ensure ray direction is normalized (important for distance 't')
     assert(glm::length(ray.direction) > 0.99f &&
            glm::length(ray.direction) < 1.01f);
