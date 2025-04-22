@@ -213,6 +213,15 @@ void Game::update_positions(float dt) {
         float moveDistance = std::min(movementSpeed.value * dt, targetDistance);
         currentTransform.position(currentPosition +
                                   moveDirection * moveDistance);
+
+        glm::quat currentHeading = currentTransform.heading();
+        glm::quat targetHeading =
+            glm::quatLookAt(moveDirection, math::GLOBAL_UP_AXIS);
+        // TODO: Define somewhere
+        static const float rotationSpeed = 1.f;
+        glm::quat newHeading =
+            glm::slerp(currentHeading, targetHeading, rotationSpeed);
+        currentTransform.heading(newHeading);
     });
 }
 
