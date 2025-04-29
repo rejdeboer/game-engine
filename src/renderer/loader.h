@@ -24,7 +24,7 @@ struct MeshAsset {
     GPUMeshBuffers meshBuffers;
 };
 
-struct LoadedGLTF : public IRenderable {
+struct LoadedGLTF {
     std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
     std::unordered_map<std::string, std::shared_ptr<Node>> nodes;
     std::unordered_map<std::string, AllocatedImage> images;
@@ -41,8 +41,6 @@ struct LoadedGLTF : public IRenderable {
     Renderer *creator;
 
     ~LoadedGLTF() { clearAll(); };
-
-    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx);
 
   private:
     void clearAll();

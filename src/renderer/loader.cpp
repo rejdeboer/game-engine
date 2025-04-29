@@ -393,6 +393,9 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         newmesh->meshBuffers = renderer->uploadMesh(indices, vertices);
     }
 
+    for (fastgltf::Animation &animation : gltf.animations) {
+    }
+
     // load all nodes and their meshes
     for (fastgltf::Node &node : gltf.nodes) {
         std::shared_ptr<Node> newNode;
@@ -453,12 +456,6 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         }
     }
     return scene;
-}
-
-void LoadedGLTF::Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
-    for (auto &n : topNodes) {
-        n->Draw(topMatrix, ctx);
-    }
 }
 
 void LoadedGLTF::clearAll() {

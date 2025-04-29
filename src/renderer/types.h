@@ -89,11 +89,7 @@ struct MeshDrawCommand {
     bool isOutlined = false;
 };
 
-class IRenderable {
-    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) = 0;
-};
-
-struct Node : public IRenderable {
+struct Node {
     std::weak_ptr<Node> parent;
     std::vector<std::shared_ptr<Node>> children;
 
@@ -104,12 +100,6 @@ struct Node : public IRenderable {
         worldTransform = parentMatrix * localTransform;
         for (auto c : children) {
             c->refresh_transform(worldTransform);
-        }
-    }
-
-    virtual void Draw(const glm::mat4 &topMatrix, DrawContext &ctx) {
-        for (auto &c : children) {
-            c->Draw(topMatrix, ctx);
         }
     }
 };
