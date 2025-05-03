@@ -53,6 +53,7 @@ add_executable(main src/main.cpp
                 src/renderer/pipelines/mesh.cpp
                 src/renderer/pipelines/tile.cpp
                 src/renderer/renderer.cpp 
+                src/renderer/scene.cpp
                 src/tile.cpp
                 ${SHADERS})
 

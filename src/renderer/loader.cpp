@@ -135,11 +135,10 @@ load_image(Renderer *renderer, fastgltf::Asset &asset, fastgltf::Image &image) {
     }
 }
 
-std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
-                                                    std::string_view filePath) {
-    std::shared_ptr<LoadedGLTF> scene = std::make_shared<LoadedGLTF>();
-    scene->creator = renderer;
-    LoadedGLTF &file = *scene.get();
+std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
+                                               std::string_view filePath) {
+    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
+    Scene &file = *scene.get();
 
     constexpr auto GLTF_OPTIONS =
         fastgltf::Options::DontRequireValidAssetMember |
@@ -456,28 +455,4 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         }
     }
     return scene;
-}
-
-void LoadedGLTF::clearAll() {
-    VkDevice dv = creator->_device;
-
-    descriptorPool.destroy_pools(dv);
-    creator->destroy_buffer(materialDataBuffer);
-
-    for (auto &[k, v] : meshes) {
-        creator->destroy_buffer(v->meshBuffers.indexBuffer);
-        creator->destroy_buffer(v->meshBuffers.vertexBuffer);
-    }
-
-    for (auto &[k, v] : images) {
-        if (v.image == creator->_errorCheckerboardImage.image) {
-            // dont destroy the default images
-            continue;
-        }
-        creator->destroy_image(v);
-    }
-
-    for (auto &sampler : samplers) {
-        vkDestroySampler(dv, sampler, nullptr);
-    }
 }
