@@ -59,10 +59,6 @@ struct ShadowMapResources {
     uint32_t resolution = 2048;
 };
 
-struct MeshNode : public Node {
-    std::shared_ptr<MeshAsset> mesh;
-};
-
 class Renderer {
   private:
     SDL_Window *_window;

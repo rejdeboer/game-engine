@@ -89,21 +89,6 @@ struct MeshDrawCommand {
     bool isOutlined = false;
 };
 
-struct Node {
-    std::weak_ptr<Node> parent;
-    std::vector<std::shared_ptr<Node>> children;
-
-    glm::mat4 localTransform;
-    glm::mat4 worldTransform;
-
-    void refresh_transform(const glm::mat4 &parentMatrix) {
-        worldTransform = parentMatrix * localTransform;
-        for (auto c : children) {
-            c->refresh_transform(worldTransform);
-        }
-    }
-};
-
 #define VK_CHECK(x)                                                            \
     do {                                                                       \
         VkResult err = x;                                                      \
