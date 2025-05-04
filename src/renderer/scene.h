@@ -23,29 +23,21 @@ struct MeshAsset {
 };
 
 struct SceneNode {
-    std::weak_ptr<SceneNode> parent;
-    std::vector<std::shared_ptr<SceneNode>> children;
+    std::string name;
+    std::vector<std::size_t> childrenIndices;
 
-    glm::mat4 localTransform;
-    glm::mat4 worldTransform;
+    glm::mat4 transform;
 
     std::optional<std::size_t> meshIndex{std::nullopt};
-
-    void refresh_transform(const glm::mat4 &parentMatrix) {
-        worldTransform = parentMatrix * localTransform;
-        for (auto c : children) {
-            c->refresh_transform(worldTransform);
-        }
-    }
 };
 
 struct Scene {
     std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
-    std::unordered_map<std::string, std::shared_ptr<SceneNode>> nodes;
+    std::vector<SceneNode> nodes;
     std::unordered_map<std::string, AllocatedImage> images;
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
 
-    std::vector<std::shared_ptr<SceneNode>> topNodes;
+    std::vector<std::size_t> topNodes;
 
     std::vector<VkSampler> samplers;
 

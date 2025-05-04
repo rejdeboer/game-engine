@@ -196,7 +196,7 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
 
     // temporal arrays for all the objects to use while creating the GLTF data
     std::vector<std::shared_ptr<MeshAsset>> meshes;
-    std::vector<std::shared_ptr<SceneNode>> nodes;
+    std::vector<SceneNode> nodes;
     std::vector<AllocatedImage> images;
     std::vector<std::shared_ptr<GLTFMaterial>> materials;
 
@@ -396,57 +396,50 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
     }
 
     // load all nodes and their meshes
+    nodes.reserve(gltf.nodes.size());
     for (fastgltf::Node &node : gltf.nodes) {
-        std::shared_ptr<SceneNode> newNode;
+        SceneNode newNode;
+        newNode.childrenIndices.reserve(node.children.size());
+        for (int i = 0; i < node.children.size(); i++) {
+            newNode.childrenIndices.push_back(node.children[i]);
+        }
 
         if (node.meshIndex.has_value()) {
-            newNode->meshIndex = node.meshIndex.value();
+            newNode.meshIndex = node.meshIndex.value();
         }
+
+        std::visit(
+            fastgltf::visitor{
+                [&](fastgltf::math::fmat4x4 matrix) {
+                    memcpy(&newNode.transform, matrix.data(), sizeof(matrix));
+                },
+                [&](fastgltf::TRS transform) {
+                    glm::vec3 tl(transform.translation[0],
+                                 transform.translation[1],
+                                 transform.translation[2]);
+                    glm::quat rot(transform.rotation[3], transform.rotation[0],
+                                  transform.rotation[1], transform.rotation[2]);
+                    glm::vec3 sc(transform.scale[0], transform.scale[1],
+                                 transform.scale[2]);
+
+                    glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
+                    glm::mat4 rm = glm::toMat4(rot);
+                    glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
+
+                    newNode.transform = tm * rm * sm;
+                }},
+            node.transform);
 
         nodes.push_back(newNode);
-        file.nodes[node.name.c_str()];
-
-        std::visit(fastgltf::visitor{
-                       [&](fastgltf::math::fmat4x4 matrix) {
-                           memcpy(&newNode->localTransform, matrix.data(),
-                                  sizeof(matrix));
-                       },
-                       [&](fastgltf::TRS transform) {
-                           glm::vec3 tl(transform.translation[0],
-                                        transform.translation[1],
-                                        transform.translation[2]);
-                           glm::quat rot(
-                               transform.rotation[3], transform.rotation[0],
-                               transform.rotation[1], transform.rotation[2]);
-                           glm::vec3 sc(transform.scale[0], transform.scale[1],
-                                        transform.scale[2]);
-
-                           glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
-                           glm::mat4 rm = glm::toMat4(rot);
-                           glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
-
-                           newNode->localTransform = tm * rm * sm;
-                       }},
-                   node.transform);
     }
 
-    // run loop again to setup transform hierarchy
-    for (int i = 0; i < gltf.nodes.size(); i++) {
-        fastgltf::Node &node = gltf.nodes[i];
-        std::shared_ptr<SceneNode> &sceneNode = nodes[i];
-
-        for (auto &c : node.children) {
-            sceneNode->children.push_back(nodes[c]);
-            nodes[c]->parent = sceneNode;
+    if (!gltf.scenes.empty()) {
+        fastgltf::Scene primaryScene = gltf.scenes[0];
+        file.topNodes.reserve(primaryScene.nodeIndices.size());
+        for (int i = 0; i < primaryScene.nodeIndices.size(); i++) {
+            file.topNodes.push_back(primaryScene.nodeIndices[i]);
         }
     }
 
-    // find the top nodes, with no parents
-    for (auto &node : nodes) {
-        if (node->parent.lock() == nullptr) {
-            file.topNodes.push_back(node);
-            node->refresh_transform(glm::mat4{1.f});
-        }
-    }
     return scene;
 }
