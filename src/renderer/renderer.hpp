@@ -1,5 +1,4 @@
 #pragma once
-#include "../camera.h"
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
