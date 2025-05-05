@@ -649,14 +649,16 @@ void Renderer::update_scene() {
     sceneData.lightViewproj = lightProj * lightView;
 }
 
-void Renderer::draw_scene(const Scene &scene) {
+void Renderer::draw_scene(const Scene &scene, const glm::mat4 &worldTransform) {
     for (auto i : scene.topNodes) {
-        draw_scene_node(scene, i);
+        draw_scene_node(scene, i, worldTransform);
     }
 }
 
-void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex) {
+void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex,
+                               const glm::mat4 &worldTransform) {
     const SceneNode &node = scene.nodes[nodeIndex];
+    glm::mat4 transform = worldTransform * node.transform;
 
     if (node.meshIndex.has_value()) {
         const MeshAsset &mesh = scene.meshes[node.meshIndex.value()];
@@ -667,7 +669,7 @@ void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex) {
                 .indexBuffer = mesh.meshBuffers.indexBuffer.buffer,
                 .material = &s.material->data,
                 .bounds = s.bounds,
-                .transform = node.transform,
+                .transform = transform,
                 .vertexBufferAddress = mesh.meshBuffers.vertexBufferAddress,
                 .isOutlined = false,
             };
@@ -676,7 +678,7 @@ void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex) {
     }
 
     for (auto child : node.childrenIndices) {
-        draw_scene_node(scene, child);
+        draw_scene_node(scene, child, worldTransform);
     }
 }
 

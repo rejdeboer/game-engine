@@ -8,9 +8,9 @@ Scene::~Scene() {
     descriptorPool.destroy_pools(dv);
     creator.destroy_buffer(materialDataBuffer);
 
-    for (auto &[k, v] : meshes) {
-        creator.destroy_buffer(v->meshBuffers.indexBuffer);
-        creator.destroy_buffer(v->meshBuffers.vertexBuffer);
+    for (auto &m : meshes) {
+        creator.destroy_buffer(m.meshBuffers.indexBuffer);
+        creator.destroy_buffer(m.meshBuffers.vertexBuffer);
     }
 
     for (auto &[k, v] : images) {

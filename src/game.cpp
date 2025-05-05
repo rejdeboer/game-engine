@@ -35,7 +35,7 @@ void Game::init() {
     _world = generate_world(&_arena);
     _renderer.update_tile_draw_commands(create_tile_map_mesh(_world->tile_map));
 
-    auto meshFile = loadGltf(&_renderer, "assets/meshes/basicmesh.glb");
+    auto meshFile = loadGltf(&_renderer, "assets/meshes/mannequin.glb");
     assert(meshFile.has_value());
     _assets = *meshFile;
 
@@ -121,23 +121,25 @@ void Game::handle_pick_request() {
                                                 auto &transform) {
         UnitData unitData = UnitData::registry.at(type);
         // TODO: This sucks
-        Bounds bounds = _assets->meshes.at(unitData.name)->surfaces[0].bounds;
-        glm::mat4 worldTransform = transform.as_matrix();
-        glm::mat4 invWorldTransform = glm::inverse(worldTransform);
-
-        glm::vec3 localRayOrigin =
-            glm::vec3(invWorldTransform * glm::vec4(clickRay.origin, 1.0f));
-        glm::vec3 localRayDir =
-            glm::vec3(invWorldTransform * glm::vec4(clickRay.direction, 0.0f));
-        localRayDir = glm::normalize(localRayDir);
-        Ray localRay = Ray{localRayOrigin, localRayDir};
-
-        glm::vec3 localAABBMin = bounds.origin - bounds.extents;
-        glm::vec3 localAABBMax = bounds.origin + bounds.extents;
-
-        if (math::intersect_ray_aabb(localRay, localAABBMin, localAABBMax)) {
-            selectedEntity = entity;
-        }
+        const Scene &scene = *_assets.get();
+        // Bounds bounds = scene.meshes.at(unitData.name)->surfaces[0].bounds;
+        // glm::mat4 worldTransform = transform.as_matrix();
+        // glm::mat4 invWorldTransform = glm::inverse(worldTransform);
+        //
+        // glm::vec3 localRayOrigin =
+        //     glm::vec3(invWorldTransform * glm::vec4(clickRay.origin, 1.0f));
+        // glm::vec3 localRayDir =
+        //     glm::vec3(invWorldTransform * glm::vec4(clickRay.direction,
+        //     0.0f));
+        // localRayDir = glm::normalize(localRayDir);
+        // Ray localRay = Ray{localRayOrigin, localRayDir};
+        //
+        // glm::vec3 localAABBMin = bounds.origin - bounds.extents;
+        // glm::vec3 localAABBMax = bounds.origin + bounds.extents;
+        //
+        // if (math::intersect_ray_aabb(localRay, localAABBMin, localAABBMax)) {
+        //     selectedEntity = entity;
+        // }
     });
 
     if (selectedEntity == entt::null) {
@@ -169,20 +171,9 @@ void Game::render_entities() {
     auto view = _registry.view<UnitType, Transform>();
     view.each([this](const auto entity, auto &type, auto &transform) {
         UnitData unitData = UnitData::registry.at(type);
-        std::shared_ptr<MeshAsset> mesh = _assets->meshes.at(unitData.name);
         glm::mat4 worldTransform = transform.as_matrix();
-        for (auto s : mesh->surfaces) {
-            _renderer.write_draw_command(MeshDrawCommand{
-                .indexCount = s.count,
-                .firstIndex = s.startIndex,
-                .indexBuffer = mesh->meshBuffers.indexBuffer.buffer,
-                .material = &s.material->data,
-                .bounds = s.bounds,
-                .transform = worldTransform,
-                .vertexBufferAddress = mesh->meshBuffers.vertexBufferAddress,
-                .isOutlined = _registry.storage<Selected>().contains(entity),
-            });
-        }
+        const Scene &scene = *_assets.get();
+        _renderer.draw_scene(scene, worldTransform);
     });
 }
 
