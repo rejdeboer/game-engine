@@ -656,7 +656,28 @@ void Renderer::draw_scene(const Scene &scene) {
 }
 
 void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex) {
-    SceneNode node = scene.nodes[nodeIndex];
+    const SceneNode &node = scene.nodes[nodeIndex];
+
+    if (node.meshIndex.has_value()) {
+        const MeshAsset &mesh = scene.meshes[node.meshIndex.value()];
+        for (auto &s : mesh.surfaces) {
+            MeshDrawCommand cmd = MeshDrawCommand{
+                .indexCount = s.count,
+                .firstIndex = s.startIndex,
+                .indexBuffer = mesh.meshBuffers.indexBuffer.buffer,
+                .material = &s.material->data,
+                .bounds = s.bounds,
+                .transform = node.transform,
+                .vertexBufferAddress = mesh.meshBuffers.vertexBufferAddress,
+                .isOutlined = false,
+            };
+            _drawCommands.emplace_back(cmd);
+        }
+    }
+
+    for (auto child : node.childrenIndices) {
+        draw_scene_node(scene, child);
+    }
 }
 
 void Renderer::prepare_imgui(Uint64 dt) {
