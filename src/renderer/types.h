@@ -1,4 +1,5 @@
 #pragma once
+#include "../math/aabb.h"
 #include "vk_mem_alloc.h"
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -46,6 +47,13 @@ struct Bounds {
     glm::vec3 origin;
     float sphereRadius;
     glm::vec3 extents;
+
+    math::AABB get_aabb() {
+        return math::AABB{
+            .min = origin - extents,
+            .max = origin + extents,
+        };
+    }
 };
 
 enum class MaterialPass : uint8_t {
