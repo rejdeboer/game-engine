@@ -649,6 +649,16 @@ void Renderer::update_scene() {
     sceneData.lightViewproj = lightProj * lightView;
 }
 
+void Renderer::draw_scene(const Scene &scene) {
+    for (auto i : scene.topNodes) {
+        draw_scene_node(scene, i);
+    }
+}
+
+void Renderer::draw_scene_node(const Scene &scene, size_t nodeIndex) {
+    SceneNode node = scene.nodes[nodeIndex];
+}
+
 void Renderer::prepare_imgui(Uint64 dt) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
