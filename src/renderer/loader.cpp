@@ -137,8 +137,8 @@ load_image(Renderer *renderer, fastgltf::Asset &asset, fastgltf::Image &image) {
 
 std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                                                std::string_view filePath) {
-    std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-    Scene &file = *scene.get();
+    std::shared_ptr<Scene> scenePtr = std::make_shared<Scene>();
+    Scene &scene = *scenePtr.get();
 
     constexpr auto GLTF_OPTIONS =
         fastgltf::Options::DontRequireValidAssetMember |
@@ -171,7 +171,7 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}};
 
-    file.descriptorPool.init(renderer->_device, gltf.materials.size(), sizes);
+    scene.descriptorPool.init(renderer->_device, gltf.materials.size(), sizes);
 
     // load samplers
     for (fastgltf::Sampler &sampler : gltf.samplers) {
@@ -191,11 +191,10 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
 
         VkSampler newSampler;
         vkCreateSampler(renderer->_device, &sampl, nullptr, &newSampler);
-        file.samplers.push_back(newSampler);
+        scene.samplers.push_back(newSampler);
     }
 
     // temporal arrays for all the objects to use while creating the GLTF data
-    std::vector<std::shared_ptr<MeshAsset>> meshes;
     std::vector<SceneNode> nodes;
     std::vector<AllocatedImage> images;
     std::vector<std::shared_ptr<GLTFMaterial>> materials;
@@ -205,7 +204,7 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
 
         if (img.has_value()) {
             images.push_back(*img);
-            file.images[image.name.c_str()] = *img;
+            scene.images[image.name.c_str()] = *img;
         } else {
             // we failed to load, so lets give the slot a default white texture
             // to not completely break loading
@@ -216,18 +215,18 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
     }
 
     // create buffer to hold the material data
-    file.materialDataBuffer = renderer->create_buffer(
+    scene.materialDataBuffer = renderer->create_buffer(
         sizeof(MeshPipeline::MaterialConstants) * gltf.materials.size(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     int data_index = 0;
     MeshPipeline::MaterialConstants *sceneMaterialConstants =
         (MeshPipeline::MaterialConstants *)
-            file.materialDataBuffer.info.pMappedData;
+            scene.materialDataBuffer.info.pMappedData;
 
     for (fastgltf::Material &mat : gltf.materials) {
         std::shared_ptr<GLTFMaterial> newMat = std::make_shared<GLTFMaterial>();
         materials.push_back(newMat);
-        file.materials[mat.name.c_str()] = newMat;
+        scene.materials[mat.name.c_str()] = newMat;
 
         MeshPipeline::MaterialConstants constants;
         constants.colorFactors.x = mat.pbrData.baseColorFactor[0];
@@ -253,7 +252,7 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         materialResources.metalRoughSampler = renderer->_defaultSamplerLinear;
 
         // set the uniform buffer for the material data
-        materialResources.dataBuffer = file.materialDataBuffer.buffer;
+        materialResources.dataBuffer = scene.materialDataBuffer.buffer;
         materialResources.dataBufferOffset =
             data_index * sizeof(MeshPipeline::MaterialConstants);
         // grab textures from gltf file
@@ -266,12 +265,12 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                     .samplerIndex.value();
 
             materialResources.colorImage = images[img];
-            materialResources.colorSampler = file.samplers[sampler];
+            materialResources.colorSampler = scene.samplers[sampler];
         }
         // build material
         newMat->data = renderer->_meshPipeline.write_material(
             renderer->_device, passType, materialResources,
-            file.descriptorPool);
+            scene.descriptorPool);
 
         data_index++;
     }
@@ -281,11 +280,10 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
     std::vector<uint32_t> indices;
     std::vector<Vertex> vertices;
 
+    scene.meshes.reserve(gltf.meshes.size());
     for (fastgltf::Mesh &mesh : gltf.meshes) {
-        std::shared_ptr<MeshAsset> newmesh = std::make_shared<MeshAsset>();
-        meshes.push_back(newmesh);
-        file.meshes[mesh.name.c_str()] = newmesh;
-        newmesh->name = mesh.name;
+        MeshAsset newMesh;
+        newMesh.name = mesh.name;
 
         // clear the mesh arrays each mesh, we dont want to merge them by error
         indices.clear();
@@ -386,17 +384,18 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
             newSurface.bounds.sphereRadius =
                 glm::length(newSurface.bounds.extents);
 
-            newmesh->surfaces.push_back(newSurface);
+            newMesh.surfaces.push_back(newSurface);
         }
 
-        newmesh->meshBuffers = renderer->uploadMesh(indices, vertices);
+        newMesh.meshBuffers = renderer->uploadMesh(indices, vertices);
+        scene.meshes.emplace_back(newMesh);
     }
 
     for (fastgltf::Animation &animation : gltf.animations) {
     }
 
     // load all nodes and their meshes
-    nodes.reserve(gltf.nodes.size());
+    scene.nodes.reserve(gltf.nodes.size());
     for (fastgltf::Node &node : gltf.nodes) {
         SceneNode newNode;
         newNode.childrenIndices.reserve(node.children.size());
@@ -430,16 +429,16 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                 }},
             node.transform);
 
-        nodes.push_back(newNode);
+        scene.nodes.emplace_back(newNode);
     }
 
     if (!gltf.scenes.empty()) {
         fastgltf::Scene primaryScene = gltf.scenes[0];
-        file.topNodes.reserve(primaryScene.nodeIndices.size());
+        scene.topNodes.reserve(primaryScene.nodeIndices.size());
         for (int i = 0; i < primaryScene.nodeIndices.size(); i++) {
-            file.topNodes.push_back(primaryScene.nodeIndices[i]);
+            scene.topNodes.emplace_back(primaryScene.nodeIndices[i]);
         }
     }
 
-    return scene;
+    return scenePtr;
 }

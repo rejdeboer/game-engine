@@ -34,7 +34,7 @@ struct SceneNode {
 
 struct Scene {
     std::vector<SceneNode> nodes;
-    std::unordered_map<std::string, std::shared_ptr<MeshAsset>> meshes;
+    std::vector<MeshAsset> meshes;
     std::unordered_map<std::string, AllocatedImage> images;
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
 
