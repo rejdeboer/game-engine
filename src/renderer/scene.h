@@ -1,4 +1,5 @@
 #pragma once
+#include "../math/aabb.h"
 #include "descriptor.h"
 #include "types.h"
 #include <optional>
@@ -47,4 +48,6 @@ struct Scene {
     AllocatedBuffer materialDataBuffer;
 
     ~Scene();
+
+    std::optional<math::AABB> get_local_aabb();
 };

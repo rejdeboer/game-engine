@@ -48,7 +48,7 @@ struct Bounds {
     float sphereRadius;
     glm::vec3 extents;
 
-    math::AABB get_aabb() {
+    math::AABB get_aabb() const {
         return math::AABB{
             .min = origin - extents,
             .max = origin + extents,

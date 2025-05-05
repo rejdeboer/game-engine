@@ -25,3 +25,42 @@ Scene::~Scene() {
         vkDestroySampler(dv, sampler, nullptr);
     }
 }
+
+std::optional<math::AABB> Scene::get_local_aabb() {
+    float minX = std::numeric_limits<float>::max();
+    float minY = std::numeric_limits<float>::max();
+    float minZ = std::numeric_limits<float>::max();
+
+    float maxX = std::numeric_limits<float>::lowest();
+    float maxY = std::numeric_limits<float>::lowest();
+    float maxZ = std::numeric_limits<float>::lowest();
+
+    math::AABB res;
+    bool hasAABB = false;
+
+    for (auto &node : nodes) {
+        if (!node.meshIndex.has_value()) {
+            continue;
+        }
+
+        const MeshAsset &mesh = meshes[node.meshIndex.value()];
+        assert(!mesh.surfaces.empty());
+
+        math::AABB nodeAABB = mesh.surfaces[0].bounds.get_aabb();
+        for (int i = 1; i < mesh.surfaces.size(); i++) {
+            nodeAABB.merge(mesh.surfaces[i].bounds.get_aabb());
+        }
+
+        if (hasAABB) {
+            res.merge(nodeAABB);
+        } else {
+            res = nodeAABB;
+        }
+    }
+
+    if (!hasAABB) {
+        return std::nullopt;
+    }
+
+    return res;
+}
