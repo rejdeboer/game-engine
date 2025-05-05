@@ -25,11 +25,11 @@ struct MeshAsset {
 
 struct SceneNode {
     std::string name;
-    std::vector<std::size_t> childrenIndices;
+    std::vector<size_t> childrenIndices;
 
     glm::mat4 transform;
 
-    std::optional<std::size_t> meshIndex{std::nullopt};
+    std::optional<size_t> meshIndex{std::nullopt};
 };
 
 struct Scene {
@@ -38,7 +38,7 @@ struct Scene {
     std::unordered_map<std::string, AllocatedImage> images;
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
 
-    std::vector<std::size_t> topNodes;
+    std::vector<size_t> topNodes;
 
     std::vector<VkSampler> samplers;
 
