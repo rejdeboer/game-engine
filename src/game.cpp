@@ -122,24 +122,21 @@ void Game::handle_pick_request() {
         UnitData unitData = UnitData::registry.at(type);
         // TODO: This sucks
         const Scene &scene = *_assets.get();
-        // Bounds bounds = scene.meshes.at(unitData.name)->surfaces[0].bounds;
-        // glm::mat4 worldTransform = transform.as_matrix();
-        // glm::mat4 invWorldTransform = glm::inverse(worldTransform);
-        //
-        // glm::vec3 localRayOrigin =
-        //     glm::vec3(invWorldTransform * glm::vec4(clickRay.origin, 1.0f));
-        // glm::vec3 localRayDir =
-        //     glm::vec3(invWorldTransform * glm::vec4(clickRay.direction,
-        //     0.0f));
-        // localRayDir = glm::normalize(localRayDir);
-        // Ray localRay = Ray{localRayOrigin, localRayDir};
-        //
-        // glm::vec3 localAABBMin = bounds.origin - bounds.extents;
-        // glm::vec3 localAABBMax = bounds.origin + bounds.extents;
-        //
-        // if (math::intersect_ray_aabb(localRay, localAABBMin, localAABBMax)) {
-        //     selectedEntity = entity;
-        // }
+        glm::mat4 worldTransform = transform.as_matrix();
+        glm::mat4 invWorldTransform = glm::inverse(worldTransform);
+
+        glm::vec3 localRayOrigin =
+            glm::vec3(invWorldTransform * glm::vec4(clickRay.origin, 1.0f));
+        glm::vec3 localRayDir =
+            glm::vec3(invWorldTransform * glm::vec4(clickRay.direction, 0.0f));
+        localRayDir = glm::normalize(localRayDir);
+        Ray localRay = Ray{localRayOrigin, localRayDir};
+
+        std::optional<math::AABB> sceneAABB = scene.get_local_aabb();
+        if (sceneAABB.has_value() &&
+            math::intersect_ray_aabb(localRay, sceneAABB.value())) {
+            selectedEntity = entity;
+        }
     });
 
     if (selectedEntity == entt::null) {

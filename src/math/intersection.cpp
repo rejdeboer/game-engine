@@ -16,8 +16,7 @@
  * @return true if the ray intersects the AABB (at a non-negative distance),
  * false otherwise.
  */
-bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
-                              const glm::vec3 &boxMax,
+bool math::intersect_ray_aabb(const Ray &ray, const math::AABB &aabb,
                               float &outIntersectionDistance) {
     float tNear = std::numeric_limits<float>::min();
     float tFar = std::numeric_limits<float>::max();
@@ -26,15 +25,15 @@ bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
         if (std::abs(ray.direction[i]) < 1e-6f) {
             // Ray is parallel to the slab planes for this axis.
             // If the origin is not within the slab bounds, it misses the box.
-            if (ray.origin[i] < boxMin[i] || ray.origin[i] > boxMax[i]) {
+            if (ray.origin[i] < aabb.min[i] || ray.origin[i] > aabb.max[i]) {
                 return false; // Misses the box entirely
             }
             // Otherwise, the ray is parallel AND inside the slab, so continue
             // checking other axes.
         } else {
             // Calculate intersection distances for this axis's slab
-            float t1 = (boxMin[i] - ray.origin[i]) / ray.direction[i];
-            float t2 = (boxMax[i] - ray.origin[i]) / ray.direction[i];
+            float t1 = (aabb.min[i] - ray.origin[i]) / ray.direction[i];
+            float t2 = (aabb.max[i] - ray.origin[i]) / ray.direction[i];
 
             // Ensure t1 is the entry distance and t2 is the exit distance
             if (t1 > t2) {
@@ -78,10 +77,9 @@ bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
     return true;
 }
 
-bool math::intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
-                              const glm::vec3 &boxMax) {
+bool math::intersect_ray_aabb(const Ray &ray, const math::AABB &aabb) {
     float dummyDistance;
-    return intersect_ray_aabb(ray, boxMin, boxMax, dummyDistance);
+    return intersect_ray_aabb(ray, aabb, dummyDistance);
 }
 
 glm::vec3 math::intersect_ray_plane(const Ray &ray,

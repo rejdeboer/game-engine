@@ -49,5 +49,5 @@ struct Scene {
 
     ~Scene();
 
-    std::optional<math::AABB> get_local_aabb();
+    std::optional<math::AABB> get_local_aabb() const;
 };

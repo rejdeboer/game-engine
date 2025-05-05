@@ -26,7 +26,7 @@ Scene::~Scene() {
     }
 }
 
-std::optional<math::AABB> Scene::get_local_aabb() {
+std::optional<math::AABB> Scene::get_local_aabb() const {
     float minX = std::numeric_limits<float>::max();
     float minY = std::numeric_limits<float>::max();
     float minZ = std::numeric_limits<float>::max();
@@ -46,15 +46,18 @@ std::optional<math::AABB> Scene::get_local_aabb() {
         const MeshAsset &mesh = meshes[node.meshIndex.value()];
         assert(!mesh.surfaces.empty());
 
-        math::AABB nodeAABB = mesh.surfaces[0].bounds.get_aabb();
+        math::AABB nodeAABB =
+            mesh.surfaces[0].bounds.get_aabb().transform(node.transform);
         for (int i = 1; i < mesh.surfaces.size(); i++) {
-            nodeAABB.merge(mesh.surfaces[i].bounds.get_aabb());
+            nodeAABB.merge(
+                mesh.surfaces[i].bounds.get_aabb().transform(node.transform));
         }
 
         if (hasAABB) {
             res.merge(nodeAABB);
         } else {
             res = nodeAABB;
+            hasAABB = true;
         }
     }
 
