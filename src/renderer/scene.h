@@ -33,11 +33,16 @@ struct SceneNode {
     std::optional<size_t> meshIndex{std::nullopt};
 };
 
+struct Animation {
+    std::string name;
+};
+
 struct Scene {
     std::vector<SceneNode> nodes;
     std::vector<MeshAsset> meshes;
     std::unordered_map<std::string, AllocatedImage> images;
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
+    std::unordered_map<std::string, Animation> animations;
 
     std::vector<size_t> topNodes;
 

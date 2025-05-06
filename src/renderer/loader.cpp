@@ -366,6 +366,29 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                     });
             }
 
+            // load joints
+            auto joints = p.findAttribute("JOINTS_0");
+            if (joints != p.attributes.end()) {
+                fastgltf::iterateAccessorWithIndex<fastgltf::math::u8vec4>(
+                    gltf, gltf.accessors[(*joints).accessorIndex],
+                    [&](fastgltf::math::u8vec4 v, size_t index) {
+                        vertices[initialVtx + index].jointIndices.x = v.x();
+                        vertices[initialVtx + index].jointIndices.y = v.y();
+                        vertices[initialVtx + index].jointIndices.z = v.z();
+                        vertices[initialVtx + index].jointIndices.w = v.w();
+                    });
+
+                auto weights = p.findAttribute("WEIGHTS_0");
+                fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
+                    gltf, gltf.accessors[(*weights).accessorIndex],
+                    [&](fastgltf::math::fvec4 v, size_t index) {
+                        vertices[initialVtx + index].jointWeights.x = v.x();
+                        vertices[initialVtx + index].jointWeights.y = v.y();
+                        vertices[initialVtx + index].jointWeights.z = v.z();
+                        vertices[initialVtx + index].jointWeights.w = v.w();
+                    });
+            }
+
             if (p.materialIndex.has_value()) {
                 newSurface.material = materials[p.materialIndex.value()];
             } else {
