@@ -465,7 +465,7 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         if (gltfSkin.inverseBindMatrices.has_value()) {
             const auto &ibmAccessor =
                 gltf.accessors[gltfSkin.inverseBindMatrices.value()];
-            skin.inverseBindMatrices.reserve(ibmAccessor.count);
+            skin.inverseBindMatrices.resize(ibmAccessor.count);
             fastgltf::iterateAccessorWithIndex<fastgltf::math::fmat4x4>(
                 gltf, ibmAccessor,
                 [&](fastgltf::math::fmat4x4 ibm, size_t index) {
@@ -475,6 +475,13 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         } else {
             fmt::print(stderr, "WARN: Skin {} has no inverse bind matrices!\n",
                        gltfSkin.name);
+        }
+
+        // Map joint indices to Node pointers
+        skin.jointNodeIndices.reserve(gltfSkin.joints.size());
+        for (const auto &jointIndex : gltfSkin.joints) {
+            assert(jointIndex < scene.nodes.size());
+            skin.jointNodeIndices.emplace_back(jointIndex);
         }
 
         scene.skin = skin;

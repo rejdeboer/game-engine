@@ -42,7 +42,7 @@ struct Animation {
 struct Skin {
     std::string name;
     std::vector<glm::mat4> inverseBindMatrices;
-    std::vector<std::shared_ptr<SceneNode>> joints;
+    std::vector<size_t> jointNodeIndices;
 };
 
 struct Scene {
