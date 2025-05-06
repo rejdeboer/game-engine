@@ -430,6 +430,8 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
             newNode.meshIndex = node.meshIndex.value();
         }
 
+        newNode.isSkinned = node.skinIndex.has_value();
+
         std::visit(
             fastgltf::visitor{
                 [&](fastgltf::math::fmat4x4 matrix) {

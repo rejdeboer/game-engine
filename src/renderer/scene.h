@@ -31,10 +31,18 @@ struct SceneNode {
     glm::mat4 transform;
 
     std::optional<size_t> meshIndex{std::nullopt};
+    // TODO: Use skin index if multiple skin support is implemented
+    bool isSkinned{false};
 };
 
 struct Animation {
     std::string name;
+};
+
+struct Skin {
+    std::string name;
+    std::vector<glm::mat4> inverseBindMatrices;
+    std::vector<std::shared_ptr<SceneNode>> joints;
 };
 
 struct Scene {
@@ -43,6 +51,8 @@ struct Scene {
     std::unordered_map<std::string, AllocatedImage> images;
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
     std::unordered_map<std::string, Animation> animations;
+    // TODO: Support multiple skins?
+    std::optional<Skin> skin;
 
     std::vector<size_t> topNodes;
 
