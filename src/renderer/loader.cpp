@@ -414,9 +414,6 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         scene.meshes.emplace_back(newMesh);
     }
 
-    for (fastgltf::Animation &animation : gltf.animations) {
-    }
-
     // load all nodes and their meshes
     scene.nodes.reserve(gltf.nodes.size());
     for (fastgltf::Node &node : gltf.nodes) {
@@ -455,6 +452,35 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
             node.transform);
 
         scene.nodes.emplace_back(newNode);
+    }
+
+    // TODO: Support multiple skins
+    if (!gltf.skins.empty()) {
+        Skin skin;
+        fastgltf::Skin gltfSkin = gltf.skins[0];
+
+        skin.name = gltfSkin.name;
+
+        // Load Inverse Bind Matrices
+        if (gltfSkin.inverseBindMatrices.has_value()) {
+            const auto &ibmAccessor =
+                gltf.accessors[gltfSkin.inverseBindMatrices.value()];
+            skin.inverseBindMatrices.reserve(ibmAccessor.count);
+            fastgltf::iterateAccessorWithIndex<fastgltf::math::fmat4x4>(
+                gltf, ibmAccessor,
+                [&](fastgltf::math::fmat4x4 ibm, size_t index) {
+                    memcpy(&skin.inverseBindMatrices[index], ibm.data(),
+                           ibm.size_bytes());
+                });
+        } else {
+            fmt::print(stderr, "WARN: Skin {} has no inverse bind matrices!\n",
+                       gltfSkin.name);
+        }
+
+        scene.skin = skin;
+    }
+
+    for (fastgltf::Animation &animation : gltf.animations) {
     }
 
     if (!gltf.scenes.empty()) {
