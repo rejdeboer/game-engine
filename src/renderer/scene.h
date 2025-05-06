@@ -52,7 +52,7 @@ struct Scene {
     std::unordered_map<std::string, std::shared_ptr<GLTFMaterial>> materials;
     std::unordered_map<std::string, Animation> animations;
     // TODO: Support multiple skins?
-    std::optional<Skin> skin;
+    std::optional<Skin> skin{std::nullopt};
 
     std::vector<size_t> topNodes;
 
