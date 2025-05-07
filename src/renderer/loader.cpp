@@ -195,7 +195,6 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
     }
 
     // temporal arrays for all the objects to use while creating the GLTF data
-    std::vector<SceneNode> nodes;
     std::vector<AllocatedImage> images;
     std::vector<std::shared_ptr<GLTFMaterial>> materials;
 
