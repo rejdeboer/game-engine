@@ -472,7 +472,12 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
         scene.skin = skin;
     }
 
+    scene.animations.reserve(gltf.animations.size());
     for (fastgltf::Animation &animation : gltf.animations) {
+        Animation newAnimation;
+        newAnimation.name = animation.name;
+        scene.animations.insert(
+            std::pair<std::string, Animation>(newAnimation.name, newAnimation));
     }
 
     if (!gltf.scenes.empty()) {
