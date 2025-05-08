@@ -135,11 +135,10 @@ load_image(Renderer *renderer, fastgltf::Asset &asset, fastgltf::Image &image) {
     }
 }
 
-std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
-                                                    std::string_view filePath) {
-    std::shared_ptr<LoadedGLTF> scene = std::make_shared<LoadedGLTF>();
-    scene->creator = renderer;
-    LoadedGLTF &file = *scene.get();
+std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
+                                               std::string_view filePath) {
+    std::shared_ptr<Scene> scenePtr = std::make_shared<Scene>();
+    Scene &scene = *scenePtr.get();
 
     constexpr auto GLTF_OPTIONS =
         fastgltf::Options::DontRequireValidAssetMember |
@@ -172,7 +171,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
         {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1}};
 
-    file.descriptorPool.init(renderer->_device, gltf.materials.size(), sizes);
+    scene.descriptorPool.init(renderer->_device, gltf.materials.size(), sizes);
 
     // load samplers
     for (fastgltf::Sampler &sampler : gltf.samplers) {
@@ -192,12 +191,10 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
 
         VkSampler newSampler;
         vkCreateSampler(renderer->_device, &sampl, nullptr, &newSampler);
-        file.samplers.push_back(newSampler);
+        scene.samplers.push_back(newSampler);
     }
 
     // temporal arrays for all the objects to use while creating the GLTF data
-    std::vector<std::shared_ptr<MeshAsset>> meshes;
-    std::vector<std::shared_ptr<Node>> nodes;
     std::vector<AllocatedImage> images;
     std::vector<std::shared_ptr<GLTFMaterial>> materials;
 
@@ -206,7 +203,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
 
         if (img.has_value()) {
             images.push_back(*img);
-            file.images[image.name.c_str()] = *img;
+            scene.images[image.name.c_str()] = *img;
         } else {
             // we failed to load, so lets give the slot a default white texture
             // to not completely break loading
@@ -217,18 +214,18 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
     }
 
     // create buffer to hold the material data
-    file.materialDataBuffer = renderer->create_buffer(
+    scene.materialDataBuffer = renderer->create_buffer(
         sizeof(MeshPipeline::MaterialConstants) * gltf.materials.size(),
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     int data_index = 0;
     MeshPipeline::MaterialConstants *sceneMaterialConstants =
         (MeshPipeline::MaterialConstants *)
-            file.materialDataBuffer.info.pMappedData;
+            scene.materialDataBuffer.info.pMappedData;
 
     for (fastgltf::Material &mat : gltf.materials) {
         std::shared_ptr<GLTFMaterial> newMat = std::make_shared<GLTFMaterial>();
         materials.push_back(newMat);
-        file.materials[mat.name.c_str()] = newMat;
+        scene.materials[mat.name.c_str()] = newMat;
 
         MeshPipeline::MaterialConstants constants;
         constants.colorFactors.x = mat.pbrData.baseColorFactor[0];
@@ -254,7 +251,7 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
         materialResources.metalRoughSampler = renderer->_defaultSamplerLinear;
 
         // set the uniform buffer for the material data
-        materialResources.dataBuffer = file.materialDataBuffer.buffer;
+        materialResources.dataBuffer = scene.materialDataBuffer.buffer;
         materialResources.dataBufferOffset =
             data_index * sizeof(MeshPipeline::MaterialConstants);
         // grab textures from gltf file
@@ -267,12 +264,12 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
                     .samplerIndex.value();
 
             materialResources.colorImage = images[img];
-            materialResources.colorSampler = file.samplers[sampler];
+            materialResources.colorSampler = scene.samplers[sampler];
         }
         // build material
         newMat->data = renderer->_meshPipeline.write_material(
             renderer->_device, passType, materialResources,
-            file.descriptorPool);
+            scene.descriptorPool);
 
         data_index++;
     }
@@ -282,11 +279,10 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
     std::vector<uint32_t> indices;
     std::vector<Vertex> vertices;
 
+    scene.meshes.reserve(gltf.meshes.size());
     for (fastgltf::Mesh &mesh : gltf.meshes) {
-        std::shared_ptr<MeshAsset> newmesh = std::make_shared<MeshAsset>();
-        meshes.push_back(newmesh);
-        file.meshes[mesh.name.c_str()] = newmesh;
-        newmesh->name = mesh.name;
+        MeshAsset newMesh;
+        newMesh.name = mesh.name;
 
         // clear the mesh arrays each mesh, we dont want to merge them by error
         indices.clear();
@@ -321,15 +317,8 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
                     gltf, posAccessor,
                     [&](fastgltf::math::fvec3 v, size_t index) {
-                        Vertex newVtx;
-                        newVtx.pos.x = v.x();
-                        newVtx.pos.y = v.y();
-                        newVtx.pos.z = v.z();
-                        newVtx.color = glm::vec4{1.f};
-                        newVtx.normal = {1, 0, 0};
-                        newVtx.uv_x = 0;
-                        newVtx.uv_y = 0;
-                        vertices[initialVtx + index] = newVtx;
+                        memcpy(&vertices[initialVtx + index].pos, &v,
+                               sizeof(glm::vec3));
                     });
             }
 
@@ -339,9 +328,8 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
                     gltf, gltf.accessors[(*normals).accessorIndex],
                     [&](fastgltf::math::fvec3 v, size_t index) {
-                        vertices[initialVtx + index].normal.x = v.x();
-                        vertices[initialVtx + index].normal.y = v.y();
-                        vertices[initialVtx + index].normal.z = v.z();
+                        memcpy(&vertices[initialVtx + index].normal, &v,
+                               sizeof(glm::vec3));
                     });
             }
 
@@ -362,10 +350,27 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
                     gltf, gltf.accessors[(*colors).accessorIndex],
                     [&](fastgltf::math::fvec4 v, size_t index) {
-                        vertices[initialVtx + index].color.x = v.x();
-                        vertices[initialVtx + index].color.y = v.y();
-                        vertices[initialVtx + index].color.z = v.z();
-                        vertices[initialVtx + index].color.w = v.w();
+                        memcpy(&vertices[initialVtx + index].color, &v,
+                               sizeof(glm::vec4));
+                    });
+            }
+
+            // load joints
+            auto joints = p.findAttribute("JOINTS_0");
+            if (joints != p.attributes.end()) {
+                fastgltf::iterateAccessorWithIndex<fastgltf::math::u8vec4>(
+                    gltf, gltf.accessors[(*joints).accessorIndex],
+                    [&](fastgltf::math::u8vec4 v, size_t index) {
+                        memcpy(&vertices[initialVtx + index].jointIndices, &v,
+                               sizeof(glm::vec4));
+                    });
+
+                auto weights = p.findAttribute("WEIGHTS_0");
+                fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
+                    gltf, gltf.accessors[(*weights).accessorIndex],
+                    [&](fastgltf::math::fvec4 v, size_t index) {
+                        memcpy(&vertices[initialVtx + index].jointWeights, &v,
+                               sizeof(glm::vec4));
                     });
             }
 
@@ -387,97 +392,101 @@ std::optional<std::shared_ptr<LoadedGLTF>> loadGltf(Renderer *renderer,
             newSurface.bounds.sphereRadius =
                 glm::length(newSurface.bounds.extents);
 
-            newmesh->surfaces.push_back(newSurface);
+            newMesh.surfaces.push_back(newSurface);
         }
 
-        newmesh->meshBuffers = renderer->uploadMesh(indices, vertices);
-    }
-
-    for (fastgltf::Animation &animation : gltf.animations) {
+        newMesh.meshBuffers = renderer->uploadMesh(indices, vertices);
+        scene.meshes.emplace_back(newMesh);
     }
 
     // load all nodes and their meshes
+    scene.nodes.reserve(gltf.nodes.size());
     for (fastgltf::Node &node : gltf.nodes) {
-        std::shared_ptr<Node> newNode;
+        SceneNode newNode;
+        newNode.childrenIndices.reserve(node.children.size());
+        for (int i = 0; i < node.children.size(); i++) {
+            newNode.childrenIndices.push_back(node.children[i]);
+        }
 
-        // find if the node has a mesh, and if it does hook it to the mesh
-        // pointer and allocate it with the meshnode class
         if (node.meshIndex.has_value()) {
-            newNode = std::make_shared<MeshNode>();
-            static_cast<MeshNode *>(newNode.get())->mesh =
-                meshes[*node.meshIndex];
+            newNode.meshIndex = node.meshIndex.value();
+        }
+
+        newNode.isSkinned = node.skinIndex.has_value();
+
+        std::visit(
+            fastgltf::visitor{
+                [&](fastgltf::math::fmat4x4 matrix) {
+                    memcpy(&newNode.transform, matrix.data(), sizeof(matrix));
+                },
+                [&](fastgltf::TRS transform) {
+                    glm::vec3 tl(transform.translation[0],
+                                 transform.translation[1],
+                                 transform.translation[2]);
+                    glm::quat rot(transform.rotation[3], transform.rotation[0],
+                                  transform.rotation[1], transform.rotation[2]);
+                    glm::vec3 sc(transform.scale[0], transform.scale[1],
+                                 transform.scale[2]);
+
+                    glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
+                    glm::mat4 rm = glm::toMat4(rot);
+                    glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
+
+                    newNode.transform = tm * rm * sm;
+                }},
+            node.transform);
+
+        scene.nodes.emplace_back(newNode);
+    }
+
+    // TODO: Support multiple skins
+    if (!gltf.skins.empty()) {
+        Skin skin;
+        fastgltf::Skin gltfSkin = gltf.skins[0];
+
+        skin.name = gltfSkin.name;
+
+        // Load Inverse Bind Matrices
+        if (gltfSkin.inverseBindMatrices.has_value()) {
+            const auto &ibmAccessor =
+                gltf.accessors[gltfSkin.inverseBindMatrices.value()];
+            skin.inverseBindMatrices.resize(ibmAccessor.count);
+            fastgltf::iterateAccessorWithIndex<fastgltf::math::fmat4x4>(
+                gltf, ibmAccessor,
+                [&](fastgltf::math::fmat4x4 ibm, size_t index) {
+                    memcpy(&skin.inverseBindMatrices[index], ibm.data(),
+                           ibm.size_bytes());
+                });
         } else {
-            newNode = std::make_shared<Node>();
+            fmt::print(stderr, "WARN: Skin {} has no inverse bind matrices!\n",
+                       gltfSkin.name);
         }
 
-        nodes.push_back(newNode);
-        file.nodes[node.name.c_str()];
+        // Map joint indices to Node pointers
+        skin.jointNodeIndices.reserve(gltfSkin.joints.size());
+        for (const auto &jointIndex : gltfSkin.joints) {
+            assert(jointIndex < scene.nodes.size());
+            skin.jointNodeIndices.emplace_back(jointIndex);
+        }
 
-        std::visit(fastgltf::visitor{
-                       [&](fastgltf::math::fmat4x4 matrix) {
-                           memcpy(&newNode->localTransform, matrix.data(),
-                                  sizeof(matrix));
-                       },
-                       [&](fastgltf::TRS transform) {
-                           glm::vec3 tl(transform.translation[0],
-                                        transform.translation[1],
-                                        transform.translation[2]);
-                           glm::quat rot(
-                               transform.rotation[3], transform.rotation[0],
-                               transform.rotation[1], transform.rotation[2]);
-                           glm::vec3 sc(transform.scale[0], transform.scale[1],
-                                        transform.scale[2]);
-
-                           glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
-                           glm::mat4 rm = glm::toMat4(rot);
-                           glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
-
-                           newNode->localTransform = tm * rm * sm;
-                       }},
-                   node.transform);
+        scene.skin = skin;
     }
 
-    // run loop again to setup transform hierarchy
-    for (int i = 0; i < gltf.nodes.size(); i++) {
-        fastgltf::Node &node = gltf.nodes[i];
-        std::shared_ptr<Node> &sceneNode = nodes[i];
+    scene.animations.reserve(gltf.animations.size());
+    for (fastgltf::Animation &animation : gltf.animations) {
+        Animation newAnimation;
+        newAnimation.name = animation.name;
+        scene.animations.insert(
+            std::pair<std::string, Animation>(newAnimation.name, newAnimation));
+    }
 
-        for (auto &c : node.children) {
-            sceneNode->children.push_back(nodes[c]);
-            nodes[c]->parent = sceneNode;
+    if (!gltf.scenes.empty()) {
+        fastgltf::Scene primaryScene = gltf.scenes[0];
+        scene.topNodes.reserve(primaryScene.nodeIndices.size());
+        for (int i = 0; i < primaryScene.nodeIndices.size(); i++) {
+            scene.topNodes.emplace_back(primaryScene.nodeIndices[i]);
         }
     }
 
-    // find the top nodes, with no parents
-    for (auto &node : nodes) {
-        if (node->parent.lock() == nullptr) {
-            file.topNodes.push_back(node);
-            node->refresh_transform(glm::mat4{1.f});
-        }
-    }
-    return scene;
-}
-
-void LoadedGLTF::clearAll() {
-    VkDevice dv = creator->_device;
-
-    descriptorPool.destroy_pools(dv);
-    creator->destroy_buffer(materialDataBuffer);
-
-    for (auto &[k, v] : meshes) {
-        creator->destroy_buffer(v->meshBuffers.indexBuffer);
-        creator->destroy_buffer(v->meshBuffers.vertexBuffer);
-    }
-
-    for (auto &[k, v] : images) {
-        if (v.image == creator->_errorCheckerboardImage.image) {
-            // dont destroy the default images
-            continue;
-        }
-        creator->destroy_image(v);
-    }
-
-    for (auto &sampler : samplers) {
-        vkDestroySampler(dv, sampler, nullptr);
-    }
+    return scenePtr;
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "aabb.h"
 #include <glm/glm.hpp>
 
 struct Ray {
@@ -7,11 +8,9 @@ struct Ray {
 };
 
 namespace math {
-bool intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
-                        const glm::vec3 &boxMax,
+bool intersect_ray_aabb(const Ray &ray, const math::AABB &aabb,
                         float &outIntersectionDistance);
-bool intersect_ray_aabb(const Ray &ray, const glm::vec3 &boxMin,
-                        const glm::vec3 &boxMax);
+bool intersect_ray_aabb(const Ray &ray, const math::AABB &aabb);
 glm::vec3 intersect_ray_plane(const Ray &ray, const glm::vec3 &planeOrigin,
                               const glm::vec3 &planeNormal);
 } // namespace math

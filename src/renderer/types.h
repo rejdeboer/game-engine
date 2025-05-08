@@ -1,4 +1,5 @@
 #pragma once
+#include "../math/aabb.h"
 #include "vk_mem_alloc.h"
 #include <fmt/core.h>
 #include <glm/glm.hpp>
@@ -46,6 +47,13 @@ struct Bounds {
     glm::vec3 origin;
     float sphereRadius;
     glm::vec3 extents;
+
+    math::AABB get_aabb() const {
+        return math::AABB{
+            .min = origin - extents,
+            .max = origin + extents,
+        };
+    }
 };
 
 enum class MaterialPass : uint8_t {
@@ -87,21 +95,6 @@ struct MeshDrawCommand {
     VkDeviceAddress vertexBufferAddress;
 
     bool isOutlined = false;
-};
-
-struct Node {
-    std::weak_ptr<Node> parent;
-    std::vector<std::shared_ptr<Node>> children;
-
-    glm::mat4 localTransform;
-    glm::mat4 worldTransform;
-
-    void refresh_transform(const glm::mat4 &parentMatrix) {
-        worldTransform = parentMatrix * localTransform;
-        for (auto c : children) {
-            c->refresh_transform(worldTransform);
-        }
-    }
 };
 
 #define VK_CHECK(x)                                                            \

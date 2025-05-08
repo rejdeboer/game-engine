@@ -1,11 +1,11 @@
 #pragma once
-#include "../camera.h"
 #include "descriptor.h"
 #include "init.h"
 #include "loader.h"
 #include "pipelines/depth_pass.h"
 #include "pipelines/mesh.h"
 #include "pipelines/tile.h"
+#include "scene.h"
 #include "types.h"
 #include "vertex.h"
 #include <SDL3/SDL.h>
@@ -59,10 +59,6 @@ struct ShadowMapResources {
     uint32_t resolution = 2048;
 };
 
-struct MeshNode : public Node {
-    std::shared_ptr<MeshAsset> mesh;
-};
-
 class Renderer {
   private:
     SDL_Window *_window;
@@ -112,6 +108,8 @@ class Renderer {
     FrameData &get_current_frame() {
         return _frames[_frameNumber % FRAME_OVERLAP];
     };
+    void draw_scene_node(const Scene &scene, size_t nodeIndex,
+                         const glm::mat4 &worldTransform);
 
     void init_default_data();
     void init_swapchain();
@@ -161,6 +159,7 @@ class Renderer {
     void set_camera_view(glm::mat4 cameraViewMatrix);
     void set_camera_projection(glm::mat4 cameraProjectionMatrix);
 
+    void draw_scene(const Scene &scene, const glm::mat4 &worldTransform);
     void write_draw_command(MeshDrawCommand &&cmd);
     void update_tile_draw_commands(std::vector<TileRenderingInput> inputs);
 

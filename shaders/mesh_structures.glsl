@@ -5,4 +5,8 @@ struct Vertex {
     vec3 normal;
     float uv_y;
     vec4 color;
+
+    // skinning data
+    ivec4 jointIndices;
+    vec4 weights;
 };

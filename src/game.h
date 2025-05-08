@@ -39,7 +39,7 @@ class Game {
     Camera _camera;
     SDL_Window *_window;
     Renderer _renderer;
-    std::shared_ptr<LoadedGLTF> _assets;
+    std::shared_ptr<Scene> _assets;
 
     void update_positions(float dt);
 
