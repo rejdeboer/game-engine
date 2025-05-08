@@ -317,15 +317,8 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
                     gltf, posAccessor,
                     [&](fastgltf::math::fvec3 v, size_t index) {
-                        Vertex newVtx;
-                        newVtx.pos.x = v.x();
-                        newVtx.pos.y = v.y();
-                        newVtx.pos.z = v.z();
-                        newVtx.color = glm::vec4{1.f};
-                        newVtx.normal = {1, 0, 0};
-                        newVtx.uv_x = 0;
-                        newVtx.uv_y = 0;
-                        vertices[initialVtx + index] = newVtx;
+                        memcpy(&vertices[initialVtx + index].pos, &v,
+                               sizeof(glm::vec3));
                     });
             }
 
@@ -335,9 +328,8 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
                     gltf, gltf.accessors[(*normals).accessorIndex],
                     [&](fastgltf::math::fvec3 v, size_t index) {
-                        vertices[initialVtx + index].normal.x = v.x();
-                        vertices[initialVtx + index].normal.y = v.y();
-                        vertices[initialVtx + index].normal.z = v.z();
+                        memcpy(&vertices[initialVtx + index].normal, &v,
+                               sizeof(glm::vec3));
                     });
             }
 
@@ -358,10 +350,8 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
                     gltf, gltf.accessors[(*colors).accessorIndex],
                     [&](fastgltf::math::fvec4 v, size_t index) {
-                        vertices[initialVtx + index].color.x = v.x();
-                        vertices[initialVtx + index].color.y = v.y();
-                        vertices[initialVtx + index].color.z = v.z();
-                        vertices[initialVtx + index].color.w = v.w();
+                        memcpy(&vertices[initialVtx + index].color, &v,
+                               sizeof(glm::vec4));
                     });
             }
 
@@ -371,20 +361,16 @@ std::optional<std::shared_ptr<Scene>> loadGltf(Renderer *renderer,
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::u8vec4>(
                     gltf, gltf.accessors[(*joints).accessorIndex],
                     [&](fastgltf::math::u8vec4 v, size_t index) {
-                        vertices[initialVtx + index].jointIndices.x = v.x();
-                        vertices[initialVtx + index].jointIndices.y = v.y();
-                        vertices[initialVtx + index].jointIndices.z = v.z();
-                        vertices[initialVtx + index].jointIndices.w = v.w();
+                        memcpy(&vertices[initialVtx + index].jointIndices, &v,
+                               sizeof(glm::vec4));
                     });
 
                 auto weights = p.findAttribute("WEIGHTS_0");
                 fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec4>(
                     gltf, gltf.accessors[(*weights).accessorIndex],
                     [&](fastgltf::math::fvec4 v, size_t index) {
-                        vertices[initialVtx + index].jointWeights.x = v.x();
-                        vertices[initialVtx + index].jointWeights.y = v.y();
-                        vertices[initialVtx + index].jointWeights.z = v.z();
-                        vertices[initialVtx + index].jointWeights.w = v.w();
+                        memcpy(&vertices[initialVtx + index].jointWeights, &v,
+                               sizeof(glm::vec4));
                     });
             }
 
