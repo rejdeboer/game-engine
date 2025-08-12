@@ -1,6 +1,6 @@
 # C++ Game Engine & Vulkan Renderer
 
-This is a from-scratch game engine built in modern **C++20**. This project was undertaken as a personal, learning-focused deep dive into the fundamental principles of low-level game engine architecture, graphics programming, and modern C++ practices.
+This is a game engine built in modern **C++20**. This project was undertaken as a personal, learning-focused deep dive into the fundamental principles of low-level game engine architecture, graphics programming, and modern C++ practices.
 
 ---
 
