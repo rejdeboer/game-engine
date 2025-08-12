@@ -6,8 +6,6 @@ This is a from-scratch game engine built in modern **C++20**. This project was u
 
 ## Core Technical Features & Learning Goals
 
-This engine is intentionally lean, focusing on a robust implementation of core systems rather than a wide array of high-level features.
-
 *   **Language:** Modern **C++20**, utilizing features like modules, concepts, and ranges where appropriate.
 *   **Graphics API: A Deep Dive into Vulkan**
     The engine features a low-level rendering backend built directly on **Vulkan** to gain a mastery of modern, explicit graphics APIs. The implementation includes:
