@@ -23,6 +23,7 @@ This is a game engine built in modern **C++20**. This project was undertaken as 
         *   **Frustum Culling:** Implemented geometric frustum culling on the CPU to efficiently determine which objects are visible and avoid submitting unnecessary draw calls.
         *   **Efficient GPU Memory Management:** Leveraged the **Vulkan Memory Allocator (VMA)** library for robust and efficient GPU memory management, a best practice for modern Vulkan applications, avoiding naive `vkAllocateMemory` calls.
 *   **Windowing & Input:** Cross-platform window and input handling managed by **SDL3**.
+*   **Tooling & Debugging:** Custome debugging UI using **imGUI**.
 *   **Entity Component System (ECS):** Game object architecture is built around the excellent **`EnTT`** library, a staple of modern C++ game development. This provides a clean, data-oriented foundation for game logic.
 *   **Build System:** A clean, modern build process managed by **CMake**.
 
