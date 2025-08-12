@@ -1,5 +1,4 @@
-#ifndef RENDERER_VERTEX_H
-
+#pragma once
 #include <glm/glm.hpp>
 #include <vulkan/vulkan_core.h>
 
@@ -14,6 +13,3 @@ struct Vertex {
     glm::ivec4 jointIndices = glm::ivec4(0);
     glm::vec4 jointWeights = glm::vec4(0.0f);
 };
-
-#define RENDERER_VERTEX_H
-#endif
