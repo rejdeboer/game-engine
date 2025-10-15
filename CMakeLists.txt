@@ -70,8 +70,10 @@ target_link_libraries(main PRIVATE
                         # Vulkan::CompilerConfiguration
                         glm::glm-header-only 
                         GPUOpen::VulkanMemoryAllocator 
-                        fmt::fmt
-                        ${Stb_INCLUDE_DIR})
+                        fmt::fmt)
+
+target_include_directories(main PRIVATE
+                            ${Stb_INCLUDE_DIR})
 
 target_compile_definitions(main
   PUBLIC
